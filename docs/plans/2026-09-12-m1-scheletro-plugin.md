@@ -1292,3 +1292,31 @@ sullo stato installato richiesta prima del commit conclusivo. Token/costi: non d
 - **Placeholder**: nessun TODO/TBD; ogni file ha il contenuto completo. Il gate lo controlla.
 - **Coerenza nomi**: agent `worker-impl`, `worker-mech`, `verificatore`, `pre-merge` uguali in SKILL.md, routing.md, adapter-cc.md, skill-map.md. Bridge `spawn-cx.sh <modello> <effort> <cwd> <prompt-file>` e `spawn-cc.sh <modello> <cwd> <prompt-file>` uguali in adapter-cc e adapter-cx. Chiavi TOML uguali tra config.toml, state.toml e SKILL.md §0/§6. Stati task uguali tra lane.md, project-adapter.md e run.md.
 - **Fuori da M1**: agent, comandi, hook, bridge, sandbox, modifiche a CLAUDE.md, AGENTS.md e milestone (M2-M4).
+
+---
+
+## Patch 0.1.1 — rilievi post-review e failover credito
+
+**Risultato utente:** il catalogo cx non contiene più il path spostato; le installazioni
+espongono la versione `0.1.1`; frasi naturali come «CC ha finito i crediti, vai tutto su cx
+fino a nuovo avviso» e l'inverso producono un failover persistente e ripristinabile.
+
+**Ambiente:** shell locale leggera; nessun processo pesante. Push, update delle cache CC/cx
+e modifiche fuori workspace restano fermi fino a conferma specifica di Andrea.
+
+| Patch | Stato | Owner / file | Criterio di pronto | Verifica |
+|---|---|---|---|---|
+| P1 | completato | implementer catalogo: catalogo cx, manifest, `README.md`, nuovo test regressione | path esistente; versioni `0.1.1`; update cache documentato | commit `8e30369`; regressioni P1 verdi |
+| P2 | completato | implementer credito: `SKILL.md`, `routing.md`, `state.toml` | failover simmetrico, persistente, handoff del cervello esausto, ripristino esplicito | commit `90bd3ce`; regressioni e gate M1 verdi |
+| P3 | completato con riserve | reviewer indipendente `gpt-5.6-sol`, sola lettura | nessun finding grave o medio; scope e invarianti verificati | secondo giro `OK CON RISERVE` su `5e7e2f6`; 5/5 mutazioni respinte, nessun finding grave o medio |
+| P3a | completato | implementer `gpt-5.6-terra`: `tests/check-regressions.sh`, `tests/check-regressions-mutations.sh` | gate vincolato ai file corretti e mutation test RED→GREEN | commit `5e7e2f6`; RED: 5 mutazioni sopravvissute; GREEN: 5/5 respinte |
+| P4 | in attesa di conferma | coordinatore: push e riallineamento cache CC/cx | entrambe le cache `0.1.1`, contenuto uguale al repo | dettagli runtime + review finale |
+
+**Invarianti:** `tests/check-structure.sh` resta byte-per-byte invariato per preservare la
+prova M1 rosso→verde; il nuovo `tests/check-regressions.sh` copre i difetti successivi. Un
+owner per file; builder diverso dal reviewer; modifiche preesistenti dell'ombrello intatte.
+
+**Riserve minori P3:** il mutation runner considera uccisa una mutazione per qualunque exit
+non-zero del gate copiato; il reviewer ha quindi verificato separatamente una copia baseline
+verde. Il limite residuo è del test harness e non altera il contratto runtime. Il
+riallineamento delle cache installate e il push restano P4 e richiedono conferma specifica.
