@@ -12,8 +12,8 @@
 4. Cattura stato Git in sola lettura: branch, hash, worktree, PR aperte (`gh pr list`).
 5. Conta le milestone aperte in ROADMAP.md e le loro dipendenze: è il totale per i contatori
    della celebrazione. Fissalo in `run.md`.
-6. Registra in `run.md` il mandato Git del progetto (Mesa e Pau: commit+push+PR delegati;
-   altri: chiedi all'avvio).
+6. Registra in `run.md` se il run è non presidiato: commit, push e PR normali sono automatici;
+   auto-merge resta vincolato al gate di lane.md.
 7. Valida prima di delegare: un owner per file, nessun ciclo di dipendenze, milestone attive
    ≤ tetto, worker ≤ tetto. Se non c'è un validatore, fallo a mano e scrivilo.
 
@@ -41,5 +41,7 @@ Se il progetto ha già un vocabolario di stati, adotta quello.
 
 Hosting, database, storage, email, pagamenti sono decisioni di architettura: confronto in
 sola lettura (vincoli di prodotto, regione dati, DPA, backup, costo di uscita) e domanda nel
-registro quesiti. Login, provisioning, DNS, deploy, acquisti e rotazione segreti richiedono
-ciascuno l'autorizzazione del progetto.
+registro quesiti. Le app già collegate come plugin Codex sono automatiche nel perimetro
+congelato del task, inclusi side effect esterni non distruttivi direttamente richiesti.
+Nessun login, connessione, scope o segreto nuovo; modifiche distruttive o massive ai dati di
+produzione, acquisti, upgrade e aumenti di budget, spend limit o credito restano vietati.

@@ -33,7 +33,7 @@ in lavorazione, eseguita con il protocollo della skill `milestone`.
 | D12 | Celebrazione | Dopo ogni milestone verificata: GIF delfino o balena alternate, frase `una milestone meno`, recap 🟢🟡🔴. |
 | D13 | Multi-sessione | Il plugin gira in più sessioni VS Code su progetti diversi nello stesso momento. Stato e lock sono per progetto; la config peso è globale con override per progetto. |
 | D14 | Credito esaurito | Comando `/orchestra credito cc esaurito` (o `cx`): tutto si sposta sul runtime con credito, cervello compreso. Il cervello sul runtime esaurito scrive l'handoff e chiede di riprendere dall'altro. `/orchestra credito cc ok` ripristina il peso precedente. |
-| D15 | Gate pre-merge | Prima di ogni merge passa un agente con modello diverso dal builder (e dal verificatore, quando possibile) che rilegge PR, CI e verdetto e dice `suggerisco merge: sì | no + motivi`. Il merge resta parola di Andrea. |
+| D15 | Gate pre-merge | Prima dell'auto-merge passa un agente con modello diverso dal builder (e dal verificatore, quando possibile) che rilegge PR, CI e verdetto e dice `suggerisco merge: sì | no + motivi`. Auto-merge solo con hash revisionato, verifier finale OK e required CI tutti success. |
 | D16 | Solo-CC su task importante | Con cx esaurito: opus costruisce, **fable verifica**. Eccezione dichiarata a D6, valida solo in modalità solo-CC e solo su task importanti. |
 
 "Importante" (D7) segue i criteri tier di `senior-architect` §5: tocca schema, migrazioni,
@@ -59,7 +59,8 @@ Andrea ──/orchestra start──▶ Cervello (CC: fable | cx: gpt-6-astra)
 - **Cervello in CC**: worker CC via tool `Agent` con `model` esplicito e
   `isolation: "worktree"` per le lane parallele. Worker cx via
   `bin/spawn-cx.sh <modello> <effort> <cwd> <prompt-file>`, che incapsula
-  `codex exec -m <modello> -c model_reasoning_effort=<effort> -s workspace-write --approve-for-me`.
+  `codex exec --yolo -m <modello> -c model_reasoning_effort=<effort>` (`--yolo` è l'alias
+  ufficiale di `--dangerously-bypass-approvals-and-sandbox`).
 - **Cervello in cx**: worker cx nativi. Worker CC via
   `bin/spawn-cc.sh <modello> <cwd> <prompt-file>`, che incapsula
   `claude -p --model <modello> --permission-mode bypassPermissions --output-format json`.
@@ -129,7 +130,8 @@ Peso: dev cx <n> / cc <n>; verifica <cc|cx|opposto>
 Tetto: <k> milestone / <w> worker  (default 3 / 6)
 Tetto domande aperte: <n>
 Stop aggiuntivi: <condizioni osservabili>
-Autorizzazioni Git: <dal mandato del progetto: commit+push+PR | solo lettura>
+Run non presidiato: sì | no
+Autorizzazioni Git: <commit+push+PR automatici | solo lettura>
 Al limite CC: handoff e stop
 Credito: cc ok | cc esaurito; cx ok | cx esaurito  (letto da ~/.orchestratore/state.toml)
 ```
@@ -169,14 +171,14 @@ Differenze rispetto alla skill usata a mano:
 - Fase 3: il verificatore lo assegna il cervello, non il worker, per garantire modello diverso.
 - Regola del verdetto invariata: OK vale solo sull'hash che va in PR. Ogni correzione
   successiva obbliga a un giro di conferma.
-- Fase 4: PR verso `main` secondo le autorizzazioni del contratto. Mai merge.
+- Fase 4: commit, push e PR verso `main` sono automatici nel run non presidiato.
 - **Gate pre-merge** (D15): con PR aperta e CI riportata da `gh`, il cervello lancia
   l'agent `pre-merge` con modello diverso dal builder e, se i modelli disponibili lo
   consentono, diverso anche dal verificatore. Riceve: perimetro, diff della PR, stato CI,
   verdetto del verificatore con hash. Produce: `suggerisco merge: sì | no`, tre motivi al
-  massimo, rischi residui. Con `no` il cervello riapre la lane sul builder; con `sì`
-  presenta ad Andrea `MILESTONE <nome> PR #<n> — suggerisco merge: sì` e attende la parola
-  `merge`. Esempio con peso default: builder terra (cx), verificatore opus (CC), pre-merge
+  massimo, rischi residui. Con `no` il cervello riapre la lane sul builder; con `sì` esegue
+  auto-merge solo con hash revisionato, verifier indipendente finale OK, almeno un required
+  CI check e tutti i required check success. Esempio con peso default: builder terra (cx), verificatore opus (CC), pre-merge
   sol (cx). Solo-CC: builder sonnet, verificatore opus, pre-merge fable in lettura.
 
 ### 3.7 Registro quesiti e gate del debito
@@ -345,7 +347,7 @@ milestone (2 indipendenti, 1 dipendente), progetto Node minimo con test.
 | Prova di rosso | un test rotto di proposito nel sandbox produce KO del verificatore, nessuna PR |
 | `/orchestra credito cx esaurito` a run avviato | assegnazioni nuove solo CC; task importante → opus costruisce, fable verifica; `credito cx ok` ripristina il peso |
 | `/orchestra credito cc esaurito` con cervello CC | handoff scritto, richiesta di `riprendi` da cx; cervello cx parte con `dev cx 100, verifica cx` |
-| Gate pre-merge | per ogni PR un agente con modello diverso da builder e verificatore; output `suggerisco merge: sì/no`; merge solo dopo la parola di Andrea |
+| Gate pre-merge | per ogni PR un agente con modello diverso da builder e verificatore; output `suggerisco merge: sì/no`; auto-merge solo con tutti i gate richiesti |
 | Due sandbox in due sessioni | due cervelli attivi su progetti diversi senza conflitto; secondo cervello sullo stesso progetto si ferma sul lock |
 
 Output raw dei comandi nel log della milestone di implementazione.

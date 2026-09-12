@@ -22,6 +22,11 @@ path + boundary + «non delegare, domande nel registro quesiti, checkpoint con d
 comandi e output». Se il runtime non permette di scegliere il modello per thread, usa
 `codex exec` con `-m` dal cervello stesso e dichiaralo nel contratto.
 
+Prima di delegare verifica nel profilo effettivo `approval_policy=never` e
+`sandbox_mode=danger-full-access` (effective approval_policy=never + sandbox_mode=danger-full-access).
+Se non puoi ottenerlo senza input, non delegare quella lane e usa un path già `--yolo` con
+`codex exec --yolo`; non chiedere permessi di routine.
+
 ## Worker CC via bridge
 
 `bin/spawn-cc.sh <modello> <cwd> <prompt-file>` (M2), che esegue
@@ -37,8 +42,8 @@ e la raccomandata per prima. Riprendi solo dopo la risposta; registrala nel regi
 
 ## Git, PR, lock, contesto
 
-Come adapter-cc: `gh` per PR e checks, merge solo alla parola `merge`, `brain.lock` con
-`runtime=cx`, `heavy.lock` prima dei processi pesanti. cx espone la percentuale di contesto
+Come adapter-cc: `gh` per PR e checks, commit/push/PR automatici nel run non presidiato e
+auto-merge solo al gate di lane.md; `brain.lock` con `runtime=cx`, `heavy.lock` prima dei processi pesanti. cx espone la percentuale di contesto
 nella sessione: rispetta target 50% e tetto 70%; al 50% non aprire task nuovi, persisti e
 compatta al primo checkpoint sicuro.
 

@@ -64,11 +64,67 @@ remove_restore_guard() {
   perl -0pi -e 's/quando entrambi sono `ok`, ripristina\n+il peso salvato, torna a `normale` e conserva quel peso come traccia dell\x27ultimo failover\./ripristina il peso salvato e torna a normale./' "$copy/skills/orchestratore/SKILL.md"
 }
 
+downgrade_y2_version() {
+  local copy="$1"
+  sed -i.bak 's/"0\.1\.2"/"0.1.1"/g' "$copy/.claude-plugin/plugin.json"
+  rm -f "$copy/.claude-plugin/plugin.json.bak"
+}
+
+remove_yolo_permission() {
+  local copy="$1"
+  perl -0pi -e 's/codex exec --yolo/codex exec -s workspace-write/' "$copy/skills/orchestratore/references/adapter-cc.md"
+}
+
+remove_required_ci_gate() {
+  local copy="$1"
+  perl -0pi -e 's/required CI check/CI check/g' "$copy/skills/orchestratore/references/lane.md"
+}
+
+restore_manual_merge_wait() {
+  local copy="$1"
+  perl -0pi -e 's/Auto-merge consentito solo se:/Attendi la parola `merge` di Andrea; poi:/' "$copy/skills/orchestratore/references/lane.md"
+}
+
+remove_native_yolo_profile() {
+  local copy="$1"
+  perl -0pi -e 's/effective approval_policy=never \+ sandbox_mode=danger-full-access/profilo standard/' "$copy/skills/orchestratore/references/adapter-cx.md"
+}
+
+weaken_spending_ban() {
+  local copy="$1"
+  perl -0pi -e 's/acquisti, upgrade e aumenti di budget, spend limit o credito restano vietati/acquisti, upgrade e aumenti di spesa vanno valutati/' "$copy/skills/orchestratore/references/project-adapter.md"
+}
+
+allow_cancelled_ci() {
+  local copy="$1"
+  perl -0pi -e 's/assenti, pending, falliti o cancellati/assenti, pending, falliti o success/' "$copy/skills/orchestratore/references/lane.md"
+}
+
+remove_mouse_ban() {
+  local copy="$1"
+  perl -0pi -e 's/ Il mouse è sempre vietato\.//' "$copy/skills/orchestratore/SKILL.md"
+}
+
+remove_production_data_bans() {
+  local copy="$1"
+  perl -0pi -e 's/, modifiche distruttive o\n  massive ai dati di produzione//' "$copy/skills/orchestratore/SKILL.md"
+  perl -0pi -e 's/modifiche distruttive o massive ai dati di\nproduzione, //' "$copy/skills/orchestratore/references/project-adapter.md"
+}
+
 expect_rejected "missing peso_precedente schema" remove_peso_precedente
 expect_rejected "missing one-time peso save" remove_one_time_save
 expect_rejected "missing explicit credit transitions" remove_credit_transitions
 expect_rejected "negated handoff and lock release" negate_handoff
 expect_rejected "restore weight without both runtimes ok" remove_restore_guard
+expect_rejected "Y2 manifest version downgraded" downgrade_y2_version
+expect_rejected "Y2 Codex yolo permission removed" remove_yolo_permission
+expect_rejected "Y2 required CI gate weakened" remove_required_ci_gate
+expect_rejected "Y2 manual merge wait restored" restore_manual_merge_wait
+expect_rejected "Y2 native Codex YOLO profile removed" remove_native_yolo_profile
+expect_rejected "Y2 spending ban weakened" weaken_spending_ban
+expect_rejected "Y4 cancelled CI check allowed" allow_cancelled_ci
+expect_rejected "Y4 mouse ban removed" remove_mouse_ban
+expect_rejected "Y4 production data bans removed" remove_production_data_bans
 
 if (( failures > 0 )); then
   printf 'RED: %d mutazioni sono sopravvissute\n' "$failures"

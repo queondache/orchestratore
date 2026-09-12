@@ -1,6 +1,7 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
   "name": "orchestratore",
+  "version": "0.1.2",
   "description": "Marketplace privato di Andrea per il plugin orchestratore.",
   "owner": { "name": "Andrea Pesce" },
   "plugins": [

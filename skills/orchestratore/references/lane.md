@@ -1,4 +1,4 @@
-# Lane: dalla milestone alla parola "merge"
+# Lane: dalla milestone all'integrazione automatica
 
 Una lane è una milestone di ROADMAP.md in lavorazione. Segue la skill `milestone`
 (`~/Dev/skills/milestone/SKILL.md`) con queste differenze.
@@ -37,9 +37,8 @@ l'opinione del builder.
 
 ## Fase 4: PR
 
-Secondo le autorizzazioni del contratto: commit, push, PR verso `main` con il perimetro nel
-corpo, ROADMAP.md aggiornata con link PR. Mai merge. Se il contratto è solo lettura, il
-cervello presenta il branch pronto e chiede l'autorizzazione.
+Nel run non presidiato: commit, push e PR normali automatici verso `main`, con il perimetro
+nel corpo e ROADMAP.md aggiornata con link PR. Il contratto solo lettura resta un blocco.
 
 ## Gate pre-merge
 
@@ -55,20 +54,16 @@ motivi (max 3):
 rischi residui: <elenco | nessuno>
 ```
 
-`no` → il cervello riapre la lane sul builder con i motivi. `sì` → il cervello presenta ad
-Andrea:
-
-```text
-MILESTONE: <nome>   PR: #<n>   CI: <stato da gh>
-VERIFICATORE: <OK | OK CON RISERVE + elenco>   giri: <n>
-PRE-MERGE (<modello>): suggerisco merge: sì
-Scrivi 'merge' per chiudere.
-```
+`no` → il cervello riapre la lane sul builder con i motivi.
 
 ## Merge e chiusura
 
-Solo alla parola `merge` di Andrea: `gh pr merge <n> --squash --delete-branch`, verifica
-con `gh pr view <n> --json state,mergedAt`, output raw nel report, `main` locale aggiornato.
+Auto-merge consentito solo se: hash esatto revisionato; verificatore indipendente finale OK
+su quell'hash; `suggerisco merge: sì`; almeno un required CI check, tutti i required check
+success. Checks assenti, pending, falliti o cancellati bloccano sempre il merge. Allora esegui
+`gh pr merge <n> --squash`, verifica con
+`gh pr view <n> --json state,mergedAt`, conserva output raw nel report e aggiorna `main`
+locale. Non usare force-push, reset o cancellazioni distruttive.
 Poi la milestone è **chiusa**: aggiorna i contatori in `run.md` e celebra (SKILL.md §7).
 
 Stati distinti in `run.md`: `implementata`, `verificata`, `pronta` (pre-merge sì),

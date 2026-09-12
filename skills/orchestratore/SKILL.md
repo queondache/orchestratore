@@ -39,7 +39,8 @@ Peso: dev cx <n> / cc <n>; verifica <cc|cx|opposto>
 Tetto: <k> milestone / <w> worker  (default 3 milestone / 6 worker)
 Tetto domande aperte: <n>
 Stop aggiuntivi: <condizioni osservabili>
-Autorizzazioni Git: <dal mandato del progetto: commit+push+PR | solo lettura>
+Autorizzazioni Git: <commit+push+PR automatici | solo lettura>
+Run non presidiato: sì | no
 Al limite CC: handoff e stop
 Credito: cc <ok|esaurito>; cx <ok|esaurito>
 Modalità credito: normale | solo-cc | solo-cx | fermo
@@ -52,6 +53,10 @@ finding grave aperto, nessuna domanda che cambi contratto o definition of done. 
 tentativi falliti sullo stesso gate, review ripetutamente inconcludente o comportamento non
 verificabile = qualità non più alta: checkpoint e stop. Una richiesta di lavoro autonomo non
 autorizza a completare la roadmap intera se Andrea non scrive `tutte`.
+
+Nel run non presidiato, commit, push e PR normali automatici sono autorizzati. Auto-merge
+solo al gate di §4; nessun login, connessione, scope o segreto nuovo e nessun aumento di
+budget, spend limit o credito.
 
 ## 2. Ruoli, modelli, skill
 
@@ -92,14 +97,14 @@ Come lanciare: [adapter-cc](references/adapter-cc.md) se il cervello è CC,
 [adapter-cx](references/adapter-cx.md) se è cx. I worker non delegano. Solo il cervello
 scrive `run.md`, il registro quesiti e l'handoff. Passa sempre cwd e boundary del progetto.
 
-## 4. Lane: dalla milestone alla parola "merge"
+## 4. Lane: dalla milestone all'integrazione automatica
 
 Protocollo in [lane](references/lane.md). Ogni lane segue la skill `milestone` senza la
 Fase 1: il perimetro lo produci tu, senza chiedere approvazione ad Andrea. Sequenza:
 perimetro → worker implementa (Fasi 0, 2) → verificatore con modello diverso (Fase 3, OK
-valido solo sull'hash che va in PR) → PR (Fase 4, mai merge) → **gate pre-merge** con un
-terzo modello che risponde `suggerisco merge: sì | no` → presenti ad Andrea e attendi la
-parola `merge`. Domande del worker: nel registro quesiti, mai ad Andrea.
+valido solo sull'hash che va in PR) → PR (Fase 4) → **gate pre-merge** con un terzo modello
+che risponde `suggerisco merge: sì | no` → auto-merge solo se tutti i criteri di §4 passano.
+Domande del worker: nel registro quesiti, mai ad Andrea.
 
 ## 5. Registro quesiti e gate del debito
 
@@ -195,9 +200,12 @@ finisci solo lo step atomico e persisti. Nessuna promessa di rollover automatico
 
 ## 8. Confini
 
-- Sviluppare non autorizza commit, push, merge, deploy, reset di schema, messaggi esterni,
-  dati di produzione, acquisti. Segui il mandato del progetto scritto nel contratto; per
-  ciò che manca chiedi prima, mai dopo.
+- Nel run non presidiato sono autorizzati commit, push, PR e auto-merge soltanto al gate di
+  §4. Restano vietati force-push, reset e cancellazioni distruttive, modifiche distruttive o
+  massive ai dati di produzione, acquisti, upgrade e aumenti di budget, spend limit o credito.
+- Le app già collegate come plugin Codex sono automatiche nel perimetro congelato del task,
+  inclusi side effect esterni non distruttivi direttamente richiesti; non autorizzano login,
+  connessioni, scope o segreti nuovi, né azioni distruttive. Il mouse è sempre vietato.
 - Un solo processo pesante locale per volta, anche tra progetti diversi
   (`~/.orchestratore/heavy.lock`): build, suite DB, browser, container non si sovrappongono.
 - Ottimizza criteri di accettazione verificati per token: passa contratti e path, non

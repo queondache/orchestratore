@@ -13,7 +13,9 @@ Peso: dev cx <n> / cc <n>; verifica <cc|cx|opposto>
 Tetto: 3 milestone / 6 worker
 Tetto domande aperte: <n>
 Stop aggiuntivi: <condizioni osservabili>
-Autorizzazioni Git: <commit+push+PR | solo lettura>
+Run non presidiato: sì | no
+Autorizzazioni Git: <commit+push+PR automatici | solo lettura>
+Auto-merge: solo hash revisionato + verifier indipendente finale OK + pre-merge sì + ≥1 required CI check + tutti i required check success
 Al limite CC: handoff e stop
 Credito: cc <ok|esaurito>; cx <ok|esaurito>
 
