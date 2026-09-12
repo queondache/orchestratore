@@ -2,13 +2,12 @@
 
 ## Avvio minimo in cx
 
-Set di skill all'avvio: `i-have-adhd`, `orchestratore`, `openai-docs`. Le altre restano
-installate ma non caricate. Carica una skill opzionale solo quando serve a un task concreto:
-cercala nel catalogo locale con `rg -i <parola> references/codex-skills-catalog.jsonl`
-(non caricare il catalogo intero), chiedi ad Andrea con una frase in italiano che nomina la
-skill e il lavoro, e dopo il sì leggi quel `SKILL.md` e le sole reference pertinenti.
-Un'istruzione esplicita di Andrea di usare una skill vale già come approvazione. Il silenzio
-non è consenso. Leggere un file di skill non abilita tool MCP né cambia la config globale.
+Il cervello e ogni worker cercano e caricano liberamente le skill già installate e disponibili
+utili al task; per cx usa il catalogo locale con `rg -i <parola>
+references/codex-skills-catalog.jsonl`, passa nome/path e legge il `SKILL.md` completo.
+Non chiedere consenso per una skill né fermarti sul silenzio. Se manca, usa una skill
+equivalente già installata o la procedura base. Non installare o abilitare skill/plugin e non
+modificare configurazioni globali; una skill non amplia i permessi di tool o app.
 
 Il catalogo è stato ispezionato il 11/09/2026; la cache non prova disponibilità corrente.
 Il catalogo CC (`~/Dev/skills/cc-installed-plugins.md`) non dice cosa ha cx, e viceversa.

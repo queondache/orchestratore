@@ -59,9 +59,20 @@ does_not_contain() {
   ! grep -Fqi -- "$needle" "$@"
 }
 
+does_not_match_in_files() {
+  local pattern="$1"
+  shift
+  local file
+  for file in "$@"; do
+    if perl -0777 -ne "exit(m{$pattern}ims ? 0 : 1)" "$file"; then
+      return 1
+    fi
+  done
+}
+
 json_version_is() {
   local file="$1"
-  [[ "$(jq -r '.version' "$file")" == "0.1.2" ]]
+  [[ "$(jq -r '.version' "$file")" == "0.1.3" ]]
 }
 
 catalog_entry_count() {
@@ -114,16 +125,16 @@ fi
 
 cc_version="$(jq -r '.version' "$CC_MANIFEST")"
 cx_version="$(jq -r '.version' "$CX_MANIFEST")"
-if [[ "$cc_version" == "0.1.2" && "$cx_version" == "0.1.2" && "$cc_version" == "$cx_version" ]]; then
-  ok "manifest CC e cx allineati alla versione 0.1.2"
+if [[ "$cc_version" == "0.1.3" && "$cx_version" == "0.1.3" && "$cc_version" == "$cx_version" ]]; then
+  ok "manifest CC e cx allineati alla versione 0.1.3"
 else
-  ko "manifest CC e cx allineati alla versione 0.1.2"
+  ko "manifest CC e cx allineati alla versione 0.1.3"
 fi
 
-check "manifest CC versione 0.1.2" json_version_is "$CC_MANIFEST"
-check "manifest cx versione 0.1.2" json_version_is "$CX_MANIFEST"
-check "marketplace CC versione 0.1.2" json_version_is "$CC_MARKETPLACE"
-check "marketplace agenti versione 0.1.2" json_version_is "$AGENT_MARKETPLACE"
+check "manifest CC versione 0.1.3" json_version_is "$CC_MANIFEST"
+check "manifest cx versione 0.1.3" json_version_is "$CX_MANIFEST"
+check "marketplace CC versione 0.1.3" json_version_is "$CC_MARKETPLACE"
+check "marketplace agenti versione 0.1.3" json_version_is "$AGENT_MARKETPLACE"
 
 check "README documenta snapshot/cache" contains_fixed "snapshot/cache" "$README"
 check "README richiede bump di versione" contains_fixed "bump di versione" "$README"
@@ -170,6 +181,22 @@ check "Y4 vieta modifiche distruttive o massive ai dati produzione nella skill" 
 check "Y4 vieta modifiche distruttive o massive ai dati produzione nel project adapter" matches_in_file 'modifiche distruttive o massive ai dati di\s+produzione' "$ROOT/skills/orchestratore/references/project-adapter.md"
 check "Y2 non elimina branch automaticamente" does_not_contain '--delete-branch' "$ROOT/skills/orchestratore/references/lane.md"
 check "Y2 rimuove attesa della parola merge" does_not_contain 'parola `merge`' "${Y2_FILES[@]}"
+
+S2_FILES=("$SKILL" "$ROOT/skills/orchestratore/references/adapter-cx.md" "$ROOT/skills/orchestratore/references/adapter-cc.md" "$ROOT/skills/orchestratore/references/skill-map.md" "$ROOT/skills/orchestratore/references/project-adapter.md")
+check "S2 rende libere le skill installate utili" matches_in_file 'liberamente senza\s+chiedere Andrea tutte le skill già installate e disponibili utili al task' "$SKILL"
+check "S2 richiede lettura completa della skill scelta" contains_in_file 'seguono il suo `SKILL.md` completo' "$SKILL"
+check "S2 rimuove consenso skill da Codex" does_not_contain 'chiedi ad Andrea con una frase in italiano che nomina la skill' "$ROOT/skills/orchestratore/references/adapter-cx.md"
+check "S2 non reintroduce richiesta Andrea per skill" does_not_contain 'Chiedi ad Andrea prima della skill' "$SKILL"
+check "S2 continua con skill equivalente o procedura base" contains_in_file 'skill equivalente già installata o la procedura base' "$SKILL"
+check "S2 vieta installare o abilitare skill" matches_in_file 'non\s+autorizza installare skill nuove, abilitare o modificare globalmente skill o plugin' "$SKILL"
+check "S2 conserva guardrail tool e app" matches_in_file 'tool o app\s+invocati dalla skill conservano tutti i guardrail 0.1.2' "$SKILL"
+check "S4 adapter CC invoca skill installate liberamente" contains_in_file 'skill già installate e disponibili utili al task liberamente' "$ROOT/skills/orchestratore/references/adapter-cc.md"
+check "S4 skill-map usa fallback equivalente o base" contains_in_file 'skill equivalente già installata o procedura base' "$ROOT/skills/orchestratore/references/skill-map.md"
+check "S4 adapter CC vieta installazione e permessi ampliati" matches_in_file 'mai installare, abilitare\s+o modificare globalmente skill o plugin' "$ROOT/skills/orchestratore/references/adapter-cc.md"
+check "S4 nessun consenso skill negli adapter" does_not_contain 'chiedi Andrea prima della skill' "${S2_FILES[@]}"
+check "S4 nessun consenso o autorizzazione Andrea per skill" does_not_match_in_files '(?:fermati\s+e\s+)?(?:chied(?:i|ere)|richied(?:i|ere)|ott(?:ieni|enere)|attend(?:i|ere))(?:\s+\p{L}+){0,8}\s+(?:consenso|autorizzazione)(?:\s+\p{L}+){0,8}\s+(?:di\s+)?Andrea' "${S2_FILES[@]}"
+check "S4 nessun fermo per skill o consenso" does_not_match_in_files '(?<!non\s)(?:fermati|stop)(?:\s+\p{L}+){0,10}\s+(?:skill|consenso|autorizzazione)' "${S2_FILES[@]}"
+check "S4 nessuna installazione o abilitazione globale consentita" does_not_match_in_files '(?<!non\s)(?:consenti|autorizza|puoi)(?:\s+\p{L}+){0,8}\s+(?:installare|abilitare)(?:\s+\p{L}+){0,8}\s+globalmente\s+skill(?:/plugin|\s+o\s+plugin)?' "${S2_FILES[@]}"
 
 if ((failures > 0)); then
   printf 'ROSSO: %d controlli falliti\n' "$failures"

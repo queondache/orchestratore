@@ -70,6 +70,15 @@ Skill obbligatorie per tipo di task in [skill-map](references/skill-map.md): des
 architettura, TDD, lane. Ai worker passi nome e path esatto. Nessun worker inventa o
 installa skill.
 
+In ogni run, cervello e worker scelgono, leggono/caricano e invocano liberamente senza
+chiedere Andrea tutte le skill già installate e disponibili utili al task; passano nome/path
+e seguono il suo `SKILL.md` completo. Usa liberamente la skill utile, senza fermarti sul
+silenzio. Se non è disponibile, usa skill equivalente già installata o la procedura base e
+continua quando possibile; registra solo un blocco realmente impeditivo. Questa fiducia non
+autorizza installare skill nuove, abilitare o modificare globalmente skill o plugin, né nuove
+connessioni, login, scope o segreti, mouse, azioni distruttive o aumenti di spesa: tool o app
+invocati dalla skill conservano tutti i guardrail 0.1.2.
+
 Tetto 3 milestone / 6 worker per progetto, tetti non obiettivi: apri parallelo solo con
 contratti congelati, dipendenze soddisfatte, file senza owner sovrapposti, verifica pronta.
 Chi scrive non revisiona il proprio codice. Appena una consegna è pronta, la review ha

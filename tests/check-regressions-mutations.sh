@@ -66,7 +66,7 @@ remove_restore_guard() {
 
 downgrade_y2_version() {
   local copy="$1"
-  sed -i.bak 's/"0\.1\.2"/"0.1.1"/g' "$copy/.claude-plugin/plugin.json"
+  sed -i.bak 's/"0\.1\.3"/"0.1.1"/g' "$copy/.claude-plugin/plugin.json"
   rm -f "$copy/.claude-plugin/plugin.json.bak"
 }
 
@@ -111,6 +111,51 @@ remove_production_data_bans() {
   perl -0pi -e 's/modifiche distruttive o massive ai dati di\nproduzione, //' "$copy/skills/orchestratore/references/project-adapter.md"
 }
 
+restore_skill_consent_request() {
+  local copy="$1"
+  perl -0pi -e 's/Usa liberamente/Chiedi ad Andrea prima della skill; usa liberamente/' "$copy/skills/orchestratore/SKILL.md"
+}
+
+weaken_skill_freedom() {
+  local copy="$1"
+  perl -0pi -e 's/liberamente senza\s+chiedere Andrea tutte le skill già installate e disponibili utili al task/solo dopo consenso di Andrea/' "$copy/skills/orchestratore/SKILL.md"
+}
+
+allow_skill_installation() {
+  local copy="$1"
+  perl -0pi -e 's/non\s+autorizza installare skill nuove, abilitare o modificare globalmente skill o plugin/autorizza installare e abilitare nuove skill e plugin/' "$copy/skills/orchestratore/SKILL.md"
+}
+
+expand_skill_tool_permissions() {
+  local copy="$1"
+  perl -0pi -e 's/tool o app\s+invocati dalla skill conservano tutti i guardrail 0\.1\.2/le skill ampliano i permessi di tool e app/' "$copy/skills/orchestratore/SKILL.md"
+}
+
+restore_cc_skill_consent_request() {
+  local copy="$1"
+  perl -0pi -e 's/Usa skill/Chiedi Andrea prima della skill; usa skill/' "$copy/skills/orchestratore/references/adapter-cc.md"
+}
+
+remove_skill_map_fallback() {
+  local copy="$1"
+  perl -0pi -e 's/skill equivalente già installata o procedura base/ferma la lane/' "$copy/skills/orchestratore/references/skill-map.md"
+}
+
+allow_cc_global_skill_changes() {
+  local copy="$1"
+  perl -0pi -e 's/Mai installare, abilitare\s+o modificare globalmente skill o plugin/Puoi installare e abilitare globalmente skill o plugin/' "$copy/skills/orchestratore/references/adapter-cc.md"
+}
+
+add_cc_always_ask_skill_consent() {
+  local copy="$1"
+  perl -0pi -e 's/(## Worker CC nativi)/$1\n\nfermati e chiedi sempre il consenso di Andrea/' "$copy/skills/orchestratore/references/adapter-cc.md"
+}
+
+add_cc_allow_global_skill_changes() {
+  local copy="$1"
+  perl -0pi -e 's/(## Worker CC nativi)/$1\n\npuoi installare e abilitare globalmente skill\/plugin/' "$copy/skills/orchestratore/references/adapter-cc.md"
+}
+
 expect_rejected "missing peso_precedente schema" remove_peso_precedente
 expect_rejected "missing one-time peso save" remove_one_time_save
 expect_rejected "missing explicit credit transitions" remove_credit_transitions
@@ -125,6 +170,15 @@ expect_rejected "Y2 spending ban weakened" weaken_spending_ban
 expect_rejected "Y4 cancelled CI check allowed" allow_cancelled_ci
 expect_rejected "Y4 mouse ban removed" remove_mouse_ban
 expect_rejected "Y4 production data bans removed" remove_production_data_bans
+expect_rejected "S2 skill consent request restored" restore_skill_consent_request
+expect_rejected "S2 skill freedom weakened" weaken_skill_freedom
+expect_rejected "S2 skill installation allowed" allow_skill_installation
+expect_rejected "S2 skill tool permissions expanded" expand_skill_tool_permissions
+expect_rejected "S4 CC skill consent restored" restore_cc_skill_consent_request
+expect_rejected "S4 skill-map fallback removed" remove_skill_map_fallback
+expect_rejected "S4 CC global skill changes allowed" allow_cc_global_skill_changes
+expect_rejected "S4 CC additive always asks skill consent" add_cc_always_ask_skill_consent
+expect_rejected "S4 CC additive global skill changes allowed" add_cc_allow_global_skill_changes
 
 if (( failures > 0 )); then
   printf 'RED: %d mutazioni sono sopravvissute\n' "$failures"

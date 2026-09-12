@@ -3,7 +3,7 @@
 Plugin dual-runtime (Claude Code + Codex) che orchestra worker su più milestone in parallelo.
 Cervello Fable 5.1 in CC (alternativa gpt-6-astra in cx), sviluppo su cx, verifica su CC con
 modello diverso dal builder, gate pre-merge, auto-merge condizionato, registro quesiti,
-celebrazione milestone.
+celebrazione milestone e uso libero delle skill già installate nel perimetro del run.
 
 Spec: `docs/specs/2026-09-12-orchestratore-plugin-design.md`. Piani: `docs/plans/`.
 

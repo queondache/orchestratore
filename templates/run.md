@@ -14,6 +14,7 @@ Tetto: 3 milestone / 6 worker
 Tetto domande aperte: <n>
 Stop aggiuntivi: <condizioni osservabili>
 Run non presidiato: sì | no
+Skill: usa liberamente skill installate disponibili; nome/path + SKILL.md completo; fallback equivalente/base se manca
 Autorizzazioni Git: <commit+push+PR automatici | solo lettura>
 Auto-merge: solo hash revisionato + verifier indipendente finale OK + pre-merge sì + ≥1 required CI check + tutti i required check success
 Al limite CC: handoff e stop

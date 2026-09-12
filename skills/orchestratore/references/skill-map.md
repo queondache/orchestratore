@@ -1,8 +1,10 @@
 # Skill obbligatorie per tipo di task
 
 Il cervello scrive nel contratto del task nome e path esatto di ogni skill richiesta. Un
-worker non inventa né installa skill. Se una skill manca sul runtime scelto, il cervello
-sposta il task sull'altro runtime oppure passa il file per path.
+worker non inventa né installa skill. Se una skill manca sul runtime scelto, il cervello usa
+una skill equivalente già installata o procedura base e continua quando possibile; passa il
+file per path o registra solo un blocco realmente impeditivo. Mai abilitare o modificare
+globalmente skill/plugin, né ampliare i permessi di tool o app.
 
 | Tipo di task | Skill | CC | cx |
 |---|---|---|---|

@@ -29,7 +29,7 @@ in lavorazione, eseguita con il protocollo della skill `milestone`.
 | D8 | Concorrenza | Tetto 3 milestone / 6 worker. L'orchestratore decide la concorrenza reale. `AGENTS.md` si aggiorna a questi numeri. |
 | D9 | Perimetro plugin | Skill + agent + comandi + hook. `milestone` resta skill separata, usata come lane. |
 | D10 | Distribuzione | Repo GitHub privato `queondache/orchestratore`, clonato in `~/Dev/skills/orchestratore` (repo annidato, gitignorato nell'ombrello). Install via git in CC e cx. |
-| D11 | Skill obbligatorie | Orchestratore e worker usano le skill installate (design, metodo, superpowers). Ai worker cx si passano nome e path esatto. |
+| D11 | Skill obbligatorie | Cervello e worker scelgono liberamente le skill già installate utili, ne leggono il `SKILL.md` completo e passano nome/path; se manca una skill usano equivalente installata o procedura base. |
 | D12 | Celebrazione | Dopo ogni milestone verificata: GIF delfino o balena alternate, frase `una milestone meno`, recap 🟢🟡🔴. |
 | D13 | Multi-sessione | Il plugin gira in più sessioni VS Code su progetti diversi nello stesso momento. Stato e lock sono per progetto; la config peso è globale con override per progetto. |
 | D14 | Credito esaurito | Comando `/orchestra credito cc esaurito` (o `cx`): tutto si sposta sul runtime con credito, cervello compreso. Il cervello sul runtime esaurito scrive l'handoff e chiede di riprendere dall'altro. `/orchestra credito cc ok` ripristina il peso precedente. |

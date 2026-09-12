@@ -3,6 +3,9 @@
 ## Worker CC nativi
 
 Tool `Agent`. Regole:
+- Usa skill già installate e disponibili utili al task liberamente: passa nome/path, leggi e
+  segui il `SKILL.md` completo, senza consenso o stop sul silenzio. Mai installare, abilitare
+  o modificare globalmente skill o plugin; una skill non amplia permessi di tool o app.
 - `subagent_type`: `orchestratore:worker-impl`, `orchestratore:worker-mech`,
   `orchestratore:verificatore`, `orchestratore:pre-merge` (dal plugin, M2). Finché gli
   agent non esistono, usa `general-purpose` con `model` esplicito.
