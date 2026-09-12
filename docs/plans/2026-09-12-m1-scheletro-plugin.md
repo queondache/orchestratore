@@ -30,14 +30,14 @@ Profilo compute `local-lightweight-2026-09-12`, fallback: bloccare i processi pe
 
 | Task | Stato | Owner / file | Dipendenze | Risultato e criterio di pronto | Verifica |
 |---|---|---|---|---|---|
-| T1 | review | implementer T1: `~/Dev/.gitignore`, repo plugin, `tests/check-structure.sh` | ricognizione completa | repo annidato e gate rosso registrato; commit previsti dal piano | output raw rosso, diff e stato Git |
-| T2 | in coda | implementer T2: quattro manifest | T1 | manifest CC/cx `0.1.0` validi | quattro controlli manifest `OK` + review |
-| T3 | in coda | implementer T3: `skills/orchestratore/SKILL.md` | T2 | contratto italiano conforme, massimo 250 righe | dieci controlli SKILL `OK` + review |
-| T4 | in coda | implementer T4: `routing.md`, `lane.md`, `skill-map.md`, rimozione `runtime-bridges.md` | T3 | reference di metodo coerenti | controlli focalizzati + review |
-| T5 | in coda | implementer T5: adapter runtime, `project-adapter.md`, rimozione `skill-activation.md`; coordinatore integra `~/.codex/AGENTS.md` dopo conferma esterna | T4 | reference runtime complete e path coerenti | controlli reference + review |
-| T6 | in coda | implementer T6: `templates/*` | T5 | tre template conformi allo schema | controlli template + review |
-| T7 | in coda | implementer T7: `README.md` | T6 | README presente e gate interamente verde | output raw verde + review |
-| T8 | in coda | coordinatore: install, symlink, inventari, GitHub | T7 + conferme | plugin installato una volta per runtime e repo remoto privato | dettagli CC, config cx, symlink, stato remoto |
+| T1 | completato | implementer T1: `~/Dev/.gitignore`, repo plugin, `tests/check-structure.sh` | ricognizione completa | repo annidato e gate rosso registrato; commit previsti dal piano | reviewer sol: `OK` su `ee5f390`; 21 KO, exit 1 |
+| T2 | completato | implementer T2: quattro manifest | T1 | manifest CC/cx `0.1.0` validi | reviewer sol: `OK` su `d02a4f6`; 4 controlli OK |
+| T3 | completato | implementer T3: `skills/orchestratore/SKILL.md` | T2 | contratto italiano conforme, massimo 250 righe | reviewer sol: `OK` su `5ecf6b7`; contenuto identico, 10/10 controlli `OK` |
+| T4 | completato | implementer T4: `routing.md`, `lane.md`, `skill-map.md`, rimozione `runtime-bridges.md` | T3 | reference di metodo coerenti | reviewer sol: `OK` su `eb06a1c`; 6 controlli T4 `OK` |
+| T5 | verificato localmente; integrazione globale rinviata a T8 | implementer T5: adapter runtime, `project-adapter.md`, rimozione `skill-activation.md`; coordinatore integra `~/.codex/AGENTS.md` dopo conferma esterna | T4 | reference runtime complete e path coerenti | reviewer sol: `OK` su `007012a`; gate reference tutti `OK` |
+| T6 | completato | implementer T6: `templates/*` | T5 locale | tre template conformi allo schema | reviewer sol: `OK` su `0612601`; 3 controlli `OK`, TOML valido |
+| T7 | completato | implementer T7: `README.md`, log raw verde | T6 | README presente e gate interamente verde | reviewer sol: `OK` su `8083b63`; 31/31 `OK`, log raw identico |
+| T8 | in attesa di conferma | coordinatore: install, symlink, inventari, GitHub | T7 + conferme | plugin installato una volta per runtime e repo remoto privato | dettagli CC, config cx, symlink, stato remoto |
 
 Decisioni aperte: nessuna tecnica. Autorizzazioni aperte non tossiche fino a T8:
 installazioni/modifiche fuori workspace; rimozione symlink; creazione repo e push.
@@ -254,7 +254,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 **Interfaces:**
 - Produces: nome plugin `orchestratore`, marketplace `orchestratore`, versione `0.1.0`. In CC la skill sarà `orchestratore:orchestratore`; in cx idem.
 
-- [ ] **Step 1: Manifest CC**
+- [x] **Step 1: Manifest CC**
 
 `.claude-plugin/plugin.json`:
 ```json
@@ -291,7 +291,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 }
 ```
 
-- [ ] **Step 2: Manifest cx**
+- [x] **Step 2: Manifest cx**
 
 `.codex-plugin/plugin.json`:
 ```json
@@ -341,12 +341,12 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 }
 ```
 
-- [ ] **Step 3: Verifica i 4 controlli manifest**
+- [x] **Step 3: Verifica i 4 controlli manifest**
 
 Run: `tests/check-structure.sh | grep -E 'plugin.json|marketplace.json'`
 Atteso: 4 righe `OK`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add .claude-plugin .codex-plugin .agents
@@ -366,7 +366,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Consumes: nomi file di `references/` e `templates/` definiti nel File Structure; verbi comando `/orchestra start|status|peso|stop|riprendi|credito` (implementati in M3); agent `worker-impl`, `worker-mech`, `verificatore`, `pre-merge` (M2).
 - Produces: il contratto di comportamento del cervello. Tutti gli altri file lo dettagliano, non lo contraddicono.
 
-- [ ] **Step 1: Sostituisci il file con questo contenuto**
+- [x] **Step 1: Sostituisci il file con questo contenuto**
 
 ```markdown
 ---
@@ -565,12 +565,12 @@ finisci solo lo step atomico e persisti. Nessuna promessa di rollover automatico
 - Due cervelli vivi sullo stesso progetto.
 ```
 
-- [ ] **Step 2: Verifica i controlli SKILL.md**
+- [x] **Step 2: Verifica i controlli SKILL.md**
 
 Run: `tests/check-structure.sh | grep 'SKILL.md'`
 Atteso: 10 righe `OK`. Se `<= 250 righe` è KO, accorcia §7 o §8 senza togliere regole.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add skills/orchestratore/SKILL.md
@@ -593,7 +593,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Consumes: tier e regole di SKILL.md §2 e §4.
 - Produces: nomi tier `cervello`, `verifica`, `importante`, `basic`, `meccanico`; nomi agent `worker-impl`, `worker-mech`, `verificatore`, `pre-merge` usati in M2.
 
-- [ ] **Step 1: routing.md**
+- [x] **Step 1: routing.md**
 
 ```markdown
 # Routing: tier, modelli, effort
@@ -646,7 +646,7 @@ In cx non esistono agent dichiarati: il cervello cx passa modello ed effort a og
 o a ogni `codex exec`.
 ```
 
-- [ ] **Step 2: lane.md**
+- [x] **Step 2: lane.md**
 
 ```markdown
 # Lane: dalla milestone alla parola "merge"
@@ -726,7 +726,7 @@ Stati distinti in `run.md`: `implementata`, `verificata`, `pronta` (pre-merge s�
 `integrata` (merge fatto), `chiusa` (ROADMAP e contatori aggiornati).
 ```
 
-- [ ] **Step 3: skill-map.md**
+- [x] **Step 3: skill-map.md**
 
 ```markdown
 # Skill obbligatorie per tipo di task
@@ -754,7 +754,7 @@ Inventario completo lato CC: `~/Dev/skills/cc-installed-plugins.md`. Lato cx:
 `references/codex-skills-catalog.jsonl` (cerca con `rg -i <parola>`; non caricarlo intero).
 ```
 
-- [ ] **Step 4: Rimuovi runtime-bridges.md e verifica**
+- [x] **Step 4: Rimuovi runtime-bridges.md e verifica**
 
 ```bash
 git rm -q skills/orchestratore/references/runtime-bridges.md
@@ -762,7 +762,7 @@ tests/check-structure.sh | grep -E 'routing|lane|skill-map|references vecchie'
 ```
 Atteso: `OK` per routing.md, lane.md (due controlli), skill-map.md; `references vecchie rimosse` ancora `KO` finché esiste skill-activation.md (Task 5).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add skills/orchestratore/references
@@ -785,7 +785,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Consumes: bridge `bin/spawn-cx.sh <modello> <effort> <cwd> <prompt-file>` e `bin/spawn-cc.sh <modello> <cwd> <prompt-file>` (implementati in M2; qui solo descritti con la firma esatta).
 - Produces: procedura concreta per lanciare worker da ciascun runtime.
 
-- [ ] **Step 1: adapter-cc.md**
+- [x] **Step 1: adapter-cc.md**
 
 ```markdown
 # Adapter Claude Code: il cervello è Fable in CC
@@ -839,7 +839,7 @@ l'impronta del filesystem prima di continuare.
   da un pid vivo, aspetta o riordina i task.
 ```
 
-- [ ] **Step 2: adapter-cx.md**
+- [x] **Step 2: adapter-cx.md**
 
 ```markdown
 # Adapter Codex: il cervello è gpt-6-astra in cx
@@ -892,7 +892,7 @@ compatta al primo checkpoint sicuro.
 - Skill di metodo leggibili per path: `/Users/andreapesce/Dev/skills/<nome>/SKILL.md`
 ```
 
-- [ ] **Step 3: project-adapter.md (sostituzione integrale)**
+- [x] **Step 3: project-adapter.md (sostituzione integrale)**
 
 ```markdown
 # Project adapter: progetto nuovo o ripresa
@@ -944,6 +944,9 @@ ciascuno l'autorizzazione del progetto.
 
 - [ ] **Step 4: Rimuovi skill-activation.md, aggiorna il riferimento in ~/.codex/AGENTS.md**
 
+Stato: `skill-activation.md` rimosso nel commit `007012a`; aggiornamento di
+`~/.codex/AGENTS.md` rinviato a T8 perché richiede conferma esterna specifica.
+
 ```bash
 cd ~/Dev/skills/orchestratore
 git rm -q skills/orchestratore/references/skill-activation.md
@@ -952,12 +955,12 @@ grep -n "orchestratore/" ~/.codex/AGENTS.md
 ```
 Atteso: due righe con i nuovi path sotto `skills/orchestratore/references/`.
 
-- [ ] **Step 5: Verifica references**
+- [x] **Step 5: Verifica references**
 
 Run: `tests/check-structure.sh | grep -E 'references|adapter|project-adapter'`
 Atteso: tutti `OK`, incluso `references vecchie rimosse`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A skills/orchestratore
@@ -978,7 +981,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 **Interfaces:**
 - Produces: schema di `run.md` letto e scritto dai comandi di M3; chiavi TOML `peso.dev.cx`, `peso.dev.cc`, `peso.verifica`, `peso.valido_fino`, `credito.cc`, `credito.cx`, `credito.peso_precedente`.
 
-- [ ] **Step 1: templates/run.md**
+- [x] **Step 1: templates/run.md**
 
 ```markdown
 # Run orchestratore — <progetto>
@@ -1041,7 +1044,7 @@ Contesto: <percentuale | non disponibile>, compattazioni: <n>
 Prossima azione (una sola):
 ```
 
-- [ ] **Step 2: templates/config.toml**
+- [x] **Step 2: templates/config.toml**
 
 ```toml
 # Peso CC/cx dell'orchestratore.
@@ -1059,7 +1062,7 @@ worker = 6
 domande_aperte = 8
 ```
 
-- [ ] **Step 3: templates/state.toml**
+- [x] **Step 3: templates/state.toml**
 
 ```toml
 # Stato credito condiviso tra tutte le sessioni: ~/.orchestratore/state.toml.
@@ -1076,12 +1079,12 @@ dev = { cx = 100, cc = 0 }
 verifica = "cc"
 ```
 
-- [ ] **Step 4: Verifica template**
+- [x] **Step 4: Verifica template**
 
 Run: `tests/check-structure.sh | grep templates`
 Atteso: 3 righe `OK`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add templates
@@ -1097,7 +1100,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 **Files:**
 - Create: `README.md`
 
-- [ ] **Step 1: README.md**
+- [x] **Step 1: README.md**
 
 ```markdown
 # orchestratore
@@ -1145,12 +1148,12 @@ tests/check-structure.sh
 ```
 ```
 
-- [ ] **Step 2: Gate verde**
+- [x] **Step 2: Gate verde**
 
 Run: `tests/check-structure.sh; echo "exit=$?"`
 Atteso: tutte le righe `OK`, `VERDE: tutti i controlli passano`, `exit=0`. Output raw nel log della milestone.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add README.md
