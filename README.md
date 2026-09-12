@@ -23,6 +23,12 @@ codex plugin add orchestratore@orchestratore
 Sviluppo locale: al posto di `queondache/orchestratore` passa il path del clone
 (`~/Dev/skills/orchestratore`).
 
+## Aggiornamento
+
+Le installazioni del plugin sono snapshot/cache: le modifiche al repository non vengono
+propagate automaticamente. Ogni release richiede un bump di versione, l'update/upgrade del
+marketplace e l'update o la reinstallazione del plugin in ciascun runtime.
+
 ## Uso
 
 In un progetto con `SPEC.md` e `ROADMAP.md`: `/orchestra start` (CC) oppure «avvia il run»
