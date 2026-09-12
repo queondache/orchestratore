@@ -1,0 +1,13 @@
+# Peso CC/cx dell'orchestratore.
+# Globale: ~/.orchestratore/config.toml. Per progetto: .orchestratore/config.toml (vince).
+# Valori interi, dev.cx + dev.cc = 100.
+
+[peso]
+dev = { cx = 100, cc = 0 }
+verifica = "cc"            # cc | cx | opposto
+valido_fino = "2026-10-12" # alla scadenza il cervello chiede il nuovo peso, non lo applica in silenzio
+
+[tetti]
+milestone = 3
+worker = 6
+domande_aperte = 8
