@@ -1310,7 +1310,7 @@ e modifiche fuori workspace restano fermi fino a conferma specifica di Andrea.
 | P2 | completato | implementer credito: `SKILL.md`, `routing.md`, `state.toml` | failover simmetrico, persistente, handoff del cervello esausto, ripristino esplicito | commit `90bd3ce`; regressioni e gate M1 verdi |
 | P3 | completato con riserve | reviewer indipendente `gpt-5.6-sol`, sola lettura | nessun finding grave o medio; scope e invarianti verificati | secondo giro `OK CON RISERVE` su `5e7e2f6`; 5/5 mutazioni respinte, nessun finding grave o medio |
 | P3a | completato | implementer `gpt-5.6-terra`: `tests/check-regressions.sh`, `tests/check-regressions-mutations.sh` | gate vincolato ai file corretti e mutation test RED→GREEN | commit `5e7e2f6`; RED: 5 mutazioni sopravvissute; GREEN: 5/5 respinte |
-| P4 | in attesa di conferma | coordinatore: push e riallineamento cache CC/cx | entrambe le cache `0.1.1`, contenuto uguale al repo | dettagli runtime + review finale |
+| P4 | completato | coordinatore: push e riallineamento cache CC/cx | entrambe le cache `0.1.1`, contenuto uguale al repo | remoto `86c4f4b`; CC e cx `0.1.1` enabled; hash chiave identici; gate strutturali cache verdi |
 
 **Invarianti:** `tests/check-structure.sh` resta byte-per-byte invariato per preservare la
 prova M1 rosso→verde; il nuovo `tests/check-regressions.sh` copre i difetti successivi. Un
@@ -1318,5 +1318,11 @@ owner per file; builder diverso dal reviewer; modifiche preesistenti dell'ombrel
 
 **Riserve minori P3:** il mutation runner considera uccisa una mutazione per qualunque exit
 non-zero del gate copiato; il reviewer ha quindi verificato separatamente una copia baseline
-verde. Il limite residuo è del test harness e non altera il contratto runtime. Il
-riallineamento delle cache installate e il push restano P4 e richiedono conferma specifica.
+verde. Il limite residuo è del test harness e non altera il contratto runtime.
+
+**Chiusura P4:** push di `86c4f4b` verificato sul branch remoto `main`; Claude Code ha
+aggiornato `orchestratore@orchestratore` da `0.1.0` a `0.1.1`; Codex mostra lo stesso plugin
+`installed, enabled` a `0.1.1`. Manifest, skill, routing, stato e test hanno SHA-256 identici
+fra repository e due cache. Entrambi i gate strutturali delle cache sono verdi. La sola
+differenza nel confronto completo Codex è `.task-prompts`, directory locale ignorata e non
+parte del payload Git. Le nuove sessioni caricheranno la versione aggiornata.
