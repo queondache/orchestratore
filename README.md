@@ -1,0 +1,43 @@
+# orchestratore
+
+Plugin dual-runtime (Claude Code + Codex) che orchestra worker su più milestone in parallelo.
+Cervello Fable 5.1 in CC (alternativa gpt-6-astra in cx), sviluppo su cx, verifica su CC con
+modello diverso dal builder, gate pre-merge, registro quesiti, celebrazione milestone.
+
+Spec: `docs/specs/2026-09-12-orchestratore-plugin-design.md`. Piani: `docs/plans/`.
+
+## Install
+
+Claude Code:
+```bash
+claude plugin marketplace add queondache/orchestratore
+claude plugin install orchestratore@orchestratore
+```
+
+Codex:
+```bash
+codex plugin marketplace add queondache/orchestratore
+codex plugin add orchestratore@orchestratore
+```
+
+Sviluppo locale: al posto di `queondache/orchestratore` passa il path del clone
+(`~/Dev/skills/orchestratore`).
+
+## Uso
+
+In un progetto con `SPEC.md` e `ROADMAP.md`: `/orchestra start` (CC) oppure «avvia il run»
+(cx). Comandi: `start`, `status`, `peso`, `credito`, `stop`, `riprendi` (M3).
+
+## Struttura
+
+- `skills/orchestratore/` la skill e le reference (routing, lane, skill-map, adapter-cc,
+  adapter-cx, project-adapter)
+- `templates/` run.md, config.toml, state.toml
+- `agents/`, `commands/`, `hooks/`, `bin/` in arrivo con M2 e M3
+- `tests/check-structure.sh` gate strutturale
+
+## Test
+
+```bash
+tests/check-structure.sh
+```
