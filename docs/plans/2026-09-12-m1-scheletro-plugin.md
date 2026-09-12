@@ -1373,3 +1373,38 @@ non presidiato, ma il runtime li ha rifiutati prima dell'esecuzione: `approval r
 policy, but AskForApproval is set to Never`. Nessun ref remoto e nessuna PR sono stati
 creati. La cache Claude Code è aggiornata a `0.1.2` e coincide con i file sorgente chiave;
 la cache Codex resta `0.1.1` perché il suo marketplace installa da `origin/main`.
+
+---
+
+## Patch 0.1.3 — skill libere nel run Orchestratore
+
+**Risultato utente:** durante un run Orchestratore il cervello e i worker caricano e
+invocano autonomamente ogni skill già installata e disponibile che serve al task, senza
+chiedere autorizzazione ad Andrea e senza fermare il run.
+
+**Perimetro congelato:** la fiducia vale per lettura, caricamento e invocazione di skill
+già installate nel perimetro del task. Non autorizza installazione di nuove skill, modifica
+o attivazione globale di skill/plugin, nuove connessioni/login/scope/segreti, mouse, azioni
+distruttive o aumenti di budget/spesa. I tool e le app richiamati da una skill conservano
+i guardrail del run 0.1.2; una skill non amplia da sola le autorizzazioni esterne.
+
+| Patch | Stato | Owner / file | Criterio di pronto | Verifica |
+|---|---|---|---|---|
+| S1 | completato | coordinatore: contratto e piano | confine skill vs installazione/tool congelato | mandato di Andrea del 13/09/2026 |
+| S2 | completato | implementer `gpt-5.6-terra`: contratto plugin, adapter, spec, manifest e test | nessuna richiesta di consenso per skill installate; versione `0.1.3`; RED→GREEN | commit `39d2d7f`; regressioni verdi; 18/18 mutazioni respinte |
+| S3 | completato | coordinatore: istruzioni globali Codex/Claude | eccezione Orchestratore coerente e persistente | regole presenti nei quattro file globali, senza toccare le modifiche preesistenti |
+| S4 | completato | reviewer `gpt-5.6-sol`, sola lettura | nessun finding grave o medio; mutation gate verde | `OK` su `d87518b`; 23/23 mutazioni respinte |
+| S5 | parziale, blocco esterno | coordinatore: cache/integrazione | cache aggiornabili senza aggirare gate esterni | Claude Code `0.1.3`; Codex `0.1.1` finché il branch non raggiunge `origin` |
+
+**Invarianti:** builder diverso dal reviewer; `tests/check-structure.sh` invariato; un owner
+per file; modifiche preesistenti dell'umbrella preservate; nessun aumento di spesa.
+
+**Gate S4:** due giri iniziali hanno trovato che contraddizioni additive in `adapter-cc.md`
+e `skill-map.md` sfuggivano ai test. Il gate finale applica controlli negativi trasversali e
+23 mutation test; il reviewer distinto ha dato `OK` sul commit `d87518b`. Diff S2-S4
+SHA-256 `20ce05a8c111efc8af22d0174e268604b9cb83f821df30fe148c933badbe6b62`.
+
+**Cache:** Claude Code ha aggiornato il plugin da `0.1.2` a `0.1.3` e richiede riavvio per
+applicarlo. Codex resta sulla cache `0.1.1`: il marketplace punta a `origin/main`, mentre il
+gate della sessione ha gia rifiutato il push del branch locale. Le istruzioni globali Codex
+contengono comunque subito l'eccezione Orchestratore per le skill installate.
