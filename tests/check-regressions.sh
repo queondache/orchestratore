@@ -39,6 +39,18 @@ contains_fixed() {
   grep -Fqi -- "$needle" "$@"
 }
 
+contains_in_file() {
+  local needle="$1"
+  local file="$2"
+  grep -Fqi -- "$needle" "$file"
+}
+
+matches_in_file() {
+  local pattern="$1"
+  local file="$2"
+  perl -0777 -ne "exit !(m{$pattern}ims)" "$file"
+}
+
 catalog_entry_count() {
   jq -r 'select(.name == "orchestratore") | .name' "$CATALOG" | wc -l | tr -d ' '
 }
@@ -100,19 +112,21 @@ check "README richiede bump di versione" contains_fixed "bump di versione" "$REA
 check "README richiede update/upgrade marketplace" contains_fixed "update/upgrade" "$README"
 check "README richiede update o reinstallazione plugin" contains_fixed "update o la reinstallazione del plugin" "$README"
 
-P2_FILES=("$SKILL" "$ROUTING" "$STATE")
-check "P2 riconosce fino a nuovo avviso" contains_fixed "fino a nuovo avviso" "${P2_FILES[@]}"
-check "P2 riconosce CC ha finito i crediti" contains_fixed "cc ha finito i crediti" "${P2_FILES[@]}"
-check "P2 riconosce cx ha finito i crediti" contains_fixed "cx ha finito i crediti" "${P2_FILES[@]}"
-check "P2 definisce modalità solo-CC" contains_fixed "solo-CC" "${P2_FILES[@]}"
-check "P2 definisce modalità solo-cx" contains_fixed "solo-cx" "${P2_FILES[@]}"
-check "P2 definisce modalità fermo" contains_fixed "modalità fermo" "${P2_FILES[@]}"
+check "state definisce credito CC e CX" matches_in_file '\[credito\][\s\S]*?^cc = "ok"\s+# ok \| esaurito[\s\S]*?^cx = "ok"\s+# ok \| esaurito' "$STATE"
+check "state limita le modalità credito" contains_in_file 'modalita = "normale"   # normale | solo-cc | solo-cx | fermo' "$STATE"
+check "state conserva aggiornamento e motivo" matches_in_file '^aggiornato = "1970-01-01T00:00:00Z"[\s\S]*?^motivo = "stato iniziale"' "$STATE"
+check "state conserva schema peso precedente" matches_in_file '\[credito\.peso_precedente\][\s\S]*?^dev = \{ cx = 100, cc = 0 \}[\s\S]*?^verifica = "cc"' "$STATE"
 
-if awk 'BEGIN { IGNORECASE=1 } /cervello/ && /esaurit/ && /handoff/ { found=1 } END { exit !found }' "$SKILL" "$ROUTING"; then
-  ok "P2 impone handoff al runtime quando il cervello è esausto"
-else
-  ko "P2 impone handoff al runtime quando il cervello è esausto"
-fi
+check "skill salva peso una sola volta lasciando normale" matches_in_file 'Se la modalità era `normale`, salva il peso corrente in `credito\.peso_precedente`; non\s+sovrascriverlo durante ulteriori cambi di credito\.' "$SKILL"
+check "skill associa esaurimento CC a solo-cx" contains_in_file 'modalità: `solo-cx` se è esaurito CC' "$SKILL"
+check "skill associa esaurimento cx a solo-cc" contains_in_file '`solo-cc` se è esaurito cx' "$SKILL"
+check "skill associa doppio esaurimento a fermo" contains_in_file '`fermo` se lo sono entrambi' "$SKILL"
+check "routing applica solo-CC al cx esaurito" contains_in_file '**Solo-CC** (cx esaurito)' "$ROUTING"
+check "routing applica solo-cx al CC esaurito" contains_in_file '**Solo-cx** (CC esaurito)' "$ROUTING"
+check "routing vieta assegnazioni in fermo" matches_in_file 'Con entrambi\s+esauriti, modalità\s+`fermo`: nessuna assegnazione e nessuna capacità simulata\.' "$ROUTING"
+
+check "skill impone handoff positivo, rilascio lock e stop" matches_in_file 'Se è esaurito il runtime del cervello e l\x27altro è disponibile, scrivi l\x27handoff esplicito\s+all\x27altro runtime dopo aver completato solo il proprio checkpoint atomico, aggiornato\s+`run\.md` e lo stato credito e rilasciato `brain\.lock`; quindi fermati\.' "$SKILL"
+check "skill ripristina il peso solo con entrambi ok" matches_in_file 'quando entrambi sono `ok`, ripristina\s+il peso salvato, torna a `normale`' "$SKILL"
 
 if ((failures > 0)); then
   printf 'ROSSO: %d controlli falliti\n' "$failures"
