@@ -1,0 +1,16 @@
+{
+  "name": "orchestratore",
+  "interface": { "displayName": "Orchestratore" },
+  "plugins": [
+    {
+      "name": "orchestratore",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/queondache/orchestratore.git",
+        "ref": "main"
+      },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Development"
+    }
+  ]
+}

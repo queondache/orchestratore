@@ -1,0 +1,24 @@
+{
+  "name": "orchestratore",
+  "version": "0.1.0",
+  "description": "Orchestratore multi-agente dual-runtime per Codex e Claude Code.",
+  "author": { "name": "Andrea Pesce", "url": "https://github.com/queondache" },
+  "homepage": "https://github.com/queondache/orchestratore",
+  "repository": "https://github.com/queondache/orchestratore",
+  "license": "UNLICENSED",
+  "keywords": ["orchestrator", "multi-agent", "milestone", "codex"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Orchestratore",
+    "shortDescription": "Cervello multi-agente per milestone parallele",
+    "longDescription": "Coordina worker su Codex e Claude Code: contratto di autonomia, routing per tier, verifica con modello diverso dal builder, gate pre-merge, registro quesiti, celebrazione milestone.",
+    "developerName": "Andrea Pesce",
+    "category": "Development",
+    "capabilities": ["Instructions"],
+    "defaultPrompt": [
+      "Usa orchestratore per avviare il run sulle milestone di ROADMAP.md.",
+      "riprendi",
+      "orchestra status"
+    ]
+  }
+}

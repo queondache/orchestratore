@@ -1,0 +1,13 @@
+{
+  "name": "orchestratore",
+  "version": "0.1.0",
+  "description": "Orchestratore multi-agente dual-runtime (Claude Code + Codex): cervello Fable, worker a tier, verifica con modello diverso, gate pre-merge, peso CC/cx, celebrazione milestone.",
+  "author": {
+    "name": "Andrea Pesce",
+    "url": "https://github.com/queondache"
+  },
+  "homepage": "https://github.com/queondache/orchestratore",
+  "repository": "https://github.com/queondache/orchestratore",
+  "license": "UNLICENSED",
+  "keywords": ["orchestrator", "multi-agent", "milestone", "codex", "claude-code"]
+}

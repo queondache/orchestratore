@@ -1,0 +1,14 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
+  "name": "orchestratore",
+  "description": "Marketplace privato di Andrea per il plugin orchestratore.",
+  "owner": { "name": "Andrea Pesce" },
+  "plugins": [
+    {
+      "name": "orchestratore",
+      "description": "Orchestratore multi-agente dual-runtime (CC + cx).",
+      "source": "./",
+      "category": "development"
+    }
+  ]
+}
