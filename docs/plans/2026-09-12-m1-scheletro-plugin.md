@@ -1350,7 +1350,7 @@ congelato del task. Nessun processo pesante; token e costi osservabili: non disp
 | Y2 | completato | implementer `gpt-5.6-terra`: skill, reference, template, README, manifest, test regressione/mutazioni | semantica 0.1.2 completa; test RED→GREEN | commit `41ec859`; struttura e regressioni verdi; 14/14 mutazioni respinte |
 | Y3 | completato | coordinatore: `~/.codex/config.toml`, `~/.codex/AGENTS.md`, `~/.claude/CLAUDE.md`, `~/Dev/AGENTS.md`, `~/Dev/CLAUDE.md` | YOLO persistente, app collegate automatiche, tetto spesa e confini coerenti | Codex `never` + `danger-full-access`; app `approve`, destructive false, open-world true; Claude `bypassPermissions` |
 | Y4 | completato | reviewer `gpt-5.6-sol`, sola lettura | nessun finding grave o medio sul diff esatto; gate completi verdi | `OK` su `41ec859`; finding iniziale corretto con RED→GREEN |
-| Y5 | in corso | coordinatore: integrazione | commit, push e PR normali automatici; merge solo con required CI verde | repo senza workflow; protection API richiede GitHub Pro, vietato aumentare spesa |
+| Y5 | bloccato esternamente | coordinatore: integrazione | commit, push e PR normali automatici; merge solo con required CI verde | branch locale `feat/unattended-yolo`; push rifiutato dal gate della sessione; repo senza required CI e protection API richiede GitHub Pro |
 
 **Invarianti:** un owner per file; builder diverso dal reviewer; nessun riuso del mouse o
 aggiramento dei suoi consensi; nessun aumento di spesa anche quando YOLO è attivo; nessuna
@@ -1367,3 +1367,9 @@ del branch risponde `403` e richiede GitHub Pro o repository pubblico. Il diviet
 di aumentare la spesa impedisce l'upgrade; quindi nessun auto-merge finché non esiste almeno
 un required check verde ottenibile senza aumento di budget. Bridge, agent, comandi e hook
 restano milestone M2-M3: la patch 0.1.2 congela e testa il contratto ma non li implementa.
+
+Il push del branch `feat/unattended-yolo` e la creazione PR sono stati tentati nel mandato
+non presidiato, ma il runtime li ha rifiutati prima dell'esecuzione: `approval required by
+policy, but AskForApproval is set to Never`. Nessun ref remoto e nessuna PR sono stati
+creati. La cache Claude Code è aggiornata a `0.1.2` e coincide con i file sorgente chiave;
+la cache Codex resta `0.1.1` perché il suo marketplace installa da `origin/main`.
