@@ -34,10 +34,10 @@ Profilo compute `local-lightweight-2026-09-12`, fallback: bloccare i processi pe
 | T2 | completato | implementer T2: quattro manifest | T1 | manifest CC/cx `0.1.0` validi | reviewer sol: `OK` su `d02a4f6`; 4 controlli OK |
 | T3 | completato | implementer T3: `skills/orchestratore/SKILL.md` | T2 | contratto italiano conforme, massimo 250 righe | reviewer sol: `OK` su `5ecf6b7`; contenuto identico, 10/10 controlli `OK` |
 | T4 | completato | implementer T4: `routing.md`, `lane.md`, `skill-map.md`, rimozione `runtime-bridges.md` | T3 | reference di metodo coerenti | reviewer sol: `OK` su `eb06a1c`; 6 controlli T4 `OK` |
-| T5 | verificato localmente; integrazione globale rinviata a T8 | implementer T5: adapter runtime, `project-adapter.md`, rimozione `skill-activation.md`; coordinatore integra `~/.codex/AGENTS.md` dopo conferma esterna | T4 | reference runtime complete e path coerenti | reviewer sol: `OK` su `007012a`; gate reference tutti `OK` |
+| T5 | completato | implementer T5: adapter runtime, `project-adapter.md`, rimozione `skill-activation.md`; coordinatore integra `~/.codex/AGENTS.md` dopo conferma esterna | T4 | reference runtime complete e path coerenti | reviewer sol: `OK` su `007012a`; gate reference tutti `OK`; path globali aggiornati in T8 |
 | T6 | completato | implementer T6: `templates/*` | T5 locale | tre template conformi allo schema | reviewer sol: `OK` su `0612601`; 3 controlli `OK`, TOML valido |
 | T7 | completato | implementer T7: `README.md`, log raw verde | T6 | README presente e gate interamente verde | reviewer sol: `OK` su `8083b63`; 31/31 `OK`, log raw identico |
-| T8 | in attesa di conferma | coordinatore: install, symlink, inventari, GitHub | T7 + conferme | plugin installato una volta per runtime e repo remoto privato | dettagli CC, config cx, symlink, stato remoto |
+| T8 | verificato pre-push; in attesa di conferma GitHub | coordinatore: install, symlink, inventari, GitHub | T7 + conferme | plugin installato una volta per runtime e repo remoto privato | reviewer sol: `OK`; CC installato; symlink rimossi; umbrella `4439252` + `a8752f7`; push e install cx pendenti |
 
 Decisioni aperte: nessuna tecnica. Autorizzazioni aperte non tossiche fino a T8:
 installazioni/modifiche fuori workspace; rimozione symlink; creazione repo e push.
@@ -942,7 +942,7 @@ registro quesiti. Login, provisioning, DNS, deploy, acquisti e rotazione segreti
 ciascuno l'autorizzazione del progetto.
 ```
 
-- [ ] **Step 4: Rimuovi skill-activation.md, aggiorna il riferimento in ~/.codex/AGENTS.md**
+- [x] **Step 4: Rimuovi skill-activation.md, aggiorna il riferimento in ~/.codex/AGENTS.md**
 
 Stato: `skill-activation.md` rimosso nel commit `007012a`; aggiornamento di
 `~/.codex/AGENTS.md` rinviato a T8 perché richiede conferma esterna specifica.
@@ -1173,7 +1173,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 **Interfaces:**
 - Produces: plugin `orchestratore@orchestratore` installato in entrambi i runtime; skill visibile una sola volta per runtime.
 
-- [ ] **Step 1: Install in CC dal path locale**
+- [x] **Step 1: Install in CC dal path locale**
 
 ```bash
 claude plugin marketplace add ~/Dev/skills/orchestratore
@@ -1182,7 +1182,7 @@ claude plugin details orchestratore@orchestratore 2>&1 | head -30
 ```
 Atteso: install senza errori; `details` elenca la skill `orchestratore` e nessun agent/command (arrivano dopo).
 
-- [ ] **Step 2: Rimuovi i symlink vecchi in CC e verifica unicità**
+- [x] **Step 2: Rimuovi i symlink vecchi in CC e verifica unicità**
 
 ```bash
 rm ~/.claude/skills/orchestratore
@@ -1199,7 +1199,7 @@ grep -n 'orchestratore' ~/.codex/config.toml
 ```
 Atteso: sezione `[marketplaces.orchestratore]` e `[plugins."orchestratore@orchestratore"]`. Se il marketplace da path locale non è accettato, salta e ripeti dopo lo Step 6 con `queondache/orchestratore`.
 
-- [ ] **Step 4: Rimuovi i symlink vecchi in cx e .agents; disattiva la skill standalone in config.toml**
+- [x] **Step 4: Rimuovi i symlink vecchi in cx e .agents; disattiva la skill standalone in config.toml**
 
 ```bash
 rm ~/.codex/skills/orchestratore ~/.agents/skills/orchestratore
@@ -1214,7 +1214,7 @@ grep -n 'name = "orchestratore' ~/.codex/config.toml
 ```
 Atteso: nessuna riga standalone; se il plugin ha aggiunto `name = "orchestratore:orchestratore"`, quella resta con `enabled = true`.
 
-- [ ] **Step 5: Aggiorna README e inventario dell'ombrello**
+- [x] **Step 5: Aggiorna README e inventario dell'ombrello**
 
 ```bash
 cd ~/Dev/skills
