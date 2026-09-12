@@ -15,9 +15,9 @@
 **Contratto di autonomia:** run mode `milestone-budget`; budget `1` milestone (M1);
 unattended `no`; tetto domande aperte `8`; tetto effettivo `1` implementer + `1`
 reviewer attivi (capacità runtime: 3 worker oltre al coordinatore); stop prima di installazioni
-fuori workspace, rimozione dei symlink, `gh repo create` e `git push`, in attesa della
-conferma specifica di Andrea. Contesto root: percentuale non disponibile, checkpoint per task;
-token/costi: non disponibili.
+fuori workspace, rimozione dei symlink, `gh repo create` e `git push`. Le conferme specifiche
+sono state ricevute prima di ciascun gruppo di azioni T8, poi le azioni sono state completate.
+Contesto root: percentuale non disponibile, checkpoint per task; token/costi: non disponibili.
 
 **Base:** umbrella `4e3c08fea9c96668bfb2fbfc7a61cae9bdba27d6`, branch `main`,
 impronta stato iniziale `323ac7704a36e4252963d5b27f0b36781b33ec0d51f64fd46b4a9d12af1dfdc8`.
@@ -37,9 +37,9 @@ Profilo compute `local-lightweight-2026-09-12`, fallback: bloccare i processi pe
 | T5 | completato | implementer T5: adapter runtime, `project-adapter.md`, rimozione `skill-activation.md`; coordinatore integra `~/.codex/AGENTS.md` dopo conferma esterna | T4 | reference runtime complete e path coerenti | reviewer sol: `OK` su `007012a`; gate reference tutti `OK`; path globali aggiornati in T8 |
 | T6 | completato | implementer T6: `templates/*` | T5 locale | tre template conformi allo schema | reviewer sol: `OK` su `0612601`; 3 controlli `OK`, TOML valido |
 | T7 | completato | implementer T7: `README.md`, log raw verde | T6 | README presente e gate interamente verde | reviewer sol: `OK` su `8083b63`; 31/31 `OK`, log raw identico |
-| T8 | verificato pre-push; in attesa di conferma GitHub | coordinatore: install, symlink, inventari, GitHub | T7 + conferme | plugin installato una volta per runtime e repo remoto privato | reviewer sol: `OK`; CC installato; symlink rimossi; umbrella `4439252` + `a8752f7`; push e install cx pendenti |
+| T8 | completato | coordinatore: install, symlink, inventari, GitHub | T7 + conferme | plugin installato una volta per runtime e repo remoto privato | CC e cx `0.1.0` enabled; symlink rimossi; repo PRIVATE; umbrella `fcea471` |
 
-Decisioni aperte: nessuna tecnica. Autorizzazioni aperte non tossiche fino a T8:
+Decisioni aperte: nessuna. Autorizzazioni T8 richieste, ricevute ed eseguite:
 installazioni/modifiche fuori workspace; rimozione symlink; creazione repo e push.
 
 ## Global Constraints
@@ -1190,7 +1190,7 @@ ls -la ~/.claude/skills | grep -c orchestratore   # atteso 0
 ```
 Poi in una nuova sessione CC (o dopo `/reload-plugins` se disponibile): la lista skill mostra `orchestratore:orchestratore` una sola volta.
 
-- [ ] **Step 3: Install in cx dal path locale**
+- [x] **Step 3: Install in cx dal path locale**
 
 ```bash
 codex plugin marketplace add ~/Dev/skills/orchestratore
@@ -1234,7 +1234,7 @@ cd ~/Dev && git add skills/README.md skills/cc-installed-plugins.md && git commi
 Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ```
 
-- [ ] **Step 6: Repo GitHub privato e push (CHIEDI CONFERMA AD ANDREA PRIMA)**
+- [x] **Step 6: Repo GitHub privato e push (CHIEDI CONFERMA AD ANDREA PRIMA)**
 
 Fermati e scrivi: «Creo `queondache/orchestratore` privato su GitHub e faccio push di `main`. Confermi?». Solo dopo il sì:
 
@@ -1246,7 +1246,7 @@ git log --oneline -1 origin/main
 ```
 Atteso: `visibility: PRIVATE`, `defaultBranchRef: main`, ultimo hash uguale a `git log -1 --format=%h`.
 
-- [ ] **Step 7: Report finale M1**
+- [x] **Step 7: Report finale M1**
 
 ```text
 MILESTONE: M1 scheletro plugin   REPO: queondache/orchestratore (privato)   PUSH: <sì | in attesa di conferma>
@@ -1261,6 +1261,28 @@ DEFINITION OF DONE
 GATE: tests/check-structure.sh VERDE (era ROSSO al Task 1, output nel log)
 PROSSIMA MILESTONE: M2 bridge e agent (bin/spawn-cx.sh, bin/spawn-cc.sh, agents/*.md)
 ```
+
+---
+
+## Esito finale M1 — 2026-09-12
+
+```text
+MILESTONE: M1 scheletro plugin   REPO: queondache/orchestratore (privato)   PUSH: sì
+DEFINITION OF DONE
+- repo annidato e gitignorato nell'ombrello: OK. Evidenza: repo separato; durante la review
+  resta solo il diff conclusivo del piano, destinato al commit finale
+- manifest CC e cx validi: OK. Evidenza: quattro controlli manifest OK nel gate
+- SKILL.md riscritto ≤ 250 righe: OK. Evidenza: 194 righe e dieci controlli SKILL OK
+- references e template presenti, vecchie rimosse: OK. Evidenza: gate strutturale
+- install CC: OK. Evidenza: orchestratore@orchestratore 0.1.0 enabled, Skills 1
+- install cx: OK. Evidenza: orchestratore@orchestratore 0.1.0 installed, enabled
+- symlink vecchi rimossi, skill visibile una volta sola: OK. Evidenza: tre path assenti
+GATE: tests/check-structure.sh VERDE, 31/31 OK (era ROSSO con 21 KO al Task 1)
+PROSSIMA MILESTONE: M2 bridge e agent (bin/spawn-cx.sh, bin/spawn-cc.sh, agents/*.md)
+```
+
+Review indipendenti: T1-T7 `OK`; T8 pre-push `OK`; review finale sul diff del piano e
+sullo stato installato richiesta prima del commit conclusivo. Token/costi: non disponibili.
 
 ---
 
