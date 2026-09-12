@@ -42,6 +42,7 @@ Stop aggiuntivi: <condizioni osservabili>
 Autorizzazioni Git: <dal mandato del progetto: commit+push+PR | solo lettura>
 Al limite CC: handoff e stop
 Credito: cc <ok|esaurito>; cx <ok|esaurito>
+Modalità credito: normale | solo-cc | solo-cx | fermo
 ```
 
 `milestone-budget`: fermati quando N milestone sono verificate e pronte all'integrazione.
@@ -115,15 +116,36 @@ ripetere una domanda invariata. Il silenzio non è mai una decisione.
 
 ## 6. Peso e credito
 
-Il peso guida solo le assegnazioni nuove; i task in volo finiscono dove sono. Override in
-corsa: `/orchestra peso dev cx 60`. Credito (`~/.orchestratore/state.toml`, condiviso tra
-tutte le sessioni aperte):
-- `/orchestra credito cx esaurito` → peso `dev cc 100, verifica cc`, routing solo-CC.
-  I task cx in volo finiscono il checkpoint corrente, poi vengono riassegnati se non consegnano.
-- `/orchestra credito cc esaurito` con cervello CC → scrivi l'handoff, marca il flag in
-  `run.md`, chiedi ad Andrea di aprire cx e scrivere `riprendi`. Il cervello cx parte con
-  `dev cx 100, verifica cx`.
-- `/orchestra credito <runtime> ok` → ripristina il peso salvato prima dell'esaurimento.
+Il peso guida solo le assegnazioni nuove. Lo stato credito è persistente in
+`~/.orchestratore/state.toml`, condiviso tra sessioni e riletto prima di ogni assegnazione.
+Un flag `esaurito` non scade e cambia solo con un ripristino esplicito.
+Riconosci sia `/orchestra credito <cc|cx> esaurito` sia equivalenti naturali come
+«CC ha finito i crediti, vai tutto su cx fino a nuovo avviso» e
+«cx ha finito i crediti, vai tutto su CC fino a nuovo avviso». Per il ripristino
+riconosci `/orchestra credito <cc|cx> ok`, «<runtime> di nuovo disponibile» e «ripristina
+<runtime>».
+
+Quando un runtime passa a `esaurito`:
+
+1. Se la modalità era `normale`, salva il peso corrente in `credito.peso_precedente`; non
+   sovrascriverlo durante ulteriori cambi di credito. Marca runtime, timestamp, motivo e
+   modalità: `solo-cx` se è esaurito CC, `solo-cc` se è esaurito cx, `fermo` se lo sono entrambi.
+2. I task già in volo sul runtime esaurito completano solo il checkpoint atomico sicuro;
+   registrane esito e lavoro residuo in `run.md`, poi non assegnare altro a quel runtime.
+3. Se è esaurito il runtime del cervello e l'altro è disponibile, scrivi l'handoff esplicito
+   all'altro runtime dopo aver completato solo il proprio checkpoint atomico, aggiornato
+   `run.md` e lo stato credito e rilasciato `brain.lock`; quindi fermati. La ripresa usa
+   `riprendi` sul runtime disponibile.
+4. Se è esaurito l'altro runtime, il cervello continua in `solo-cc` o `solo-cx`: assegna
+   builder, verificatore e pre-merge nel proprio runtime, su modelli diversi secondo
+   [routing](references/routing.md).
+5. Se entrambi sono esauriti, entra in modalità fermo: checkpoint e handoff, rilascio del lock e
+   stop. Non aprire task, simulare capacità o dichiarare verifiche non eseguite.
+
+Al comando di ripristino togli solo il flag del runtime indicato. Se l'altro resta esaurito,
+rimani sul runtime disponibile e aggiorna `modalita`; quando entrambi sono `ok`, ripristina
+il peso salvato, torna a `normale` e conserva quel peso come traccia dell'ultimo failover.
+Override in corsa: `/orchestra peso dev cx 60`; non cambia i flag credito.
 
 ## 7. Visibilità, celebrazione, handoff, ripresa
 
@@ -133,7 +155,7 @@ Report (`/orchestra status`, a ogni cambio di stato, comunque ogni 10 minuti):
 In corso: <milestone, owner, fase, modello/runtime>
 Verificato dall'ultimo report: <evidenza | niente di nuovo>
 Domande: <aperte/tetto; bloccanti con ID e task | nessuna>
-Peso in uso: dev cx n / cc n; verifica <…>; credito cc <ok|esaurito>, cx <ok|esaurito>
+Peso in uso: dev cx n / cc n; verifica <…>; modalità <normale|solo-cc|solo-cx|fermo>; credito cc <ok|esaurito>, cx <ok|esaurito>
 Contesto: <percentuale se il runtime la espone | non disponibile>
 Prossimo checkpoint: <gate osservabile>
 ```

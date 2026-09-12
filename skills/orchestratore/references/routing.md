@@ -19,6 +19,8 @@ Criterio "importante": tier 2 e 3 di `senior-architect` §5.
 1. **Builder ≠ verificatore**, sempre a livello di modello. Runtime opposto quando il peso
    lo consente. Il gate pre-merge usa un terzo modello, diverso dal builder e, se i modelli
    disponibili lo consentono, dal verificatore.
+   Prima di ogni nuova assegnazione rileggi `~/.orchestratore/state.toml`: un runtime
+   `esaurito` non riceve nuovi task, indipendentemente dal peso configurato.
 2. Default (peso `dev cx 100 / cc 0`, `verifica cc`): builder terra o sol su cx,
    verificatore opus su CC, pre-merge sol su cx (o astra se il builder era sol).
 3. **Solo-CC** (cx esaurito): basic → sonnet costruisce, opus verifica, pre-merge haiku in
@@ -26,13 +28,23 @@ Criterio "importante": tier 2 e 3 di `senior-architect` §5.
    "Fable non verifica"), pre-merge sonnet.
 4. **Solo-cx** (CC esaurito): basic → terra costruisce, sol verifica, pre-merge luna con
    checklist; importante → sol costruisce, gpt-6-astra verifica, pre-merge terra.
-5. Escalation di un tier solo su trigger concreto: contratto ambiguo, due tentativi
+5. Il failover è simmetrico e persistente. I task in volo sul runtime esaurito finiscono
+   solo il checkpoint atomico sicuro. Se quel runtime ospita il cervello e l'altro è
+   disponibile: stato e handoff in `run.md`, rilascio di `brain.lock`, passaggio esplicito
+   all'altro runtime e stop. Se è l'altro runtime: il cervello continua e usa la tabella
+   sopra, mantenendo builder, verificatore e pre-merge su modelli diversi. Con entrambi
+   esauriti, modalità
+   `fermo`: nessuna assegnazione e nessuna capacità simulata.
+6. Il ripristino esplicito di un runtime lo riabilita alle nuove assegnazioni. Se l'altro è
+   ancora esaurito resta la modalità solo-runtime; quando entrambi sono `ok` torna il peso
+   salvato prima del failover.
+7. Escalation di un tier solo su trigger concreto: contratto ambiguo, due tentativi
    falliti, disaccordo builder/verificatore, rischio alto scoperto in corso.
    De-escalation sul follow-up meccanico.
-6. Effort: il cervello può alzare o abbassare l'effort default di un livello; lo scrive nel
+8. Effort: il cervello può alzare o abbassare l'effort default di un livello; lo scrive nel
    contratto. In cx si passa con `-c model_reasoning_effort=<low|medium|high>`; in CC con la
    definizione dell'agent o l'istruzione nel prompt.
-7. Mai dichiarare che un modello ha girato se il runtime non lo riporta. Il log del bridge
+9. Mai dichiarare che un modello ha girato se il runtime non lo riporta. Il log del bridge
    e il campo `model` della risposta sono l'unica evidenza.
 
 ## Agent CC del plugin (M2)
