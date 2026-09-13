@@ -46,6 +46,9 @@ grep -q 'CLAUDE_PLUGIN_ROOT' "$HOOKS_JSON" && ok "hooks.json usa CLAUDE_PLUGIN_R
 # Con run attivo: i comandi vietati dalla skill vengono bloccati (exit 2)
 expect_guard 2 "$CON_RUN" 'git push --force origin main' "blocca il force-push"
 expect_guard 2 "$CON_RUN" 'git push --force-with-lease' "blocca il force-with-lease"
+expect_guard 2 "$CON_RUN" 'git push -f origin main' "blocca il force-push con -f e argomenti"
+expect_guard 2 "$CON_RUN" 'git push -f' "blocca il force-push corto, -f in fondo alla riga"
+expect_guard 2 "$CON_RUN" 'cd sub && git push -f' "blocca il force-push corto in un comando composto"
 expect_guard 2 "$CON_RUN" 'git reset --hard HEAD~3' "blocca il reset --hard"
 expect_guard 2 "$CON_RUN" 'git clean -fdx' "blocca il clean distruttivo"
 expect_guard 2 "$CON_RUN" 'git branch -D m/vecchia' "blocca la cancellazione di branch"
@@ -57,14 +60,34 @@ expect_guard 0 "$CON_RUN" 'git status --short' "lascia passare git status"
 expect_guard 0 "$CON_RUN" 'git push origin m/nuova' "lascia passare un push normale"
 expect_guard 0 "$CON_RUN" 'gh pr merge 12 --squash' "lascia passare il merge al gate"
 expect_guard 0 "$CON_RUN" 'npm test' "lascia passare la suite"
+expect_guard 0 "$CON_RUN" 'grep -f pattern.txt src/app.ts' "lascia passare grep -f, che non e un push"
 
 # Senza run attivo: l'hook non interferisce mai
 expect_guard 0 "$SENZA_RUN" 'git push --force origin main' "fuori da un run non blocca nulla"
 expect_guard 0 "$SENZA_RUN" 'git reset --hard HEAD~1' "fuori da un run non blocca il reset"
 
-# Payload malformato: non deve rompere la sessione
+# Payload malformato: il lavoro normale passa, ma il distruttivo non si infila
+# approfittando di un parser che non ha capito niente.
 printf 'non json' | "$GUARD" >/dev/null 2>&1
-[ $? = 0 ] && ok "payload malformato non blocca" || ko "payload malformato non blocca"
+[ $? = 0 ] && ok "payload malformato non blocca il lavoro normale" || ko "payload malformato non blocca il lavoro normale"
+
+# Senza python3 il guardrail non deve spegnersi in silenzio: cade sul testo grezzo.
+SENZA_PY="$TMP/bin-vuoto"
+mkdir -p "$SENZA_PY"
+for c in sh bash cat printf grep sed; do
+  src="$(command -v "$c" 2>/dev/null)"
+  [ -n "$src" ] && ln -sf "$src" "$SENZA_PY/$c"
+done
+BODY_FORZA="$(payload "$CON_RUN" 'git push --force origin main')"
+BODY_SANO="$(payload "$CON_RUN" 'git status --short')"
+# Senza parser non si puo' leggere il campo cwd: vale la directory del processo,
+# che nella sessione reale e' proprio quella del progetto. Il test la riproduce.
+( cd "$CON_RUN" && printf '%s' "$BODY_FORZA" | env PATH="$SENZA_PY" "$GUARD" >/dev/null 2>&1; exit "${PIPESTATUS[1]}" )
+[ $? = 2 ] && ok "senza python3 blocca comunque il force-push" || ko "senza python3 blocca comunque il force-push"
+( cd "$CON_RUN" && printf '%s' "$BODY_SANO" | env PATH="$SENZA_PY" "$GUARD" >/dev/null 2>&1; exit "${PIPESTATUS[1]}" )
+[ $? = 0 ] && ok "senza python3 lascia passare il lavoro normale" || ko "senza python3 lascia passare il lavoro normale"
+( cd "$SENZA_RUN" && printf '%s' "$BODY_FORZA" | env PATH="$SENZA_PY" "$GUARD" >/dev/null 2>&1; exit "${PIPESTATUS[1]}" )
+[ $? = 0 ] && ok "senza python3 e senza run non interferisce" || ko "senza python3 e senza run non interferisce"
 
 # SessionStart: silenzioso senza run, informativo con run.
 # Niente pipe verso grep -q: con pipefail il SIGPIPE falserebbe l'esito.
