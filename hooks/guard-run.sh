@@ -27,10 +27,21 @@ CWD="$(read_field cwd)"
 # Nessun run attivo in questo progetto: l'orchestratore non ha voce in capitolo.
 [ -f "$CWD/.orchestratore/brain.lock" ] || exit 0
 
-# Senza interprete, o con un payload che non sappiamo leggere, non si fallisce aperti:
-# durante un run si cercano i pattern vietati nel testo grezzo. Un comando innocuo non
-# contiene quelle stringhe, quindi il lavoro normale passa lo stesso.
-[ -n "$CMD" ] || CMD="$PAYLOAD"
+# Senza interprete non si fallisce aperti: il comando si estrae dal JSON grezzo. Si legge
+# solo il campo `command`, mai description o cwd, che altrimenti bloccherebbero per una
+# parola in un commento. Se anche questo fallisce, ultima spiaggia: tutto il payload, che
+# chiude invece di aprire.
+raw_command() {
+  printf '%s' "$PAYLOAD" \
+    | grep -m 1 -oE '"command"[[:space:]]*:[[:space:]]*"([^"\\]|\\.)*"' \
+    | sed -e 's/^"command"[[:space:]]*:[[:space:]]*"//' -e 's/"$//' \
+          -e 's/\\"/"/g' -e 's/\\n/ /g' -e 's/\\t/ /g' -e 's/\\\\/\\/g'
+}
+
+if [ -z "$CMD" ]; then
+  CMD="$(raw_command)"
+  [ -n "$CMD" ] || CMD="$PAYLOAD"
+fi
 
 blocca() {
   printf 'orchestratore: comando vietato durante un run attivo (%s).\n' "$1" >&2
@@ -38,15 +49,31 @@ blocca() {
   exit 2
 }
 
-# Il force-push si scrive in molti modi, anche corto e in fondo alla riga
-# (`git push -f`): si guarda prima se il comando e' un push, poi se porta un flag di forza.
-case "$CMD" in
-  *push*)
-    case "$CMD" in
-      *" --force"*|*" --force-with-lease"*|*" -f "*|*" -f")             blocca "force-push" ;;
+# Il force-push si scrive in molti modi, anche corto e in fondo alla riga (`git push -f`).
+# Il flag va cercato nel segmento che contiene il push, non nella riga intera: altrimenti
+# `git push origin feat/a && rm -f /tmp/x` verrebbe scambiato per un force-push e il worker
+# si fermerebbe per niente.
+forza_su_push() {
+  local riga="$1" seg
+  riga="${riga//&&/$'\n'}"
+  riga="${riga//||/$'\n'}"
+  riga="${riga//;/$'\n'}"
+  riga="${riga//|/$'\n'}"
+  while IFS= read -r seg; do
+    # via gli spazi in coda, cosi` un flag come ultimo token resta riconoscibile
+    seg="${seg%"${seg##*[![:space:]]}"}"
+    case "$seg" in
+      *"git push"*|*"git -C"*"push"*|"push "*|"push")
+        case "$seg" in
+          *" --force"*|*" --force-with-lease"*|*" -f "*|*" -f") return 0 ;;
+        esac
+        ;;
     esac
-    ;;
-esac
+  done <<< "$riga"
+  return 1
+}
+
+forza_su_push "$CMD" && blocca "force-push"
 
 case "$CMD" in
   *"reset --hard"*)                                          blocca "reset --hard" ;;

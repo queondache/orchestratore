@@ -29,6 +29,14 @@ print(json.dumps({"tool_name": "Bash", "cwd": sys.argv[1], "tool_input": {"comma
 ' "$1" "$2"
 }
 
+payload_con_descrizione() { # payload_con_descrizione <cwd> <comando> <descrizione>
+  python3 -c '
+import json, sys
+print(json.dumps({"tool_name": "Bash", "cwd": sys.argv[1],
+                  "tool_input": {"command": sys.argv[2], "description": sys.argv[3]}}))
+' "$1" "$2" "$3"
+}
+
 expect_guard() { # expect_guard <atteso> <cwd> <comando> <label>
   local want="$1" cwd="$2" cmd="$3" label="$4" body
   body="$(payload "$cwd" "$cmd")"
@@ -61,6 +69,12 @@ expect_guard 0 "$CON_RUN" 'git push origin m/nuova' "lascia passare un push norm
 expect_guard 0 "$CON_RUN" 'gh pr merge 12 --squash' "lascia passare il merge al gate"
 expect_guard 0 "$CON_RUN" 'npm test' "lascia passare la suite"
 expect_guard 0 "$CON_RUN" 'grep -f pattern.txt src/app.ts' "lascia passare grep -f, che non e un push"
+expect_guard 0 "$CON_RUN" 'git push origin feat/a && rm -f /tmp/lock.pid' "lascia passare push seguito da rm -f di un file"
+expect_guard 0 "$CON_RUN" 'git add -f vendor/lib.js && git commit -m x && git push origin feat/a' "lascia passare add -f seguito da push normale"
+expect_guard 0 "$CON_RUN" 'npm install --force && git push origin feat/a' "lascia passare npm install --force con push normale"
+expect_guard 0 "$CON_RUN" 'grep -rn pushState src/ | sed -f script.sed' "lascia passare pushState con sed -f, nessun git push"
+expect_guard 0 "$CON_RUN" 'git push origin HEAD && curl -sS -f -o out.json https://esempio' "lascia passare push seguito da curl -f"
+expect_guard 0 "$CON_RUN" 'git push origin main; ls -f' "lascia passare push seguito da ls -f"
 
 # Senza run attivo: l'hook non interferisce mai
 expect_guard 0 "$SENZA_RUN" 'git push --force origin main' "fuori da un run non blocca nulla"
@@ -86,6 +100,12 @@ BODY_SANO="$(payload "$CON_RUN" 'git status --short')"
 [ $? = 2 ] && ok "senza python3 blocca comunque il force-push" || ko "senza python3 blocca comunque il force-push"
 ( cd "$CON_RUN" && printf '%s' "$BODY_SANO" | env PATH="$SENZA_PY" "$GUARD" >/dev/null 2>&1; exit "${PIPESTATUS[1]}" )
 [ $? = 0 ] && ok "senza python3 lascia passare il lavoro normale" || ko "senza python3 lascia passare il lavoro normale"
+BODY_CORTO="$(payload "$CON_RUN" 'git push -f')"
+( cd "$CON_RUN" && printf '%s' "$BODY_CORTO" | env PATH="$SENZA_PY" "$GUARD" >/dev/null 2>&1; exit "${PIPESTATUS[1]}" )
+[ $? = 2 ] && ok "senza python3 blocca anche il force-push corto" || ko "senza python3 blocca anche il force-push corto"
+BODY_DESCR="$(payload_con_descrizione "$CON_RUN" 'npm test' 'ricorda: mai usare git reset --hard qui')"
+( cd "$CON_RUN" && printf '%s' "$BODY_DESCR" | env PATH="$SENZA_PY" "$GUARD" >/dev/null 2>&1; exit "${PIPESTATUS[1]}" )
+[ $? = 0 ] && ok "senza python3 ignora la descrizione e guarda solo il comando" || ko "senza python3 ignora la descrizione e guarda solo il comando"
 ( cd "$SENZA_RUN" && printf '%s' "$BODY_FORZA" | env PATH="$SENZA_PY" "$GUARD" >/dev/null 2>&1; exit "${PIPESTATUS[1]}" )
 [ $? = 0 ] && ok "senza python3 e senza run non interferisce" || ko "senza python3 e senza run non interferisce"
 
