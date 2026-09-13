@@ -61,53 +61,58 @@ normalizza() {
   printf '%s' "$out"
 }
 
+# Ogni regola vale sul singolo segmento di comando, mai sulla riga intera: altrimenti
+# `git push origin feat/a && gh pr merge 3 --squash --delete-branch` verrebbe letto come una
+# cancellazione di branch remoto e fermerebbe il worker per niente.
+#
 # Il force-push non ha una sola forma: `git -c a=b push -f`, `git push -uf`,
 # `/usr/bin/git push ----force` e soprattutto `git push origin +main`, che forza tramite
-# refspec senza nessun flag. Si guarda il segmento che contiene davvero un git push e si
-# esaminano i token uno per uno, non la riga come stringa.
-forza_su_push() {
-  local riga="$1" seg parole i visto_git visto_push
-  riga="${riga//&&/$'\n'}"
-  riga="${riga//||/$'\n'}"
-  riga="${riga//;/$'\n'}"
-  riga="${riga//|/$'\n'}"
-  while IFS= read -r seg; do
-    read -r -a parole <<< "$seg"
-    [ "${#parole[@]}" -gt 0 ] || continue
-    visto_git=0
-    visto_push=0
+# refspec senza nessun flag. Per questo i token si guardano uno per uno.
+analizza_segmento() {
+  local seg="$1" parole piatto i visto_git=0 visto_push=0
+  read -r -a parole <<< "$seg"
+  [ "${#parole[@]}" -gt 0 ] || return 0
+  piatto="${parole[*]}"
+
+  for (( i = 0; i < ${#parole[@]}; i++ )); do
+    case "${parole[i]}" in
+      git|*/git) visto_git=1 ;;
+      push)      [ "$visto_git" = 1 ] && visto_push=1 ;;
+    esac
+  done
+  [ "${parole[0]}" = "push" ] && visto_push=1
+
+  if [ "$visto_push" = 1 ]; then
     for (( i = 0; i < ${#parole[@]}; i++ )); do
       case "${parole[i]}" in
-        git|*/git) visto_git=1 ;;
-        push) [ "$visto_git" = 1 ] && visto_push=1 ;;
+        --force|--force-with-lease|--force-with-lease=*) blocca "force-push" ;;
+        +*)                                 blocca "force-push" ;;          # refspec forzata
+        --delete)                           blocca "cancellazione di branch remoto" ;;
+        :*)                                 blocca "cancellazione di branch remoto" ;;
+        --*)                                ;;                             # altre opzioni lunghe
+        -*f*)                               blocca "force-push" ;;          # -f, -uf, -fu
       esac
     done
-    [ "${parole[0]}" = "push" ] && visto_push=1
-    [ "$visto_push" = 1 ] || continue
-    for (( i = 0; i < ${#parole[@]}; i++ )); do
-      case "${parole[i]}" in
-        --force|--force-with-lease|--force-with-lease=*) return 0 ;;
-        +*)                                  return 0 ;;   # refspec forzata
-        --*)                                 ;;            # altre opzioni lunghe
-        -*f*)                                return 0 ;;   # -f, -uf, -fu
-      esac
-    done
-  done <<< "$riga"
-  return 1
+  fi
+
+  case "$piatto" in
+    *"reset --hard"*)                           blocca "reset --hard" ;;
+    *"clean -fd"*|*"clean -df"*|*"clean -fdx"*) blocca "git clean distruttivo" ;;
+    *"branch -D"*)                              blocca "cancellazione di branch" ;;
+    *"gh pr merge"*"--admin"*)                  blocca "merge che scavalca i check" ;;
+    *"rm -rf"*|*"rm -fr"*|*"rm -r -f"*|*"rm -f -r"*|*"rm --recursive --force"*)
+                                                blocca "cancellazione ricorsiva forzata" ;;
+  esac
 }
 
 CMD_N="$(normalizza "$CMD")"
+SEGMENTI="${CMD_N//&&/$'\n'}"
+SEGMENTI="${SEGMENTI//||/$'\n'}"
+SEGMENTI="${SEGMENTI//;/$'\n'}"
+SEGMENTI="${SEGMENTI//|/$'\n'}"
 
-forza_su_push "$CMD_N" && blocca "force-push"
-
-case "$CMD_N" in
-  *"reset --hard"*)                             blocca "reset --hard" ;;
-  *"clean -fd"*|*"clean -df"*|*"clean -fdx"*)   blocca "git clean distruttivo" ;;
-  *"branch -D"*)                                blocca "cancellazione di branch" ;;
-  *"push"*"--delete"*|*"push origin :"*)        blocca "cancellazione di branch remoto" ;;
-  *"gh pr merge"*"--admin"*)                    blocca "merge che scavalca i check" ;;
-  *"rm -rf"*|*"rm -fr"*|*"rm -r -f"*|*"rm -f -r"*|*"rm --recursive --force"*)
-                                                blocca "cancellazione ricorsiva forzata" ;;
-esac
+while IFS= read -r SEG; do
+  analizza_segmento "$SEG"
+done <<< "$SEGMENTI"
 
 exit 0
