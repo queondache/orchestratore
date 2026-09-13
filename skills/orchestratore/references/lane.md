@@ -1,4 +1,4 @@
-# Lane: dalla milestone alla parola "merge"
+# Lane: dalla milestone all'integrazione automatica
 
 Una lane è una milestone di ROADMAP.md in lavorazione. Segue la skill `milestone`
 (`~/Dev/skills/milestone/SKILL.md`) con queste differenze.
@@ -14,32 +14,60 @@ ridiscute, al massimo si ferma per una delle tre condizioni STOP.
 ## Fase 0 e Fase 2 nel worker
 
 - Fase 0 rossa (albero sporco, main non allineato, build/test/lint rossi): il worker si
-  ferma e riporta al cervello, non ad Andrea. Il cervello decide se sanare o sospendere.
-- Branch `m/<slug>` da `main`, o il worktree assegnato.
+  ferma e riporta al cervello, non ad Andrea. Il cervello **sana**: un rosso preesistente è
+  lavoro da fare, non un motivo per sospendere. Sospende solo se sanare esce dal perimetro
+  del run o richiede una decisione di prodotto.
+- Branch `m/<slug>` da `main` come branch di integrazione della milestone; i task figli su
+  `m/<slug>/t<NN>` con worktree proprio. Struttura, owner dei file e integratore in
+  [parallelismo](parallelismo.md).
 - Esecuzione con `superpowers:writing-plans` poi TDD. Domande: nel registro quesiti di
   `.claude/decisioni.md`, mai ad Andrea. Il cervello valuta se sono bloccanti.
 - Nessun file fuori dalle aree ammesse, nessuna dipendenza nuova senza motivo nel ledger.
+
+## Gate verde: definito una volta, scritto in `run.md`
+
+All'avvio il cervello individua i comandi reali di build, test e lint del progetto e li
+scrive in `run.md` come `Gate verde: build=<cmd> test=<cmd> lint=<cmd>`. **Verde** significa
+i tre comandi a exit 0 con output raw nel report; niente di meno vale come verde. Se un
+comando non esiste nel progetto scrivilo (`lint=nessuno`) invece di inventarlo. Ogni worker
+riceve questi comandi nel contratto del task.
+
+## Verifica a ogni consegna, non solo a fine milestone
+
+Ogni task che consegna codice passa dal verificatore prima che il suo stato avanzi da
+`in review`. Il cervello scrive in `run.md` la riga di verifica con modello del verificatore,
+hash, comando eseguito ed esito raw (formato in SKILL.md §4). Senza quella riga il task
+non è verificato, qualunque cosa dica il builder.
 
 ## Fase 3: verificatore assegnato dal cervello
 
 Il worker consegna: diff, hash, comandi eseguiti con output, limiti residui. Il cervello
 congela le scritture del builder e lancia il verificatore (agent `verificatore` in CC, o
-thread cx con `gpt-5.6-sol`) passando **solo** perimetro e branch. Mai il piano, il ledger o
-l'opinione del builder.
+thread cx con `gpt-5.6-sol`) passando **solo** perimetro, branch, hash, comandi del gate verde
+e aree ammesse. Mai il piano, il ledger o l'opinione del builder. I quattro passi obbligatori
+— hash, gate verde, **oracolo**, perimetro — e il formato del verdetto sono in
+[verifica](verifica.md): un verdetto senza i loro output raw vale come verifica non eseguita.
 
 - OK → Fase 4.
 - OK CON RISERVE → correzioni dentro perimetro, un secondo giro, poi Fase 4 con riserve nel report.
-- KO → correzioni, nuovo giro. Massimo 2 KO consecutivi; al terzo la lane si sospende e la
-  milestone entra tra le domande per Andrea.
+- `KO: oracolo assente` e `KO: fuori perimetro` sono KO pieni, mai riserve.
+- KO → correzioni e nuovo giro. **Nessun tetto ai giri**: si lavora fino al verde. Due KO
+  consecutivi sullo stesso gate obbligano a **cambiare strategia e modello** —
+  `superpowers:systematic-debugging` sull'errore raw, riassegnazione a un modello diverso e
+  al runtime opposto quando il peso lo consente, tier più alto se il rischio lo giustifica —
+  e il cambio si ripete a ogni coppia di KO successiva, annotato in `run.md`. La lane si
+  sospende solo se emerge una domanda di prodotto bloccante, mai perché il gate resta rosso.
+- **Osservatore**: ogni tre coppie di KO sullo stesso gate il cervello scrive nel report gate,
+  tentativi, cambi di modello già fatti e costo se il runtime lo espone, poi **continua**.
+  L'osservatore rende visibile un loop patologico, non lo ferma.
 - **Regola dell'hash**: l'OK vale solo sul codice esatto che va in PR. Ogni correzione dopo
   un verdetto, anche una riga, obbliga a un giro di conferma che non conta nel tetto.
   Nessuna PR senza OK sull'hash che contiene.
 
 ## Fase 4: PR
 
-Secondo le autorizzazioni del contratto: commit, push, PR verso `main` con il perimetro nel
-corpo, ROADMAP.md aggiornata con link PR. Mai merge. Se il contratto è solo lettura, il
-cervello presenta il branch pronto e chiede l'autorizzazione.
+Nel run non presidiato: commit, push e PR normali automatici verso `main`, con il perimetro
+nel corpo e ROADMAP.md aggiornata con link PR. Il contratto solo lettura resta un blocco.
 
 ## Gate pre-merge
 
@@ -55,21 +83,44 @@ motivi (max 3):
 rischi residui: <elenco | nessuno>
 ```
 
-`no` → il cervello riapre la lane sul builder con i motivi. `sì` → il cervello presenta ad
-Andrea:
-
-```text
-MILESTONE: <nome>   PR: #<n>   CI: <stato da gh>
-VERIFICATORE: <OK | OK CON RISERVE + elenco>   giri: <n>
-PRE-MERGE (<modello>): suggerisco merge: sì
-Scrivi 'merge' per chiudere.
-```
+`no` → il cervello riapre la lane sul builder con i motivi.
 
 ## Merge e chiusura
 
-Solo alla parola `merge` di Andrea: `gh pr merge <n> --squash --delete-branch`, verifica
-con `gh pr view <n> --json state,mergedAt`, output raw nel report, `main` locale aggiornato.
-Poi la milestone è **chiusa**: aggiorna i contatori in `run.md` e celebra (SKILL.md §7).
+Prima del gate, la **classe di rischio** calcolata sul diff reale ([verifica](verifica.md)):
+tier 1-2 → auto-merge; tier 3 o area sensibile → PR in attesa di Andrea, stato `pronta`,
+milestone contata come 🟡 bloccata da Andrea. La regola è fissa: nessuna promozione e nessun
+declassamento discrezionale.
+
+Per le sole milestone tier 1-2, auto-merge consentito solo se: hash esatto revisionato;
+verificatore indipendente finale OK su quell'hash; `suggerisco merge: sì`; e il gate di
+qualità eseguita, in una delle due forme.
+
+- Repo **con** required checks (`gh pr checks`, o
+  `gh api repos/<owner>/<repo>/branches/<base>/protection` che espone
+  `required_status_checks`): almeno un required CI check, tutti i required check
+  success. Checks assenti, pending, falliti o cancellati bloccano sempre il merge.
+- Repo **senza** required checks configurati: vale il **fallback suite locale**. Il
+  verificatore — mai il builder — esegue sull'hash esatto della PR i comandi del
+  `Gate verde` di `run.md`: build, test e lint tutti a exit 0, comandi e output raw nel
+  report e in `run.md`. Suite assente, non eseguibile o parziale = merge bloccato e domanda
+  ad Andrea. Un fallback dichiarato senza output raw non vale.
+
+Con il gate passato esegui
+`gh pr merge <n> --squash`, verifica con
+`gh pr view <n> --json state,mergedAt`, conserva output raw nel report e aggiorna `main`
+locale. Non usare force-push, reset o cancellazioni distruttive.
+Poi, nello stesso turno e senza chiedere, la milestone diventa **chiusa**:
+
+1. `ROADMAP.md`: milestone a FATTO con link PR e hash di merge;
+2. `progress.md`: `Dove siamo` e `Prossimo passo` riscritti sullo stato reale;
+3. `.claude/decisioni.md`: decisioni prese nella lane e risposte propagate (SKILL.md §5);
+4. `SPEC.md` solo se la lane ha cambiato una regola di prodotto già decisa da Andrea;
+5. contatori in `run.md` e celebrazione (SKILL.md §7).
+
+Merge fatto e doc non allineati = milestone **non** chiusa. Chiusa la milestone,
+apri subito la lane successiva se restano milestone aperte e budget: il run non finisce
+con una milestone, finisce col budget.
 
 Stati distinti in `run.md`: `implementata`, `verificata`, `pronta` (pre-merge sì),
 `integrata` (merge fatto), `chiusa` (ROADMAP e contatori aggiornati).

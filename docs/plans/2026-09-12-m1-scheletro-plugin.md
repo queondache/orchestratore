@@ -1326,3 +1326,85 @@ aggiornato `orchestratore@orchestratore` da `0.1.0` a `0.1.1`; Codex mostra lo s
 fra repository e due cache. Entrambi i gate strutturali delle cache sono verdi. La sola
 differenza nel confronto completo Codex è `.task-prompts`, directory locale ignorata e non
 parte del payload Git. Le nuove sessioni caricheranno la versione aggiornata.
+
+---
+
+## Patch 0.1.2 — YOLO non presidiato, merge verde e tetto di spesa
+
+**Risultato utente:** un run esplicitamente autorizzato come non presidiato usa la modalità
+standard massima dei runtime (`codex --yolo`; Claude Code `bypassPermissions`), esegue Git
+normale e il merge automaticamente solo su prove verdi; può usare app già collegate come
+plugin Codex senza richieste ripetute. Non può mai aumentare budget o limiti di spesa.
+
+**Perimetro congelato:** commit, push e PR normali sono automatici. Il merge automatico
+richiede l'hash esatto revisionato, verdetto finale indipendente `OK`, almeno un check CI
+richiesto e tutti i check richiesti conclusi con successo, più gate pre-merge positivo.
+Senza check richiesti il merge non parte. Restano esclusi force-push, reset e cancellazioni
+distruttive, mouse, nuove connessioni/login, acquisti, upgrade di piano e qualunque aumento
+di budget, spend limit o credito. Le app già collegate sono utilizzabili solo nel perimetro
+congelato del task. Nessun processo pesante; token e costi osservabili: non disponibili.
+
+| Patch | Stato | Owner / file | Criterio di pronto | Verifica |
+|---|---|---|---|---|
+| Y1 | completato | coordinatore: contratto e piano | autorizzazioni e stop congelati prima della delega | conferme di Andrea del 12/09/2026 |
+| Y2 | completato | implementer `gpt-5.6-terra`: skill, reference, template, README, manifest, test regressione/mutazioni | semantica 0.1.2 completa; test RED→GREEN | commit `41ec859`; struttura e regressioni verdi; 14/14 mutazioni respinte |
+| Y3 | completato | coordinatore: `~/.codex/config.toml`, `~/.codex/AGENTS.md`, `~/.claude/CLAUDE.md`, `~/Dev/AGENTS.md`, `~/Dev/CLAUDE.md` | YOLO persistente, app collegate automatiche, tetto spesa e confini coerenti | Codex `never` + `danger-full-access`; app `approve`, destructive false, open-world true; Claude `bypassPermissions` |
+| Y4 | completato | reviewer `gpt-5.6-sol`, sola lettura | nessun finding grave o medio sul diff esatto; gate completi verdi | `OK` su `41ec859`; finding iniziale corretto con RED→GREEN |
+| Y5 | bloccato esternamente | coordinatore: integrazione | commit, push e PR normali automatici; merge solo con required CI verde | branch locale `feat/unattended-yolo`; push rifiutato dal gate della sessione; repo senza required CI e protection API richiede GitHub Pro |
+
+**Invarianti:** un owner per file; builder diverso dal reviewer; nessun riuso del mouse o
+aggiramento dei suoi consensi; nessun aumento di spesa anche quando YOLO è attivo; nessuna
+connessione o autenticazione nuova; modifiche preesistenti dell'ombrello preservate.
+
+**Gate Y4:** il primo giro ha trovato copertura regressiva incompleta per CI cancellata,
+mouse e dati di produzione. Il builder ha aggiunto quattro controlli e tre mutazioni; il
+coordinatore ha rieseguito tutti i gate e il reviewer ha dato `OK` sul nuovo hash. Diff
+committato SHA-256 `99126d67f6c0c86627efc740b60756719c8960f22872b8d4dfac20470cc35a95`;
+diff piano prima del commit SHA-256 `afb06f068e53fcae8a0599f2678a16f0d0fb15db8df1908ca77e766dec8a3b96`.
+
+**Limite d'integrazione:** il repository privato non ha workflow CI. L'API di protezione
+del branch risponde `403` e richiede GitHub Pro o repository pubblico. Il divieto assoluto
+di aumentare la spesa impedisce l'upgrade; quindi nessun auto-merge finché non esiste almeno
+un required check verde ottenibile senza aumento di budget. Bridge, agent, comandi e hook
+restano milestone M2-M3: la patch 0.1.2 congela e testa il contratto ma non li implementa.
+
+Il push del branch `feat/unattended-yolo` e la creazione PR sono stati tentati nel mandato
+non presidiato, ma il runtime li ha rifiutati prima dell'esecuzione: `approval required by
+policy, but AskForApproval is set to Never`. Nessun ref remoto e nessuna PR sono stati
+creati. La cache Claude Code è aggiornata a `0.1.2` e coincide con i file sorgente chiave;
+la cache Codex resta `0.1.1` perché il suo marketplace installa da `origin/main`.
+
+---
+
+## Patch 0.1.3 — skill libere nel run Orchestratore
+
+**Risultato utente:** durante un run Orchestratore il cervello e i worker caricano e
+invocano autonomamente ogni skill già installata e disponibile che serve al task, senza
+chiedere autorizzazione ad Andrea e senza fermare il run.
+
+**Perimetro congelato:** la fiducia vale per lettura, caricamento e invocazione di skill
+già installate nel perimetro del task. Non autorizza installazione di nuove skill, modifica
+o attivazione globale di skill/plugin, nuove connessioni/login/scope/segreti, mouse, azioni
+distruttive o aumenti di budget/spesa. I tool e le app richiamati da una skill conservano
+i guardrail del run 0.1.2; una skill non amplia da sola le autorizzazioni esterne.
+
+| Patch | Stato | Owner / file | Criterio di pronto | Verifica |
+|---|---|---|---|---|
+| S1 | completato | coordinatore: contratto e piano | confine skill vs installazione/tool congelato | mandato di Andrea del 13/09/2026 |
+| S2 | completato | implementer `gpt-5.6-terra`: contratto plugin, adapter, spec, manifest e test | nessuna richiesta di consenso per skill installate; versione `0.1.3`; RED→GREEN | commit `39d2d7f`; regressioni verdi; 18/18 mutazioni respinte |
+| S3 | completato | coordinatore: istruzioni globali Codex/Claude | eccezione Orchestratore coerente e persistente | regole presenti nei quattro file globali, senza toccare le modifiche preesistenti |
+| S4 | completato | reviewer `gpt-5.6-sol`, sola lettura | nessun finding grave o medio; mutation gate verde | `OK` su `d87518b`; 23/23 mutazioni respinte |
+| S5 | parziale, blocco esterno | coordinatore: cache/integrazione | cache aggiornabili senza aggirare gate esterni | Claude Code `0.1.3`; Codex `0.1.1` finché il branch non raggiunge `origin` |
+
+**Invarianti:** builder diverso dal reviewer; `tests/check-structure.sh` invariato; un owner
+per file; modifiche preesistenti dell'umbrella preservate; nessun aumento di spesa.
+
+**Gate S4:** due giri iniziali hanno trovato che contraddizioni additive in `adapter-cc.md`
+e `skill-map.md` sfuggivano ai test. Il gate finale applica controlli negativi trasversali e
+23 mutation test; il reviewer distinto ha dato `OK` sul commit `d87518b`. Diff S2-S4
+SHA-256 `20ce05a8c111efc8af22d0174e268604b9cb83f821df30fe148c933badbe6b62`.
+
+**Cache:** Claude Code ha aggiornato il plugin da `0.1.2` a `0.1.3` e richiede riavvio per
+applicarlo. Codex resta sulla cache `0.1.1`: il marketplace punta a `origin/main`, mentre il
+gate della sessione ha gia rifiutato il push del branch locale. Le istruzioni globali Codex
+contengono comunque subito l'eccezione Orchestratore per le skill installate.

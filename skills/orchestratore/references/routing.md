@@ -41,13 +41,24 @@ Criterio "importante": tier 2 e 3 di `senior-architect` §5.
 7. Escalation di un tier solo su trigger concreto: contratto ambiguo, due tentativi
    falliti, disaccordo builder/verificatore, rischio alto scoperto in corso.
    De-escalation sul follow-up meccanico.
+7-bis. **Due KO consecutivi sullo stesso gate obbligano a cambiare modello**, non solo
+   strategia: riassegna il task a un modello diverso da quello che ha fallito, al runtime
+   opposto quando il peso lo consente, e annota il cambio in `run.md`. Riprovare lo stesso
+   gate con lo stesso modello e lo stesso approccio non è un tentativo nuovo. Nessun tetto
+   ai giri: il rosso tecnico non sospende la lane.
 8. Effort: il cervello può alzare o abbassare l'effort default di un livello; lo scrive nel
    contratto. In cx si passa con `-c model_reasoning_effort=<low|medium|high>`; in CC con la
    definizione dell'agent o l'istruzione nel prompt.
 9. Mai dichiarare che un modello ha girato se il runtime non lo riporta. Il log del bridge
    e il campo `model` della risposta sono l'unica evidenza.
+10. **Tetti separati**: 9 slot builder (3 milestone × 3 task) e un pool di verifica a parte,
+   massimo 3 verifiche in volo. Verificatore, pre-merge e integratore non consumano slot
+   builder, altrimenti la verifica affama l'implementazione. Dettaglio in
+   [parallelismo](parallelismo.md).
+11. Il verificatore esegue i quattro passi di [verifica](verifica.md), oracolo incluso. Un
+   verdetto senza output raw si riassegna a un modello diverso, non si accetta.
 
-## Agent CC del plugin (M2)
+## Agent CC del plugin (`agents/`)
 
 | Agent | Modello | Uso |
 |---|---|---|
@@ -55,6 +66,11 @@ Criterio "importante": tier 2 e 3 di `senior-architect` §5.
 | `worker-mech` | haiku | lavoro meccanico |
 | `verificatore` | opus | verifica indipendente, sola lettura |
 | `pre-merge` | scelto dal cervello, diverso da builder e verificatore | gate pre-merge, sola lettura + `gh` |
+| `integratore` | sonnet o `gpt-5.6-terra` | fonde i branch task in `m/<slug>`, nessuna implementazione nuova |
+
+Il `model` del frontmatter è il default: il cervello può passarne uno diverso a ogni chiamata
+e lo scrive nel contratto del task. I bridge `bin/spawn-cx.sh` e `bin/spawn-cc.sh` validano il
+modello contro questa tabella e rifiutano con exit 65 quello che non c'è.
 
 In cx non esistono agent dichiarati: il cervello cx passa modello ed effort a ogni thread
 o a ogni `codex exec`.

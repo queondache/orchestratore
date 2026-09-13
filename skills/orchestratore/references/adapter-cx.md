@@ -2,13 +2,12 @@
 
 ## Avvio minimo in cx
 
-Set di skill all'avvio: `i-have-adhd`, `orchestratore`, `openai-docs`. Le altre restano
-installate ma non caricate. Carica una skill opzionale solo quando serve a un task concreto:
-cercala nel catalogo locale con `rg -i <parola> references/codex-skills-catalog.jsonl`
-(non caricare il catalogo intero), chiedi ad Andrea con una frase in italiano che nomina la
-skill e il lavoro, e dopo il sì leggi quel `SKILL.md` e le sole reference pertinenti.
-Un'istruzione esplicita di Andrea di usare una skill vale già come approvazione. Il silenzio
-non è consenso. Leggere un file di skill non abilita tool MCP né cambia la config globale.
+Il cervello e ogni worker cercano e caricano liberamente le skill già installate e disponibili
+utili al task; per cx usa il catalogo locale con `rg -i <parola>
+references/codex-skills-catalog.jsonl`, passa nome/path e legge il `SKILL.md` completo.
+Non chiedere consenso per una skill né fermarti sul silenzio. Se manca, usa una skill
+equivalente già installata o la procedura base. Non installare o abilitare skill/plugin e non
+modificare configurazioni globali; una skill non amplia i permessi di tool o app.
 
 Il catalogo è stato ispezionato il 11/09/2026; la cache non prova disponibilità corrente.
 Il catalogo CC (`~/Dev/skills/cc-installed-plugins.md`) non dice cosa ha cx, e viceversa.
@@ -22,13 +21,19 @@ path + boundary + «non delegare, domande nel registro quesiti, checkpoint con d
 comandi e output». Se il runtime non permette di scegliere il modello per thread, usa
 `codex exec` con `-m` dal cervello stesso e dichiaralo nel contratto.
 
+Prima di delegare verifica nel profilo effettivo `approval_policy=never` e
+`sandbox_mode=danger-full-access` (effective approval_policy=never + sandbox_mode=danger-full-access).
+Se non puoi ottenerlo senza input, non delegare quella lane e usa un path già `--yolo` con
+`codex exec --yolo`; non chiedere permessi di routine.
+
 ## Worker CC via bridge
 
-`bin/spawn-cc.sh <modello> <cwd> <prompt-file>` (M2), che esegue
-`claude -p --model <modello> --permission-mode bypassPermissions --output-format json`
-con il prompt letto da file, log in `.orchestratore/logs/<task-id>.log`. Con `verifica cc`
-il verificatore è sempre `opus` via questo bridge; il prompt include il testo dell'agent
-`verificatore` del plugin (`agents/verificatore.md`, M2) e solo perimetro e branch.
+`bin/spawn-cc.sh [--dry-run] <modello> <cwd> <prompt-file>`, che esegue
+`claude -p --model <modello> --permission-mode bypassPermissions --output-format json
+--add-dir <cwd>` con il prompt su stdin, log in `<cwd>/.orchestratore/logs/<task-id>.log`.
+Stessi codici di rifiuto del bridge cx (`65` modello, `66` cwd o prompt). Con `verifica cc`
+il verificatore è sempre `opus` via questo bridge e il prompt include il testo di
+`agents/verificatore.md` più solo perimetro, branch, hash, gate verde e aree ammesse.
 
 ## Domande interattive
 
@@ -37,8 +42,8 @@ e la raccomandata per prima. Riprendi solo dopo la risposta; registrala nel regi
 
 ## Git, PR, lock, contesto
 
-Come adapter-cc: `gh` per PR e checks, merge solo alla parola `merge`, `brain.lock` con
-`runtime=cx`, `heavy.lock` prima dei processi pesanti. cx espone la percentuale di contesto
+Come adapter-cc: `gh` per PR e checks, commit/push/PR automatici nel run non presidiato e
+auto-merge solo al gate di lane.md; `brain.lock` con `runtime=cx`, `heavy.lock` prima dei processi pesanti. cx espone la percentuale di contesto
 nella sessione: rispetta target 50% e tetto 70%; al 50% non aprire task nuovi, persisti e
 compatta al primo checkpoint sicuro.
 

@@ -1,5 +1,6 @@
 {
   "name": "orchestratore",
+  "version": "0.4.0",
   "interface": { "displayName": "Orchestratore" },
   "plugins": [
     {
