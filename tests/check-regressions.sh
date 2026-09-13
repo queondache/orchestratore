@@ -385,7 +385,11 @@ check "D2 hooks.json usa CLAUDE_PLUGIN_ROOT" contains_in_file 'CLAUDE_PLUGIN_ROO
 check "D2 guard attivo solo con un run vivo" contains_in_file '.orchestratore/brain.lock" ] || exit 0' "$HOOKS/guard-run.sh"
 check "D2 guard blocca con exit 2" contains_in_file 'exit 2' "$HOOKS/guard-run.sh"
 check "D2 guard copre il reset distruttivo" matches_in_file 'reset --hard' "$HOOKS/guard-run.sh"
-check "D2 guard copre il merge amministrativo" contains_in_file 'gh pr merge' "$HOOKS/guard-run.sh"
+check "D2 guard copre il merge amministrativo" contains_in_file '--admin' "$HOOKS/guard-run.sh"
+check "D2 guard dichiara il modello di minaccia" contains_in_file 'MODELLO DI MINACCIA' "$HOOKS/guard-run.sh"
+check "D2 guard elenca i limiti accettati" contains_in_file 'Limiti noti e accettati' "$HOOKS/guard-run.sh"
+check "D2 guard ha un solo percorso di analisi" contains_in_file 'esamina "$CMD"' "$HOOKS/guard-run.sh"
+check "D2 guard analizza il sottocomando, non i token sparsi" contains_in_file 'analizza_git' "$HOOKS/guard-run.sh"
 check "D2 session hook non modifica niente" contains_in_file 'Non modifica niente' "$HOOKS/session-run-state.sh"
 check "D2 gate eseguibile degli hook presente" test -x "$ROOT/tests/check-hooks.sh"
 if [ "${ORCHESTRATORE_SKIP_EXEC:-0}" = "1" ]; then
