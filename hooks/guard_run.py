@@ -36,14 +36,45 @@ CARATTERI_SEPARATORE = set(";&|()<>{}`\n")
 WRAPPER = {
     "env", "sudo", "command", "nice", "nohup", "time", "timeout", "ionice",
     "xargs", "exec", "builtin", "stdbuf", "setsid",
+    "doas", "flock", "caffeinate", "chroot", "strace",
 }
 SHELL = {"sh", "bash", "zsh", "dash", "ksh"}
 # Parole chiave di shell che stanno subito prima del comando in un costrutto composto.
 # `for` e `in` non ci sono: non precedono mai un comando, quindi saltarle non cambia
 # niente, e una voce che non cambia niente e' protezione finta.
 PAROLE_CHIAVE = {"do", "then", "else", "elif", "!", "if", "while", "until"}
-# Opzioni dei wrapper che portano un valore separato: si salta anche quello.
-OPZIONE_CON_VALORE = {"-s", "-k", "-u", "-n", "-I", "-P", "--signal", "--user"}
+# Opzioni che portano un valore separato, per programma: una tabella unica sbagliava,
+# perche' `-n` porta un valore per nice e non per sudo, e quel disaccordo si mangiava il
+# comando che veniva dopo.
+OPZIONI_CON_VALORE = {
+    "nice": {"-n", "--adjustment"},
+    "ionice": {"-c", "-n", "-p", "--class", "--classdata", "--pid"},
+    "timeout": {"-s", "-k", "--signal", "--kill-after"},
+    "sudo": {"-u", "-g", "-U", "-p", "-C", "-R", "-T",
+             "--user", "--group", "--other-user", "--prompt", "--close-from", "--chroot"},
+    "doas": {"-u", "-C"},
+    "xargs": {"-I", "-P", "-n", "-s", "-L", "-E", "-a",
+              "--replace", "--max-procs", "--max-args", "--max-chars", "--max-lines",
+              "--arg-file", "--eof"},
+    "stdbuf": {"-i", "-o", "-e", "--input", "--output", "--error"},
+    "env": {"-u", "-C", "--unset", "--chdir"},
+    "flock": {"-w", "-E", "--timeout", "--conflict-exit-code"},
+    "strace": {"-e", "-o", "-p", "-s", "-P", "-E"},
+    "command": set(),
+    "exec": set(),
+    "builtin": set(),
+    "nohup": set(),
+    "time": set(),
+    "setsid": set(),
+    "caffeinate": set(),
+    "chroot": set(),
+}
+# Operandi che stanno fra il wrapper e il comando vero: la durata di timeout, il file di
+# flock, la directory di chroot. Non sono numeri da indovinare, sono posizioni fisse.
+ARGOMENTO_POSIZIONALE = {"timeout": 1, "flock": 1, "chroot": 1}
+# Opzioni di shell che portano un valore: senza saltarle il comando dopo -c e' il token
+# sbagliato, ed e' cosi' che `bash -o pipefail -c` passava.
+OPZIONE_SHELL_CON_VALORE = {"-o", "+o", "-O", "+O"}
 
 
 def esci(motivo):
@@ -78,6 +109,43 @@ def unisci_continuazioni(cmd):
     leggere il comando, e finche' non la togliamo anche noi il comando della riga dopo
     resta attaccato al programma della riga prima."""
     return cmd.replace("\\\n", " ")
+
+
+def taglia_commento(riga):
+    """Toglie il commento da una riga sola: dal `#` non quotato e preceduto da inizio riga
+    o da uno spazio, fino alla fine. Dentro le virgolette un `#` e' testo, non commento."""
+    apice = ""
+    scappa = False
+    inizio_parola = True
+    for k, c in enumerate(riga):
+        if scappa:
+            scappa = False
+            inizio_parola = False
+            continue
+        if apice:
+            if c == "\\" and apice == '"':
+                scappa = True
+            elif c == apice:
+                apice = ""
+            continue
+        if c == "\\":
+            scappa = True
+            inizio_parola = False
+            continue
+        if c in "'\"":
+            apice = c
+            inizio_parola = False
+            continue
+        if c == "#" and inizio_parola:
+            return riga[:k]
+        inizio_parola = c in " \t\r;&|("
+    return riga
+
+
+def togli_commenti(cmd):
+    """Riga per riga, cosi' un commento non puo' inghiottire l'a capo che separa due
+    comandi: era il buco per cui `git status # nota` a capo un force-push passava."""
+    return "\n".join(taglia_commento(r) for r in cmd.split("\n"))
 
 
 def tokenizza(cmd):
@@ -120,11 +188,32 @@ def flag_corto_con(tok, lettera):
     return tok.startswith("-") and not tok.startswith("--") and lettera in tok[1:]
 
 
+def leggi_shell(tok, i):
+    """`sh -c`, `bash -lc`, `bash -o pipefail -c`, `bash -c -x`: il comando non e' il token
+    subito dopo quello con la `c`, e' il primo operando dopo tutte le opzioni."""
+    j = i + 1
+    visto_c = False
+    while j < len(tok):
+        t = tok[j]
+        if not (t.startswith("-") or t.startswith("+")) or t in ("-", "--"):
+            break
+        if not t.startswith("--") and "c" in t[1:]:
+            visto_c = True
+        j += 2 if t in OPZIONE_SHELL_CON_VALORE else 1
+    if j >= len(tok):
+        return (None, None)
+    if visto_c:
+        return ("annidato", tok[j])
+    return ("programma", j)
+
+
 def salta_prefissi(tok):
     """Salta wrapper, parole chiave, assegnazioni e opzioni dei wrapper. Ritorna l'indice
     del programma vero, oppure None. Se incontra una shell con -c, o eval, ritorna il
     comando annidato da analizzare a parte."""
     i = 0
+    corrente = None   # wrapper di cui stiamo leggendo opzioni e operandi
+    posizionali = 0   # operandi del wrapper che precedono ancora il comando vero
     while i < len(tok):
         t = tok[i]
         # Per riconoscere wrapper e shell conta il nome del programma, non il path
@@ -132,31 +221,27 @@ def salta_prefissi(tok):
         # token intero, altrimenti un assegnazione come PATH=/x diventa irriconoscibile.
         nome = t.rsplit("/", 1)[-1] if "/" in t else t
         if nome in SHELL:
-            j = i + 1
-            while j < len(tok) and tok[j].startswith("-"):
-                # `bash -c`, `bash -lc`, `sh -xc`: dopo l'opzione con la c viene il comando
-                if "c" in tok[j][1:] and not tok[j].startswith("--"):
-                    if j + 1 < len(tok):
-                        return ("annidato", tok[j + 1])
-                    return (None, None)
-                j += 1
-            i = j
-            continue
+            return leggi_shell(tok, i)
         if nome == "eval":
             return ("annidato", " ".join(tok[i + 1:]))
-        if nome in WRAPPER or nome in PAROLE_CHIAVE:
+        if nome in WRAPPER:
+            corrente = nome
+            posizionali = ARGOMENTO_POSIZIONALE.get(nome, 0)
+            i += 1
+            continue
+        if nome in PAROLE_CHIAVE:
+            corrente = None
+            posizionali = 0
             i += 1
             continue
         if "=" in t and not t.startswith("-") and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", t):
             i += 1
             continue
         if t.startswith("-"):
-            if t in OPZIONE_CON_VALORE:
-                i += 2
-            else:
-                i += 1
+            i += 2 if t in OPZIONI_CON_VALORE.get(corrente, ()) else 1
             continue
-        if re.match(r"^[0-9]+[smhd]?$", t):
+        if posizionali > 0:
+            posizionali -= 1
             i += 1
             continue
         return ("programma", i)
@@ -205,9 +290,8 @@ def analizza_git(tok, i):
             if a.startswith("--h") and a != "--help":
                 esci("reset --hard")
     elif sub == "clean":
-        forza = any(a == "--force" or flag_corto_con(a, "f") for a in args)
-        ricorsiva = any(a == "--directories" or flag_corto_con(a, "d") for a in args)
-        if forza and ricorsiva:
+        # Anche senza -d, clean -f cancella i file non tracciati: e' distruttivo lo stesso.
+        if any(a == "--force" or flag_corto_con(a, "f") for a in args):
             esci("git clean distruttivo")
     elif sub == "branch":
         canc = any(a.startswith("--de") or flag_corto_con(a, "d") or flag_corto_con(a, "D")
@@ -252,17 +336,29 @@ def analizza_gh(args):
         esci("cancellazione via API GitHub")
 
 
+# Una sostituzione dentro le virgolette resta un token solo, quindi i separatori non la
+# aprono: `echo "$(git push -f)"` eseguiva il push senza che nessuno lo guardasse.
+SOSTITUZIONE = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
+
+
 def analizza_comando(cmd, profondita=0):
     if profondita > 3:
         return
-    token = [t if e_separatore(t) else pulisci(t)
-             for t in tokenizza(unisci_continuazioni(togli_documenti_inline(cmd)))]
+    grezzi = tokenizza(unisci_continuazioni(togli_commenti(togli_documenti_inline(cmd))))
+    # Le sostituzioni si cercano sui token grezzi: pulisci() toglie proprio il `$(` e il
+    # `)` che le rendono riconoscibili.
+    for tok in grezzi:
+        if e_separatore(tok):
+            continue
+        for trovata in SOSTITUZIONE.finditer(tok):
+            interno = trovata.group(1) or trovata.group(2)
+            if interno:
+                analizza_comando(interno, profondita + 1)
+    token = [t if e_separatore(t) else pulisci(t) for t in grezzi]
     for segmento in segmenta(token):
         segmento = [t for t in segmento if t]
         if not segmento:
             continue
-        if "#" in segmento:
-            segmento = segmento[:segmento.index("#")]
         if not segmento:
             continue
         esito, valore = salta_prefissi(segmento)

@@ -373,6 +373,36 @@ guard_continuazione_non_unita() {
   perl -0pi -e 's/    return cmd\.replace/    return cmd\n    return cmd.replace/' "$copy/hooks/guard_run.py"
 }
 
+guard_commenti_non_tolti() {
+  local copy="$1"
+  perl -0pi -e 's/    return "[^"]*"\.join\(taglia_commento[^\n]*/    return cmd/' "$copy/hooks/guard_run.py"
+}
+
+guard_opzioni_non_per_programma() {
+  local copy="$1"
+  perl -0pi -e 's/OPZIONI_CON_VALORE\.get\(corrente, \(\)\)/OPZIONI_CON_VALORE.get("nice", ())/' "$copy/hooks/guard_run.py"
+}
+
+guard_posizionali_non_saltati() {
+  local copy="$1"
+  perl -0pi -e 's/        if posizionali > 0:/        if False:/' "$copy/hooks/guard_run.py"
+}
+
+guard_shell_opzioni_ignorate() {
+  local copy="$1"
+  perl -0pi -e 's/        j \+= 2 if t in OPZIONE_SHELL_CON_VALORE else 1/        j += 1/' "$copy/hooks/guard_run.py"
+}
+
+guard_clean_solo_con_d() {
+  local copy="$1"
+  perl -0pi -e 's/        if any\(a == "--force" or flag_corto_con\(a, "f"\) for a in args\):/        if any(a == "--directories" for a in args):/' "$copy/hooks/guard_run.py"
+}
+
+guard_sostituzione_quotata_ignorata() {
+  local copy="$1"
+  perl -0pi -e 's/                analizza_comando\(interno, profondita \+ 1\)/                pass/' "$copy/hooks/guard_run.py"
+}
+
 guard_heredoc_non_piu_dato() {
   local copy="$1"
   perl -0pi -e 's/    righe = cmd\.split/    return cmd\n    righe = cmd.split/' "$copy/hooks/guard_run.py"
@@ -499,6 +529,12 @@ expect_rejected_exec "D2 gh non analizzato" guard_gh_non_analizzato
 expect_rejected_exec "D2 guardia muta quando non protegge" guard_avviso_senza_python_muto
 expect_rejected_exec "D2 apice inverso non separa" guard_apice_inverso_non_separa
 expect_rejected_exec "D2 continuazione di riga non unita" guard_continuazione_non_unita
+expect_rejected_exec "D2 commenti non tolti riga per riga" guard_commenti_non_tolti
+expect_rejected_exec "D2 opzioni con valore non lette per programma" guard_opzioni_non_per_programma
+expect_rejected_exec "D2 operandi del wrapper non saltati" guard_posizionali_non_saltati
+expect_rejected_exec "D2 opzioni di shell con valore ignorate" guard_shell_opzioni_ignorate
+expect_rejected_exec "D2 clean forzato bloccato solo con -d" guard_clean_solo_con_d
+expect_rejected_exec "D2 sostituzione dentro le virgolette non analizzata" guard_sostituzione_quotata_ignorata
 
 if (( failures > 0 )); then
   printf 'RED: %d mutazioni sono sopravvissute\n' "$failures"

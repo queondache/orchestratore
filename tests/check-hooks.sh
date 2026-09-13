@@ -237,6 +237,31 @@ else
 fi
 
 
+# Riserve del sesto giro di verifica: commenti che si mangiavano l'a capo,
+# opzioni dei wrapper lette senza guardare di quale wrapper fossero, sostituzioni
+# dentro le virgolette, clean forzato senza -d.
+expect_guard 2 "$CON_RUN" 'git status # nota
+git push -f origin main' 'blocca il force-push dopo una riga che finisce con un commento'
+expect_guard 2 "$CON_RUN" 'git status # nota
+rm -rf build' 'blocca la cancellazione dopo una riga che finisce con un commento'
+expect_guard 2 "$CON_RUN" 'echo ok # x
+gh pr merge 1 --admin' 'blocca il merge amministrativo dopo una riga con commento'
+expect_guard 2 "$CON_RUN" 'sudo -n git push -f origin main' 'blocca il force-push con sudo -n, che non porta un valore'
+expect_guard 2 "$CON_RUN" 'timeout 1.5 git push -f origin main' 'blocca il force-push con timeout a durata frazionaria'
+expect_guard 2 "$CON_RUN" 'timeout .5 git push -f origin main' 'blocca il force-push con timeout a durata sotto l unita'
+expect_guard 2 "$CON_RUN" 'bash -o pipefail -c '\''git push -f origin main'\''' 'blocca il force-push con un opzione prima di -c'
+expect_guard 2 "$CON_RUN" 'bash -c -x '\''git push -f origin main'\''' 'blocca il force-push con un opzione dopo -c'
+expect_guard 2 "$CON_RUN" 'git clean -f' 'blocca il clean forzato anche senza -d'
+expect_guard 2 "$CON_RUN" 'git clean -fx' 'blocca il clean forzato con -x e senza -d'
+expect_guard 2 "$CON_RUN" 'echo "$(git push -f origin main)"' 'blocca una sostituzione dentro le virgolette'
+expect_guard 2 "$CON_RUN" 'git commit -m "$(git push -f origin main)"' 'blocca una sostituzione dentro il messaggio di commit'
+expect_guard 0 "$CON_RUN" 'git commit -m "fix #123: niente push -f"' 'lascia passare un cancelletto dentro il messaggio di commit'
+expect_guard 0 "$CON_RUN" 'echo '\''# titolo'\'' >> note.md' 'lascia passare un cancelletto dentro apici singoli'
+expect_guard 0 "$CON_RUN" 'git clean -nd' 'lascia passare il clean simulato ricorsivo'
+expect_guard 0 "$CON_RUN" 'sudo -n true' 'lascia passare sudo -n su un comando innocuo'
+expect_guard 0 "$CON_RUN" 'echo "$(git rev-parse HEAD)"' 'lascia passare una sostituzione innocua dentro le virgolette'
+expect_guard 0 "$CON_RUN" 'bash -o pipefail -c '\''npm test | tee out'\''' 'lascia passare bash con opzioni su un comando innocuo'
+
 # Senza run attivo: l'hook non interferisce mai
 expect_guard 0 "$SENZA_RUN" 'git push --force origin main' "fuori da un run non blocca nulla"
 expect_guard 0 "$SENZA_RUN" 'git reset --hard HEAD~1' "fuori da un run non blocca il reset"

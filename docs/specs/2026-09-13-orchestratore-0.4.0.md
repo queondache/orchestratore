@@ -48,9 +48,16 @@ lavoro non verificato è un run fallito.
   cinque giri di verifica hanno mostrato che un confronto a pattern non distingue un
   comando da una stringa che parla di quel comando, quindi o lasciava passare le varianti
   o bloccava i messaggi di commit. L'analizzatore tokenizza rispettando le virgolette,
-  tratta il corpo di un heredoc come dato e guarda programma e sottocomando. Senza
-  `python3` non c'e' analisi: la guardia lo dichiara su stderr e lascia passare, invece
-  di fingere una protezione che non c'e'.
+  tratta il corpo di un heredoc come dato, toglie i commenti riga per riga senza
+  mangiarsi l'a capo che separa due comandi, legge le opzioni con valore per programma
+  (`-n` porta un valore per `nice` e non per `sudo`), salta gli operandi fissi dei
+  wrapper (la durata di `timeout`, il file di `flock`, la directory di `chroot`), trova
+  il comando di una shell come primo operando dopo le opzioni e guarda dentro le
+  sostituzioni anche quando sono chiuse fra virgolette. Senza `python3` non c'e'
+  analisi: la guardia lo dichiara su stderr e lascia passare, invece di fingere una
+  protezione che non c'e'. Il modello di minaccia e i limiti accettati stanno nel
+  docstring di `guard_run.py`; `tests/copertura-tabelle.py` impedisce che una voce delle
+  tabelle resti senza un comando che la esercita.
 
 ## Gate
 
