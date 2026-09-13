@@ -262,6 +262,42 @@ expect_guard 0 "$CON_RUN" 'sudo -n true' 'lascia passare sudo -n su un comando i
 expect_guard 0 "$CON_RUN" 'echo "$(git rev-parse HEAD)"' 'lascia passare una sostituzione innocua dentro le virgolette'
 expect_guard 0 "$CON_RUN" 'bash -o pipefail -c '\''npm test | tee out'\''' 'lascia passare bash con opzioni su un comando innocuo'
 
+# Riserve del settimo giro: sostituzioni fra apici singoli (che la shell non
+# esegue), cancelletto a meta parola, redirezioni, abbreviazioni dei flag,
+# bundle di opzioni corte, here-string, continuazione dentro la parola.
+expect_guard 2 "$CON_RUN" 'echo abc#def
+git push -f origin main' 'blocca il force-push dopo una riga con un cancelletto a meta parola'
+expect_guard 2 "$CON_RUN" 'echo url#L20
+rm -rf build' 'blocca la cancellazione dopo un cancelletto a meta parola'
+expect_guard 2 "$CON_RUN" 'bash -euo pipefail -c '\''git push -f origin main'\''' 'blocca il force-push con un bundle di opzioni corte con valore'
+expect_guard 2 "$CON_RUN" 'git push --mirr origin' 'blocca l abbreviazione di --mirror'
+expect_guard 2 "$CON_RUN" 'git push --prun origin' 'blocca l abbreviazione di --prune'
+expect_guard 2 "$CON_RUN" 'git branch --delet --forc x' 'blocca le abbreviazioni di --delete e --force'
+expect_guard 2 "$CON_RUN" 'git branch --del --for x' 'blocca le abbreviazioni corte di --delete e --force'
+expect_guard 2 "$CON_RUN" 'git clean --forc' 'blocca l abbreviazione di --force per clean'
+expect_guard 2 "$CON_RUN" 'git >out push -f' 'blocca il force-push con una redirezione fra git e il sottocomando'
+expect_guard 2 "$CON_RUN" '>out git push -f' 'blocca il force-push con una redirezione prima del comando'
+expect_guard 2 "$CON_RUN" 'git pu\
+sh -f origin main' 'blocca il force-push spezzato dentro la parola'
+expect_guard 2 "$CON_RUN" 'cat <<<x
+git push -f origin main' 'blocca il force-push dopo una here-string'
+expect_guard 2 "$CON_RUN" 'gh pr merge 1 --admin=true' 'blocca --admin con il valore attaccato'
+expect_guard 2 "$CON_RUN" 'caffeinate -t 3600 git push -f origin main' 'blocca il force-push sotto caffeinate -t'
+expect_guard 2 "$CON_RUN" 'echo x | xargs -J % rm -rf build' 'blocca la cancellazione sotto xargs -J'
+expect_guard 2 "$CON_RUN" 'sudo -h esempio git push -f origin main' 'blocca il force-push sotto sudo -h'
+expect_guard 2 "$CON_RUN" 'time -o t.txt git push -f origin main' 'blocca il force-push sotto time -o'
+expect_guard 0 "$CON_RUN" 'git commit -m '\''vedi `git push -f` nella doc'\''' 'lascia passare apici inversi dentro apici singoli'
+expect_guard 0 "$CON_RUN" 'git commit -m '\''usa `rm -rf build` con cautela'\''' 'lascia passare una cancellazione citata fra apici inversi e singoli'
+expect_guard 0 "$CON_RUN" 'gh pr comment 1 --body '\''verificato: `gh pr merge 1 --admin` bloccato'\''' 'lascia passare apici inversi nel body di un commento'
+expect_guard 0 "$CON_RUN" 'gh pr comment 1 --body '\''uso $(git push -f) come esempio'\''' 'lascia passare una sostituzione citata fra apici singoli'
+expect_guard 0 "$CON_RUN" 'echo '\''niente $(git push -f) qui'\'' >> note.md' 'lascia passare una sostituzione citata in una nota'
+expect_guard 0 "$CON_RUN" 'npm test 2>&1 | tee out.log' 'lascia passare la redirezione della diagnostica'
+expect_guard 0 "$CON_RUN" 'git log --oneline > /tmp/log.txt' 'lascia passare una redirezione su file'
+expect_guard 0 "$CON_RUN" 'cat <<<'\''una riga'\'' | wc -l' 'lascia passare una here-string innocua'
+expect_guard 0 "$CON_RUN" 'bash -euo pipefail -c '\''npm test'\''' 'lascia passare un bundle di opzioni su un comando innocuo'
+expect_guard 0 "$CON_RUN" 'echo abc#def' 'lascia passare un cancelletto a meta parola'
+expect_guard 0 "$CON_RUN" 'git push origin '\''feat/#42'\''' 'lascia passare un cancelletto nel nome del branch'
+
 # Senza run attivo: l'hook non interferisce mai
 expect_guard 0 "$SENZA_RUN" 'git push --force origin main' "fuori da un run non blocca nulla"
 expect_guard 0 "$SENZA_RUN" 'git reset --hard HEAD~1' "fuori da un run non blocca il reset"

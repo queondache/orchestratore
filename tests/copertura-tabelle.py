@@ -69,13 +69,11 @@ CASI_POSIZIONALE = {
     "chroot": "chroot /mnt %s" % FORZA,
 }
 
-# Opzioni di shell che portano un valore: senza saltare il valore, il comando dopo -c e'
-# il token sbagliato.
+# Lettere finali che portano un valore in un'opzione di shell: `bash -o pipefail -c`,
+# `bash -euo pipefail -c`, `bash -O globstar -c`.
 CASI_SHELL_VALORE = {
-    "-o": "bash -o pipefail -c '%s'" % FORZA,
-    "+o": "bash +o posix -c '%s'" % FORZA,
-    "-O": "bash -O globstar -c '%s'" % FORZA,
-    "+O": "bash +O globstar -c '%s'" % FORZA,
+    "o": "bash -o pipefail -c '%s'" % FORZA,
+    "O": "bash -O globstar -c '%s'" % FORZA,
 }
 
 # Prefisso con cui invocare ogni wrapper quando si prova una delle sue opzioni con valore.
@@ -106,8 +104,8 @@ def main():
         ("PAROLE_CHIAVE", set(guard_run.PAROLE_CHIAVE), CASI_PAROLE, "parola chiave"),
         ("ARGOMENTO_POSIZIONALE", set(guard_run.ARGOMENTO_POSIZIONALE), CASI_POSIZIONALE,
          "operando del wrapper"),
-        ("OPZIONE_SHELL_CON_VALORE", set(guard_run.OPZIONE_SHELL_CON_VALORE),
-         CASI_SHELL_VALORE, "opzione di shell con valore"),
+        ("OPZIONE_SHELL_CON_VALORE_FINALE", set(guard_run.OPZIONE_SHELL_CON_VALORE_FINALE),
+         CASI_SHELL_VALORE, "opzione di shell che finisce per"),
         ("OPZIONI_CON_VALORE", coppie_attese(), casi_opzioni(), "opzione con valore"),
     ]
     righe = []

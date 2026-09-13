@@ -30,7 +30,7 @@ import sys
 
 # Caratteri che chiudono un comando. shlex li aggrega ("&&", ";\n"), quindi non si
 # confronta il token intero ma si guarda se e' fatto solo di questi.
-CARATTERI_SEPARATORE = set(";&|()<>{}`\n")
+CARATTERI_SEPARATORE = set(";&|(){}\n")
 
 # Programmi che eseguono un altro comando: si saltano per arrivare a quello vero.
 WRAPPER = {
@@ -50,31 +50,29 @@ OPZIONI_CON_VALORE = {
     "nice": {"-n", "--adjustment"},
     "ionice": {"-c", "-n", "-p", "--class", "--classdata", "--pid"},
     "timeout": {"-s", "-k", "--signal", "--kill-after"},
-    "sudo": {"-u", "-g", "-U", "-p", "-C", "-R", "-T",
-             "--user", "--group", "--other-user", "--prompt", "--close-from", "--chroot"},
+    "sudo": {"-u", "-g", "-U", "-p", "-C", "-R", "-T", "-h", "-r", "-t", "-a", "-c", "-D",
+             "--user", "--group", "--other-user", "--prompt", "--close-from", "--chroot",
+             "--host", "--role", "--type", "--auth-type", "--command-timeout", "--chdir"},
     "doas": {"-u", "-C"},
-    "xargs": {"-I", "-P", "-n", "-s", "-L", "-E", "-a",
+    "xargs": {"-I", "-P", "-n", "-s", "-L", "-E", "-a", "-J", "-d",
               "--replace", "--max-procs", "--max-args", "--max-chars", "--max-lines",
-              "--arg-file", "--eof"},
+              "--arg-file", "--eof", "--delimiter"},
     "stdbuf": {"-i", "-o", "-e", "--input", "--output", "--error"},
-    "env": {"-u", "-C", "--unset", "--chdir"},
+    "env": {"-u", "-C", "-a", "--unset", "--chdir"},
     "flock": {"-w", "-E", "--timeout", "--conflict-exit-code"},
-    "strace": {"-e", "-o", "-p", "-s", "-P", "-E"},
-    "command": set(),
-    "exec": set(),
-    "builtin": set(),
-    "nohup": set(),
-    "time": set(),
-    "setsid": set(),
-    "caffeinate": set(),
-    "chroot": set(),
+    "strace": {"-e", "-o", "-p", "-s", "-P", "-E", "-u", "-I", "-a", "-b", "-X", "-O", "-S",
+               "--output", "--trace"},
+    "caffeinate": {"-t", "-w"},
+    "chroot": {"-u", "-g", "--userspec", "--groups"},
+    "time": {"-f", "-o", "--format", "--output"},
 }
 # Operandi che stanno fra il wrapper e il comando vero: la durata di timeout, il file di
 # flock, la directory di chroot. Non sono numeri da indovinare, sono posizioni fisse.
 ARGOMENTO_POSIZIONALE = {"timeout": 1, "flock": 1, "chroot": 1}
-# Opzioni di shell che portano un valore: senza saltarle il comando dopo -c e' il token
-# sbagliato, ed e' cosi' che `bash -o pipefail -c` passava.
-OPZIONE_SHELL_CON_VALORE = {"-o", "+o", "-O", "+O"}
+# Le opzioni di shell che portano un valore sono quelle che finiscono per o o O
+# (`-o pipefail`, `-euo pipefail`, `-O globstar`): senza saltare il valore, il comando
+# dopo -c e' il token sbagliato, ed e' cosi' che `bash -o pipefail -c` passava.
+OPZIONE_SHELL_CON_VALORE_FINALE = "oO"
 
 
 def esci(motivo):
@@ -94,7 +92,9 @@ def togli_documenti_inline(cmd):
     while i < len(righe):
         riga = righe[i]
         tenute.append(riga)
-        aperture = re.findall(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1", riga)
+        # `(?<!<)` e `(?!<)`: una here-string `<<<x` non apre un documento inline, e
+        # scambiarla per un heredoc faceva sparire tutta la riga successiva.
+        aperture = re.findall(r"(?<!<)<<-?(?!<)\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1", riga)
         if aperture:
             fine = aperture[-1][1]
             i += 1
@@ -108,7 +108,7 @@ def unisci_continuazioni(cmd):
     """La barra rovesciata a fine riga e' una continuazione: la shell la toglie prima di
     leggere il comando, e finche' non la togliamo anche noi il comando della riga dopo
     resta attaccato al programma della riga prima."""
-    return cmd.replace("\\\n", " ")
+    return cmd.replace("\\\n", "")
 
 
 def taglia_commento(riga):
@@ -156,11 +156,39 @@ def tokenizza(cmd):
         # tratta come spazio e un comando su piu' righe diventa un segmento solo.
         lex = shlex.shlex(cmd, posix=True, punctuation_chars="();<>|&`\n")
         lex.whitespace = " \t\r"
+        # I commenti veri li ha gia' tolti togli_commenti, che rispetta le virgolette e
+        # la regola della shell (un `#` a meta' parola non apre un commento). La regola
+        # di shlex e' piu' grossolana e si porterebbe via anche l'a capo.
+        lex.commenters = ""
         lex.whitespace_split = True
         return list(lex)
     except ValueError:
         # virgolette non bilanciate: meglio non inventarsi una lettura del comando
         return []
+
+
+def e_redirezione(tok):
+    return bool(tok) and all(c in "<>&" for c in tok) and ("<" in tok or ">" in tok)
+
+
+def togli_redirezioni(token):
+    """Toglie `> file`, `2>&1`, `<<<parola` e simili. Una redirezione non separa due
+    comandi e non e' un argomento: lasciarla dentro faceva passare `git >out push -f`,
+    perche' il sottocomando spariva dietro al segno."""
+    puliti = []
+    salta = 0
+    for k, tok in enumerate(token):
+        if salta:
+            salta -= 1
+            continue
+        if e_redirezione(tok):
+            salta = 1  # il bersaglio della redirezione
+            # un descrittore attaccato prima (`2` di `2>&1`) non e' un argomento
+            if puliti and puliti[-1].isdigit():
+                puliti.pop()
+            continue
+        puliti.append(tok)
+    return puliti
 
 
 def e_separatore(tok):
@@ -199,7 +227,9 @@ def leggi_shell(tok, i):
             break
         if not t.startswith("--") and "c" in t[1:]:
             visto_c = True
-        j += 2 if t in OPZIONE_SHELL_CON_VALORE else 1
+        # Anche in un bundle il valore lo porta l'ultima lettera: `-euo pipefail`.
+        ultima = t[-1] if len(t) > 1 and not t.startswith("--") else ""
+        j += 2 if ultima in OPZIONE_SHELL_CON_VALORE_FINALE else 1
     if j >= len(tok):
         return (None, None)
     if visto_c:
@@ -251,9 +281,9 @@ def salta_prefissi(tok):
 def analizza_push(args):
     for a in args:
         if a.startswith("--"):
-            if a.startswith("--for") or a == "--mirror":
+            if a.startswith("--for") or a.startswith("--mi"):
                 esci("force-push")
-            if a.startswith("--de") or a == "--prune":
+            if a.startswith("--de") or a.startswith("--pru"):
                 esci("cancellazione di branch remoto")
             continue
         if a.startswith("+"):
@@ -291,12 +321,12 @@ def analizza_git(tok, i):
                 esci("reset --hard")
     elif sub == "clean":
         # Anche senza -d, clean -f cancella i file non tracciati: e' distruttivo lo stesso.
-        if any(a == "--force" or flag_corto_con(a, "f") for a in args):
+        if any(a.startswith("--for") or flag_corto_con(a, "f") for a in args):
             esci("git clean distruttivo")
     elif sub == "branch":
         canc = any(a.startswith("--de") or flag_corto_con(a, "d") or flag_corto_con(a, "D")
                    for a in args)
-        forz = any(a == "--force" or flag_corto_con(a, "f") or flag_corto_con(a, "D")
+        forz = any(a.startswith("--for") or flag_corto_con(a, "f") or flag_corto_con(a, "D")
                    for a in args)
         if canc and forz:
             esci("cancellazione forzata di branch")
@@ -322,7 +352,7 @@ def analizza_find(args):
 def analizza_gh(args):
     metodo = ""
     for k, a in enumerate(args):
-        if a == "--admin":
+        if a.split("=", 1)[0] == "--admin":
             esci("merge che scavalca i check")
         if a.startswith("-X") and len(a) > 2:
             metodo = a[2:]
@@ -336,25 +366,66 @@ def analizza_gh(args):
         esci("cancellazione via API GitHub")
 
 
-# Una sostituzione dentro le virgolette resta un token solo, quindi i separatori non la
-# aprono: `echo "$(git push -f)"` eseguiva il push senza che nessuno lo guardasse.
-SOSTITUZIONE = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
+def trova_sostituzioni(testo):
+    """Le sostituzioni che la shell esegue davvero: `$(...)` e gli apici inversi, dentro le
+    virgolette doppie o fuori da ogni virgoletta. Fra apici singoli non si esegue niente,
+    e' testo: guardarci dentro bloccava messaggi di commit e commenti di PR del tutto
+    legittimi, che e' il modo peggiore di sbagliare in un run non presidiato."""
+    trovate = []
+    apice = ""
+    i = 0
+    while i < len(testo):
+        c = testo[i]
+        if apice == "'":
+            if c == "'":
+                apice = ""
+            i += 1
+            continue
+        if c == "\\":
+            i += 2
+            continue
+        if c in "'\"" and not apice:
+            apice = c
+            i += 1
+            continue
+        if c == apice:
+            apice = ""
+            i += 1
+            continue
+        if c == "`":
+            fine = testo.find("`", i + 1)
+            if fine == -1:
+                break
+            trovate.append(testo[i + 1:fine])
+            i = fine + 1
+            continue
+        if c == "$" and testo[i + 1:i + 2] == "(":
+            livello = 1
+            k = i + 2
+            while k < len(testo) and livello:
+                if testo[k] == "(":
+                    livello += 1
+                elif testo[k] == ")":
+                    livello -= 1
+                k += 1
+            if livello:
+                break
+            trovate.append(testo[i + 2:k - 1])
+            i = k
+            continue
+        i += 1
+    return trovate
 
 
 def analizza_comando(cmd, profondita=0):
     if profondita > 3:
         return
-    grezzi = tokenizza(unisci_continuazioni(togli_commenti(togli_documenti_inline(cmd))))
-    # Le sostituzioni si cercano sui token grezzi: pulisci() toglie proprio il `$(` e il
-    # `)` che le rendono riconoscibili.
-    for tok in grezzi:
-        if e_separatore(tok):
-            continue
-        for trovata in SOSTITUZIONE.finditer(tok):
-            interno = trovata.group(1) or trovata.group(2)
-            if interno:
-                analizza_comando(interno, profondita + 1)
-    token = [t if e_separatore(t) else pulisci(t) for t in grezzi]
+    testo = unisci_continuazioni(togli_commenti(togli_documenti_inline(cmd)))
+    for interno in trova_sostituzioni(testo):
+        if interno.strip():
+            analizza_comando(interno, profondita + 1)
+    grezzi = tokenizza(testo)
+    token = togli_redirezioni([t if e_separatore(t) else pulisci(t) for t in grezzi])
     for segmento in segmenta(token):
         segmento = [t for t in segmento if t]
         if not segmento:

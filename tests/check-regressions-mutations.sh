@@ -363,11 +363,6 @@ guard_a_capo_non_separa() {
   perl -0pi -e 's/  lex.whitespace = " .t.r"/  lex.whitespace = " \\t\\r\\n"/' "$copy/hooks/guard_run.py"
 }
 
-guard_apice_inverso_non_separa() {
-  local copy="$1"
-  perl -0pi -e 's/CARATTERI_SEPARATORE = set\(";&\|\(\)<>\{\}`/CARATTERI_SEPARATORE = set(";&|()<>{}/' "$copy/hooks/guard_run.py"
-}
-
 guard_continuazione_non_unita() {
   local copy="$1"
   perl -0pi -e 's/    return cmd\.replace/    return cmd\n    return cmd.replace/' "$copy/hooks/guard_run.py"
@@ -388,19 +383,59 @@ guard_posizionali_non_saltati() {
   perl -0pi -e 's/        if posizionali > 0:/        if False:/' "$copy/hooks/guard_run.py"
 }
 
-guard_shell_opzioni_ignorate() {
-  local copy="$1"
-  perl -0pi -e 's/        j \+= 2 if t in OPZIONE_SHELL_CON_VALORE else 1/        j += 1/' "$copy/hooks/guard_run.py"
-}
-
 guard_clean_solo_con_d() {
   local copy="$1"
-  perl -0pi -e 's/        if any\(a == "--force" or flag_corto_con\(a, "f"\) for a in args\):/        if any(a == "--directories" for a in args):/' "$copy/hooks/guard_run.py"
+  perl -0pi -e 's/        if any\(a\.startswith\("--for"\) or flag_corto_con\(a, "f"\) for a in args\):/        if any(a == "--directories" for a in args):/' "$copy/hooks/guard_run.py"
 }
 
 guard_sostituzione_quotata_ignorata() {
   local copy="$1"
-  perl -0pi -e 's/                analizza_comando\(interno, profondita \+ 1\)/                pass/' "$copy/hooks/guard_run.py"
+  perl -0pi -e 's/            analizza_comando\(interno, profondita \+ 1\)/            pass/' "$copy/hooks/guard_run.py"
+}
+
+guard_redirezioni_non_tolte() {
+  local copy="$1"
+  perl -0pi -e 's/    puliti = \[\]/    return token\n    puliti = []/' "$copy/hooks/guard_run.py"
+}
+
+guard_bundle_shell_ignorato() {
+  local copy="$1"
+  perl -0pi -e 's/        ultima = t\[-1\] if len\(t\) > 1 and not t\.startswith\("--"\) else ""/        ultima = ""/' "$copy/hooks/guard_run.py"
+}
+
+guard_abbreviazioni_push_esatte() {
+  local copy="$1"
+  perl -0pi -e 's/            if a\.startswith\("--for"\) or a\.startswith\("--mi"\):/            if a == "--force" or a == "--mirror":/' "$copy/hooks/guard_run.py"
+}
+
+guard_abbreviazione_clean_esatta() {
+  local copy="$1"
+  perl -0pi -e 's/        if any\(a\.startswith\("--for"\) or flag_corto_con\(a, "f"\) for a in args\):/        if any(a == "--force" for a in args):/' "$copy/hooks/guard_run.py"
+}
+
+guard_admin_senza_valore() {
+  local copy="$1"
+  perl -0pi -e 's/        if a\.split\("=", 1\)\[0\] == "--admin":/        if a == "--admin":/' "$copy/hooks/guard_run.py"
+}
+
+guard_apici_singoli_non_rispettati() {
+  local copy="$1"
+  perl -0pi -e 's/if apice == "\x27":/if False:/' "$copy/hooks/guard_run.py"
+}
+
+guard_continuazione_con_spazio() {
+  local copy="$1"
+  perl -0pi -e 's/    return cmd\.replace\("[^"]*n", ""\)/    return cmd.replace("\\\\\\n", " ")/' "$copy/hooks/guard_run.py"
+}
+
+guard_herestring_come_heredoc() {
+  local copy="$1"
+  perl -0pi -e 's/\(\?<!<\)<<-\?\(\?!<\)/<<-?/' "$copy/hooks/guard_run.py"
+}
+
+guard_commenters_di_shlex() {
+  local copy="$1"
+  perl -0pi -e 's/        lex\.commenters = ""/        pass/' "$copy/hooks/guard_run.py"
 }
 
 guard_heredoc_non_piu_dato() {
@@ -527,14 +562,21 @@ expect_rejected_exec "D2 rm non analizzato" guard_rm_non_analizzato
 expect_rejected_exec "D2 find non analizzato" guard_find_non_analizzato
 expect_rejected_exec "D2 gh non analizzato" guard_gh_non_analizzato
 expect_rejected_exec "D2 guardia muta quando non protegge" guard_avviso_senza_python_muto
-expect_rejected_exec "D2 apice inverso non separa" guard_apice_inverso_non_separa
 expect_rejected_exec "D2 continuazione di riga non unita" guard_continuazione_non_unita
 expect_rejected_exec "D2 commenti non tolti riga per riga" guard_commenti_non_tolti
 expect_rejected_exec "D2 opzioni con valore non lette per programma" guard_opzioni_non_per_programma
 expect_rejected_exec "D2 operandi del wrapper non saltati" guard_posizionali_non_saltati
-expect_rejected_exec "D2 opzioni di shell con valore ignorate" guard_shell_opzioni_ignorate
 expect_rejected_exec "D2 clean forzato bloccato solo con -d" guard_clean_solo_con_d
 expect_rejected_exec "D2 sostituzione dentro le virgolette non analizzata" guard_sostituzione_quotata_ignorata
+expect_rejected_exec "D2 redirezioni non tolte dai token" guard_redirezioni_non_tolte
+expect_rejected_exec "D2 bundle di opzioni corte di shell ignorato" guard_bundle_shell_ignorato
+expect_rejected_exec "D2 abbreviazioni dei flag di push non riconosciute" guard_abbreviazioni_push_esatte
+expect_rejected_exec "D2 abbreviazione di --force per clean non riconosciuta" guard_abbreviazione_clean_esatta
+expect_rejected_exec "D2 --admin con valore attaccato non riconosciuto" guard_admin_senza_valore
+expect_rejected_exec "D2 apici singoli non rispettati nelle sostituzioni" guard_apici_singoli_non_rispettati
+expect_rejected_exec "D2 continuazione di riga unita con uno spazio" guard_continuazione_con_spazio
+expect_rejected_exec "D2 here-string scambiata per documento inline" guard_herestring_come_heredoc
+expect_rejected_exec "D2 commenti lasciati alla regola grossolana di shlex" guard_commenters_di_shlex
 
 if (( failures > 0 )); then
   printf 'RED: %d mutazioni sono sopravvissute\n' "$failures"
