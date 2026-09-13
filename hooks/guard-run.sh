@@ -49,39 +49,65 @@ blocca() {
   exit 2
 }
 
-# Il force-push si scrive in molti modi, anche corto e in fondo alla riga (`git push -f`).
-# Il flag va cercato nel segmento che contiene il push, non nella riga intera: altrimenti
-# `git push origin feat/a && rm -f /tmp/x` verrebbe scambiato per un force-push e il worker
-# si fermerebbe per niente.
+# I confronti per sottostringa sono aggirabili: `git  reset  --hard` con due spazi non
+# assomiglia a `git reset --hard`. Si normalizzano gli spazi riga per riga, senza fondere
+# righe diverse fra loro.
+normalizza() {
+  local linea out="" parole
+  while IFS= read -r linea; do
+    read -r -a parole <<< "$linea"
+    out="$out${parole[*]}"$'\n'
+  done <<< "$1"
+  printf '%s' "$out"
+}
+
+# Il force-push non ha una sola forma: `git -c a=b push -f`, `git push -uf`,
+# `/usr/bin/git push ----force` e soprattutto `git push origin +main`, che forza tramite
+# refspec senza nessun flag. Si guarda il segmento che contiene davvero un git push e si
+# esaminano i token uno per uno, non la riga come stringa.
 forza_su_push() {
-  local riga="$1" seg
+  local riga="$1" seg parole i visto_git visto_push
   riga="${riga//&&/$'\n'}"
   riga="${riga//||/$'\n'}"
   riga="${riga//;/$'\n'}"
   riga="${riga//|/$'\n'}"
   while IFS= read -r seg; do
-    # via gli spazi in coda, cosi` un flag come ultimo token resta riconoscibile
-    seg="${seg%"${seg##*[![:space:]]}"}"
-    case "$seg" in
-      *"git push"*|*"git -C"*"push"*|"push "*|"push")
-        case "$seg" in
-          *" --force"*|*" --force-with-lease"*|*" -f "*|*" -f") return 0 ;;
-        esac
-        ;;
-    esac
+    read -r -a parole <<< "$seg"
+    [ "${#parole[@]}" -gt 0 ] || continue
+    visto_git=0
+    visto_push=0
+    for (( i = 0; i < ${#parole[@]}; i++ )); do
+      case "${parole[i]}" in
+        git|*/git) visto_git=1 ;;
+        push) [ "$visto_git" = 1 ] && visto_push=1 ;;
+      esac
+    done
+    [ "${parole[0]}" = "push" ] && visto_push=1
+    [ "$visto_push" = 1 ] || continue
+    for (( i = 0; i < ${#parole[@]}; i++ )); do
+      case "${parole[i]}" in
+        --force|--force-with-lease|--force-with-lease=*) return 0 ;;
+        +*)                                  return 0 ;;   # refspec forzata
+        --*)                                 ;;            # altre opzioni lunghe
+        -*f*)                                return 0 ;;   # -f, -uf, -fu
+      esac
+    done
   done <<< "$riga"
   return 1
 }
 
-forza_su_push "$CMD" && blocca "force-push"
+CMD_N="$(normalizza "$CMD")"
 
-case "$CMD" in
-  *"reset --hard"*)                                          blocca "reset --hard" ;;
-  *"clean -fd"*|*"clean -df"*|*"clean -fdx"*)                blocca "git clean distruttivo" ;;
-  *"branch -D"*)                                             blocca "cancellazione di branch" ;;
-  *"push"*"--delete"*|*"push origin :"*)                     blocca "cancellazione di branch remoto" ;;
-  *"gh pr merge"*"--admin"*)                                 blocca "merge che scavalca i check" ;;
-  *"rm -rf"*|*"rm -fr"*)                                     blocca "cancellazione ricorsiva forzata" ;;
+forza_su_push "$CMD_N" && blocca "force-push"
+
+case "$CMD_N" in
+  *"reset --hard"*)                             blocca "reset --hard" ;;
+  *"clean -fd"*|*"clean -df"*|*"clean -fdx"*)   blocca "git clean distruttivo" ;;
+  *"branch -D"*)                                blocca "cancellazione di branch" ;;
+  *"push"*"--delete"*|*"push origin :"*)        blocca "cancellazione di branch remoto" ;;
+  *"gh pr merge"*"--admin"*)                    blocca "merge che scavalca i check" ;;
+  *"rm -rf"*|*"rm -fr"*|*"rm -r -f"*|*"rm -f -r"*|*"rm --recursive --force"*)
+                                                blocca "cancellazione ricorsiva forzata" ;;
 esac
 
 exit 0

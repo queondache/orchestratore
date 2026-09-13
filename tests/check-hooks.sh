@@ -57,6 +57,19 @@ expect_guard 2 "$CON_RUN" 'git push --force-with-lease' "blocca il force-with-le
 expect_guard 2 "$CON_RUN" 'git push -f origin main' "blocca il force-push con -f e argomenti"
 expect_guard 2 "$CON_RUN" 'git push -f' "blocca il force-push corto, -f in fondo alla riga"
 expect_guard 2 "$CON_RUN" 'cd sub && git push -f' "blocca il force-push corto in un comando composto"
+
+# Bypass per sottostringa non ancorata: la forma canonica non e' l'unica forma.
+expect_guard 2 "$CON_RUN" 'git  push  -f' "blocca il force-push con spazi multipli"
+expect_guard 2 "$CON_RUN" "$(printf 'git\tpush\t-f')" "blocca il force-push separato da tabulazioni"
+expect_guard 2 "$CON_RUN" 'git push origin +main' "blocca la refspec forzata col +, senza flag"
+expect_guard 2 "$CON_RUN" 'git push origin +refs/heads/main:main' "blocca la refspec forzata esplicita"
+expect_guard 2 "$CON_RUN" 'git -c core.pager=cat push --force origin main' "blocca il push forzato con opzioni prima di push"
+expect_guard 2 "$CON_RUN" 'git -c a=b push -f' "blocca il push forzato corto con opzioni prima di push"
+expect_guard 2 "$CON_RUN" 'git push -uf origin main' "blocca i flag corti combinati"
+expect_guard 2 "$CON_RUN" '/usr/bin/git push -f' "blocca git invocato per path assoluto"
+expect_guard 2 "$CON_RUN" 'git reset  --hard HEAD~1' "blocca il reset distruttivo con spazi multipli"
+expect_guard 2 "$CON_RUN" 'git branch  -D vecchia' "blocca la cancellazione di branch con spazi multipli"
+expect_guard 2 "$CON_RUN" 'rm -r -f build' "blocca la cancellazione ricorsiva con flag separati"
 expect_guard 2 "$CON_RUN" 'git reset --hard HEAD~3' "blocca il reset --hard"
 expect_guard 2 "$CON_RUN" 'git clean -fdx' "blocca il clean distruttivo"
 expect_guard 2 "$CON_RUN" 'git branch -D m/vecchia' "blocca la cancellazione di branch"
@@ -75,6 +88,10 @@ expect_guard 0 "$CON_RUN" 'npm install --force && git push origin feat/a' "lasci
 expect_guard 0 "$CON_RUN" 'grep -rn pushState src/ | sed -f script.sed' "lascia passare pushState con sed -f, nessun git push"
 expect_guard 0 "$CON_RUN" 'git push origin HEAD && curl -sS -f -o out.json https://esempio' "lascia passare push seguito da curl -f"
 expect_guard 0 "$CON_RUN" 'git push origin main; ls -f' "lascia passare push seguito da ls -f"
+expect_guard 0 "$CON_RUN" 'git push origin feature+x' "lascia passare un branch col + dentro il nome"
+expect_guard 0 "$CON_RUN" 'echo "+main" > nota.txt' "lascia passare un + fuori da un push"
+expect_guard 0 "$CON_RUN" 'git push --set-upstream origin feat/a' "lascia passare set-upstream"
+expect_guard 0 "$CON_RUN" 'rm -f /tmp/lock.pid' "lascia passare la rimozione di un singolo file"
 
 # Senza run attivo: l'hook non interferisce mai
 expect_guard 0 "$SENZA_RUN" 'git push --force origin main' "fuori da un run non blocca nulla"
