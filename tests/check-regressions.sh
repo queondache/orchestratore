@@ -8,6 +8,7 @@ CATALOG="$ROOT/skills/orchestratore/references/codex-skills-catalog.jsonl"
 SKILL="$ROOT/skills/orchestratore/SKILL.md"
 ROUTING="$ROOT/skills/orchestratore/references/routing.md"
 STATE="$ROOT/templates/state.toml"
+CREDITO="$ROOT/skills/orchestratore/references/credito.md"
 README="$ROOT/README.md"
 CC_MANIFEST="$ROOT/.claude-plugin/plugin.json"
 CX_MANIFEST="$ROOT/.codex-plugin/plugin.json"
@@ -72,7 +73,7 @@ does_not_match_in_files() {
 
 json_version_is() {
   local file="$1"
-  [[ "$(jq -r '.version' "$file")" == "0.1.3" ]]
+  [[ "$(jq -r '.version' "$file")" == "0.4.0" ]]
 }
 
 catalog_entry_count() {
@@ -125,16 +126,16 @@ fi
 
 cc_version="$(jq -r '.version' "$CC_MANIFEST")"
 cx_version="$(jq -r '.version' "$CX_MANIFEST")"
-if [[ "$cc_version" == "0.1.3" && "$cx_version" == "0.1.3" && "$cc_version" == "$cx_version" ]]; then
-  ok "manifest CC e cx allineati alla versione 0.1.3"
+if [[ "$cc_version" == "0.4.0" && "$cx_version" == "0.4.0" && "$cc_version" == "$cx_version" ]]; then
+  ok "manifest CC e cx allineati alla versione 0.4.0"
 else
-  ko "manifest CC e cx allineati alla versione 0.1.3"
+  ko "manifest CC e cx allineati alla versione 0.4.0"
 fi
 
-check "manifest CC versione 0.1.3" json_version_is "$CC_MANIFEST"
-check "manifest cx versione 0.1.3" json_version_is "$CX_MANIFEST"
-check "marketplace CC versione 0.1.3" json_version_is "$CC_MARKETPLACE"
-check "marketplace agenti versione 0.1.3" json_version_is "$AGENT_MARKETPLACE"
+check "manifest CC versione 0.4.0" json_version_is "$CC_MANIFEST"
+check "manifest cx versione 0.4.0" json_version_is "$CX_MANIFEST"
+check "marketplace CC versione 0.4.0" json_version_is "$CC_MARKETPLACE"
+check "marketplace agenti versione 0.4.0" json_version_is "$AGENT_MARKETPLACE"
 
 check "README documenta snapshot/cache" contains_fixed "snapshot/cache" "$README"
 check "README richiede bump di versione" contains_fixed "bump di versione" "$README"
@@ -146,16 +147,16 @@ check "state limita le modalità credito" contains_in_file 'modalita = "normale"
 check "state conserva aggiornamento e motivo" matches_in_file '^aggiornato = "1970-01-01T00:00:00Z"[\s\S]*?^motivo = "stato iniziale"' "$STATE"
 check "state conserva schema peso precedente" matches_in_file '\[credito\.peso_precedente\][\s\S]*?^dev = \{ cx = 100, cc = 0 \}[\s\S]*?^verifica = "cc"' "$STATE"
 
-check "skill salva peso una sola volta lasciando normale" matches_in_file 'Se la modalità era `normale`, salva il peso corrente in `credito\.peso_precedente`; non\s+sovrascriverlo durante ulteriori cambi di credito\.' "$SKILL"
-check "skill associa esaurimento CC a solo-cx" contains_in_file 'modalità: `solo-cx` se è esaurito CC' "$SKILL"
-check "skill associa esaurimento cx a solo-cc" contains_in_file '`solo-cc` se è esaurito cx' "$SKILL"
-check "skill associa doppio esaurimento a fermo" contains_in_file '`fermo` se lo sono entrambi' "$SKILL"
+check "credito salva peso una sola volta lasciando normale" matches_in_file 'Se la modalità era `normale`, salva il peso corrente in `credito\.peso_precedente`; non\s+sovrascriverlo durante ulteriori cambi di credito\.' "$CREDITO"
+check "credito associa esaurimento CC a solo-cx" contains_in_file 'modalità: `solo-cx` se è esaurito CC' "$CREDITO"
+check "credito associa esaurimento cx a solo-cc" contains_in_file '`solo-cc` se è esaurito cx' "$CREDITO"
+check "credito associa doppio esaurimento a fermo" contains_in_file '`fermo` se lo sono entrambi' "$CREDITO"
 check "routing applica solo-CC al cx esaurito" contains_in_file '**Solo-CC** (cx esaurito)' "$ROUTING"
 check "routing applica solo-cx al CC esaurito" contains_in_file '**Solo-cx** (CC esaurito)' "$ROUTING"
 check "routing vieta assegnazioni in fermo" matches_in_file 'Con entrambi\s+esauriti, modalità\s+`fermo`: nessuna assegnazione e nessuna capacità simulata\.' "$ROUTING"
 
-check "skill impone handoff positivo, rilascio lock e stop" matches_in_file 'Se è esaurito il runtime del cervello e l\x27altro è disponibile, scrivi l\x27handoff esplicito\s+all\x27altro runtime dopo aver completato solo il proprio checkpoint atomico, aggiornato\s+`run\.md` e lo stato credito e rilasciato `brain\.lock`; quindi fermati\.' "$SKILL"
-check "skill ripristina il peso solo con entrambi ok" matches_in_file 'quando entrambi sono `ok`, ripristina\s+il peso salvato, torna a `normale`' "$SKILL"
+check "credito impone handoff positivo, rilascio lock e stop" matches_in_file 'Se è esaurito il runtime del cervello e l\x27altro è disponibile, scrivi l\x27handoff esplicito\s+all\x27altro runtime dopo aver completato solo il proprio checkpoint atomico, aggiornato\s+`run\.md` e lo stato credito e rilasciato `brain\.lock`; quindi fermati\.' "$CREDITO"
+check "credito ripristina il peso solo con entrambi ok" matches_in_file 'quando entrambi sono `ok`, ripristina\s+il peso salvato, torna a `normale`' "$CREDITO"
 
 Y2_FILES=("$SKILL" "$ROOT/skills/orchestratore/references/lane.md" "$ROOT/skills/orchestratore/references/adapter-cc.md" "$ROOT/skills/orchestratore/references/adapter-cx.md" "$ROOT/skills/orchestratore/references/project-adapter.md" "$ROOT/templates/run.md" "$README")
 check "Y2 dichiara run non presidiato" contains_in_file 'Run non presidiato' "$SKILL"
@@ -197,6 +198,186 @@ check "S4 nessun consenso skill negli adapter" does_not_contain 'chiedi Andrea p
 check "S4 nessun consenso o autorizzazione Andrea per skill" does_not_match_in_files '(?:fermati\s+e\s+)?(?:chied(?:i|ere)|richied(?:i|ere)|ott(?:ieni|enere)|attend(?:i|ere))(?:\s+\p{L}+){0,8}\s+(?:consenso|autorizzazione)(?:\s+\p{L}+){0,8}\s+(?:di\s+)?Andrea' "${S2_FILES[@]}"
 check "S4 nessun fermo per skill o consenso" does_not_match_in_files '(?<!non\s)(?:fermati|stop)(?:\s+\p{L}+){0,10}\s+(?:skill|consenso|autorizzazione)' "${S2_FILES[@]}"
 check "S4 nessuna installazione o abilitazione globale consentita" does_not_match_in_files '(?<!non\s)(?:consenti|autorizza|puoi)(?:\s+\p{L}+){0,8}\s+(?:installare|abilitare)(?:\s+\p{L}+){0,8}\s+globalmente\s+skill(?:/plugin|\s+o\s+plugin)?' "${S2_FILES[@]}"
+
+LANE="$ROOT/skills/orchestratore/references/lane.md"
+RUN_TPL="$ROOT/templates/run.md"
+PROJECT_ADAPTER="$ROOT/skills/orchestratore/references/project-adapter.md"
+ADAPTER_CC="$ROOT/skills/orchestratore/references/adapter-cc.md"
+
+# A1 — autonomia: default scritti, non chiesti
+check "A1 fissa i default del contratto" contains_in_file '**Default quando Andrea non dice altro**' "$SKILL"
+check "A1 default git commit+push+PR automatici" contains_in_file 'Autorizzazioni Git: commit+push+PR automatici' "$SKILL"
+check "A1 default run non presidiato" matches_in_file 'Run non\s+presidiato: sì' "$SKILL"
+check "A1 vieta di chiedere conferma dei default" contains_in_file 'si cambia solo se lo scrive lui' "$SKILL"
+check "A1 vieta domande su skill tool permessi" matches_in_file 'Mai di\s+skill, tool, modelli, permessi, approccio tecnico o conferma di un default' "$SKILL"
+
+# A2 — il rosso non ferma il run
+check "A2 dichiara il rosso non stop" contains_in_file 'Il rosso non è mai una condizione di stop' "$SKILL"
+check "A2 impone cambio strategia e modello dopo 2 KO" matches_in_file 'due KO consecutivi sullo stesso gate cambia strategia\s+e modello' "$SKILL"
+check "A2 lane senza tetto ai giri" contains_in_file 'Nessun tetto ai giri' "$LANE"
+check "A2 lane non sospende sul rosso" contains_in_file 'mai perché il gate resta rosso' "$LANE"
+check "A2 routing impone modello diverso dopo 2 KO" contains_in_file 'Due KO consecutivi sullo stesso gate obbligano a cambiare modello' "$ROUTING"
+check "A2 nessun tetto di 2 KO residuo" does_not_contain 'Massimo 2 KO consecutivi' "$LANE" "$SKILL"
+
+# A3 — verifica a ogni consegna
+check "A3 verifica obbligatoria per consegna" contains_in_file 'Verifica obbligatoria a ogni consegna, non solo a fine milestone' "$SKILL"
+check "A3 formato riga di verifica con hash" contains_in_file 'verifica T-<id>' "$SKILL"
+check "A3 senza riga il task resta in review" contains_in_file 'il task resta `in review`' "$SKILL"
+check "A3 lane ripete la verifica per consegna" contains_in_file '## Verifica a ogni consegna, non solo a fine milestone' "$LANE"
+check "A3 template registra la verifica" contains_in_file 'verifica T-001:' "$RUN_TPL"
+check "A3 agent mancante non salta la verifica" matches_in_file 'Mancanza di un agent non è mai un motivo\s+per saltare la verifica' "$ADAPTER_CC"
+
+# A4 — gate verde definito e fallback di merge senza CI
+check "A4 definisce il gate verde" contains_in_file '## Gate verde: definito una volta, scritto in `run.md`' "$LANE"
+check "A4 gate verde nel template" contains_in_file 'Gate verde: build=' "$RUN_TPL"
+check "A4 gate verde nel project adapter" contains_in_file 'Gate verde: build=' "$PROJECT_ADAPTER"
+check "A4 fallback suite locale senza required checks" contains_in_file 'fallback suite locale' "$LANE"
+check "A4 fallback eseguito dal verificatore" matches_in_file 'Il\s+verificatore — mai il builder — esegue' "$LANE"
+check "A4 fallback senza output raw non vale" contains_in_file 'Un fallback dichiarato senza output raw non vale' "$LANE"
+
+# A5 — chiusura milestone, doc allineati, lane successiva
+check "A5 chiusura aggiorna i doc" contains_in_file 'la milestone diventa **chiusa**' "$LANE"
+check "A5 merge senza doc non chiude" contains_in_file 'Merge fatto e doc non allineati = milestone **non** chiusa' "$LANE"
+check "A5 apre subito la lane successiva" contains_in_file 'apri subito la lane successiva' "$LANE"
+check "A5 il run finisce col budget" contains_in_file 'finisce col budget' "$LANE"
+check "A5 skill impone chiusura in un colpo solo" contains_in_file 'Chiusura di milestone, in un colpo solo e senza chiedere' "$SKILL"
+
+# A6 — propagazione delle risposte di Andrea
+check "A6 propaga la risposta nello stesso turno" contains_in_file 'Propagazione della risposta, automatica e nello stesso turno' "$SKILL"
+check "A6 propaga in SPEC" contains_in_file 'aggiorna `SPEC.md` nel punto che tocca' "$SKILL"
+check "A6 propaga in ROADMAP e perimetri" matches_in_file '`ROADMAP\.md` e i perimetri delle milestone coinvolte' "$SKILL"
+check "A6 riemette i contratti congelati incoerenti" matches_in_file 'riemetti il\s+perimetro e passalo al worker' "$SKILL"
+check "A6 allinea prima di aprire una lane" contains_in_file 'se divergono, allinea prima' "$SKILL"
+
+# A7 — cadenza report onesta
+check "A7 rimuove la cadenza a tempo non rispettabile" does_not_contain 'comunque ogni 10 minuti' "$SKILL"
+
+PARALLELISMO="$ROOT/skills/orchestratore/references/parallelismo.md"
+VERIFICA="$ROOT/skills/orchestratore/references/verifica.md"
+
+# B1 — piano di parallelizzazione e prova di indipendenza
+check "B1 tetti a due livelli nella skill" contains_in_file '3 milestone × 3 task = **9 worker builder**' "$SKILL"
+check "B1 pool di verifica fuori dal tetto builder" matches_in_file 'verificatori, pre-merge e\s+integratore stanno in un pool a parte' "$SKILL"
+check "B1 piano di parallelizzazione richiesto" contains_in_file '## 1. Piano di parallelizzazione, prima di qualsiasi delega' "$PARALLELISMO"
+check "B1 glob non descrizioni" contains_in_file 'Le aree scrivibili sono **glob**, non descrizioni' "$PARALLELISMO"
+check "B1 prova di indipendenza sui file reali" contains_in_file 'comm -12' "$PARALLELISMO"
+check "B1 nessuno slot senza prova" contains_in_file 'Nessuna prova scritta =' "$PARALLELISMO"
+check "B1 piano nel template run" contains_in_file '## Piano di parallelizzazione' "$RUN_TPL"
+check "B1 project adapter impone il piano" contains_in_file 'Piano di parallelizzazione' "$PROJECT_ADAPTER"
+
+# B2 — contract-first
+check "B2 contract-first nella skill" contains_in_file 'lane **contract-first**, non parallelo' "$SKILL"
+check "B2 contract-first merge su main prima del parallelo" contains_in_file 'mergiare su main**. Solo dopo partono in parallelo' "$PARALLELISMO"
+check "B2 interfaccia congelata per le consumatrici" contains_in_file '**file congelato** per le lane consumatrici' "$PARALLELISMO"
+check "B2 fallback seriale se non isolabile" contains_in_file 'le milestone vanno **seriali**' "$PARALLELISMO"
+
+# B3 — task nella lane e integratore
+check "B3 branch di integrazione della milestone" contains_in_file 'branch di integrazione' "$LANE"
+check "B3 branch dei task figli" contains_in_file 'm/<slug>/t<NN>' "$PARALLELISMO"
+check "B3 integratore e un task con contratto" contains_in_file 'è un **task con contratto**' "$PARALLELISMO"
+check "B3 cervello non scrive codice nel parallelismo" contains_in_file '**Il cervello non scrive codice.**' "$PARALLELISMO"
+check "B3 cervello non scrive codice nella skill" contains_in_file '**Il cervello non scrive codice**' "$SKILL"
+check "B3 routing elenca integratore" contains_in_file '`integratore`' "$ROUTING"
+check "B3 routing separa i tetti" contains_in_file '**Tetti separati**' "$ROUTING"
+
+# B4 — protocollo di verifica e oracolo
+check "B4 quattro passi obbligatori" contains_in_file '## I quattro passi obbligatori' "$VERIFICA"
+check "B4 hash dimostrato" contains_in_file 'git rev-parse HEAD' "$VERIFICA"
+check "B4 oracolo con rosso atteso" contains_in_file 'deve diventare **rossa**' "$VERIFICA"
+check "B4 KO oracolo assente" contains_in_file 'KO: oracolo assente' "$VERIFICA"
+check "B4 KO fuori perimetro" contains_in_file 'KO: fuori perimetro' "$VERIFICA"
+check "B4 verdetto senza evidenza si riassegna" matches_in_file 'non è un verdetto: il cervello lo tratta\s+come verifica non eseguita' "$VERIFICA"
+check "B4 lane rimanda al protocollo" contains_in_file 'I quattro passi obbligatori' "$LANE"
+check "B4 skill nomina oracolo" contains_in_file '**oracolo**' "$SKILL"
+check "B4 routing impone i quattro passi" contains_in_file 'oracolo incluso' "$ROUTING"
+
+# B5 — classe di rischio del merge
+check "B5 regola fissa senza discrezionalita" contains_in_file 'regola fissa, nessuna discrezionalità' "$VERIFICA"
+check "B5 classe calcolata sul diff reale" contains_in_file 'sul diff reale' "$VERIFICA"
+check "B5 tier 3 in attesa di Andrea" contains_in_file '**PR in attesa di Andrea**' "$VERIFICA"
+check "B5 aree sensibili configurabili" contains_in_file 'aree_sensibili' "$VERIFICA"
+check "B5 nessuna promozione ad auto-merge" contains_in_file 'non promuove mai' "$VERIFICA"
+check "B5 lane applica la classe prima del gate" contains_in_file '**classe di rischio** calcolata sul diff reale' "$LANE"
+check "B5 auto-merge solo tier 1-2" contains_in_file 'Per le sole milestone tier 1-2' "$LANE"
+check "B5 template registra la classe" contains_in_file 'Classe di rischio:' "$RUN_TPL"
+check "B5 confini limitano auto-merge ai tier bassi" matches_in_file 'auto-merge sono autorizzati solo al gate di §4 e per\s+le sole milestone tier 1-2' "$SKILL"
+
+# B6 — recon, assunzioni, metriche, osservatore
+check "B6 recon riusabile" contains_in_file '.orchestratore/recon.md' "$PROJECT_ADAPTER"
+check "B6 recon scade con la revisione base" contains_in_file 'il recon è scaduto' "$PROJECT_ADAPTER"
+check "B6 contratto passa il recon per path" contains_in_file '.orchestratore/recon.md` per path' "$SKILL"
+check "B6 assunzioni reversibili non sono domande" contains_in_file 'non è una domanda: decidi, registrala in' "$SKILL"
+check "B6 assunzioni nel template" contains_in_file '## Assunzioni' "$RUN_TPL"
+check "B6 metriche nel template" contains_in_file '## Metriche' "$RUN_TPL"
+check "B6 metrica principale interruzioni" contains_in_file 'Interruzioni chieste ad Andrea' "$RUN_TPL"
+check "B6 skill aggiorna le metriche" contains_in_file 'quante volte hai interrotto Andrea' "$SKILL"
+check "B6 osservatore KO non ferma" contains_in_file 'L'"'"'osservatore rende visibile un loop patologico, non lo ferma' "$LANE"
+
+CONFIG_TPL="$ROOT/templates/config.toml"
+check "B7 config espone i tetti a due livelli" matches_in_file 'task_per_milestone = 3[\s\S]*?builder = 9' "$CONFIG_TPL"
+check "B7 config separa il pool di verifica" contains_in_file 'verifiche_in_volo = 3' "$CONFIG_TPL"
+check "B7 config elenca le aree sensibili" matches_in_file '\[rischio\][\s\S]*?aree_sensibili = \[' "$CONFIG_TPL"
+
+AGENTS="$ROOT/agents"
+BIN="$ROOT/bin"
+
+# C1 — agent del plugin reali, non promessi
+check "C1 verificatore applica i quattro passi" contains_in_file '## I quattro passi, tutti obbligatori' "$AGENTS/verificatore.md"
+check "C1 verificatore esige oracolo rosso" contains_in_file 'KO: oracolo assente' "$AGENTS/verificatore.md"
+check "C1 verificatore non scrive file" contains_in_file 'Non modifichi nessun file' "$AGENTS/verificatore.md"
+check "C1 pre-merge calcola la classe sul diff" contains_in_file '## Classe di rischio, calcolata sul diff reale' "$AGENTS/pre-merge.md"
+check "C1 pre-merge non promuove mai" contains_in_file 'non promuovi mai una PR da `in attesa` ad `auto`' "$AGENTS/pre-merge.md"
+check "C1 pre-merge risponde nel formato fisso" contains_in_file 'suggerisco merge: sì | no' "$AGENTS/pre-merge.md"
+check "C1 worker non delega" contains_in_file '**Non deleghi.**' "$AGENTS/worker-impl.md"
+check "C1 worker non parla con Andrea" contains_in_file '**Non parli con Andrea.**' "$AGENTS/worker-impl.md"
+check "C1 worker resta nei glob" contains_in_file '**Scrivi solo dentro i glob dichiarati**' "$AGENTS/worker-impl.md"
+check "C1 integratore non implementa" contains_in_file '**Nessuna implementazione nuova.**' "$AGENTS/integratore.md"
+check "C1 integratore non usa git distruttivo" contains_in_file 'Nessun `--force`, nessun `reset --hard`' "$AGENTS/integratore.md"
+check "C1 worker-mech si ferma se non e meccanico" contains_in_file 'non meccanico' "$AGENTS/worker-mech.md"
+
+# C2 — bridge: validano prima di spendere credito
+check "C2 cx usa yolo" contains_in_file 'codex exec --yolo' "$BIN/spawn-cx.sh"
+check "C2 cx valida i modelli di routing" contains_in_file 'gpt-6-astra|gpt-5.6-sol|gpt-5.6-terra|gpt-5.6-luna' "$BIN/spawn-cx.sh"
+check "C2 cx valida effort" contains_in_file 'low|medium|high' "$BIN/spawn-cx.sh"
+check "C2 cc usa bypassPermissions" contains_in_file '--permission-mode bypassPermissions' "$BIN/spawn-cc.sh"
+check "C2 cc valida i modelli CC" contains_in_file 'opus|sonnet|haiku' "$BIN/spawn-cc.sh"
+check "C2 bridge espongono dry-run" matches_in_file '\-\-dry-run' "$BIN/spawn-cx.sh"
+check "C2 bridge scrivono il log per task" contains_in_file '.orchestratore/logs' "$BIN/spawn-cx.sh"
+check "C2 bridge propagano l exit code" contains_in_file 'exit "$STATUS"' "$BIN/spawn-cc.sh"
+check "C2 gate eseguibile del bridge presente" test -x "$ROOT/tests/check-bridge.sh"
+if [ "${ORCHESTRATORE_SKIP_EXEC:-0}" = "1" ]; then
+  ok "C2 gate eseguibile del bridge verde (saltato: gia coperto dagli invarianti di testo)"
+else
+  check "C2 gate eseguibile del bridge verde" bash "$ROOT/tests/check-bridge.sh"
+fi
+check "C2 adapter documenta i codici di rifiuto" contains_in_file 'modello fuori routing `65`' "$ADAPTER_CC"
+
+COMMANDS="$ROOT/commands"
+HOOKS="$ROOT/hooks"
+
+# D1 — comandi: porta d'ingresso, non logica duplicata
+check "D1 orchestra carica la skill come fonte di verita" contains_in_file 'è lei la fonte di verità' "$COMMANDS/orchestra.md"
+check "D1 orchestra non chiede i default" contains_in_file "L'unica domanda ammessa all'avvio" "$COMMANDS/orchestra.md"
+check "D1 orchestra impone il piano di parallelizzazione" contains_in_file '## Piano di parallelizzazione' "$COMMANDS/orchestra.md"
+check "D1 status e sola lettura" contains_in_file 'Non aprire task, non delegare, non modificare file' "$COMMANDS/orchestra-status.md"
+check "D1 status legge lo stato reale" contains_in_file 'mai dalla conversazione' "$COMMANDS/orchestra-status.md"
+check "D1 status non stima" contains_in_file 'non stimare' "$COMMANDS/orchestra-status.md"
+
+# D2 — hook: il divieto assoluto diventa eseguibile
+check "D2 hooks.json registra PreToolUse su Bash" matches_in_file '"PreToolUse"[\s\S]*?"matcher": "Bash"' "$HOOKS/hooks.json"
+check "D2 hooks.json registra SessionStart" contains_in_file '"SessionStart"' "$HOOKS/hooks.json"
+check "D2 hooks.json usa CLAUDE_PLUGIN_ROOT" contains_in_file 'CLAUDE_PLUGIN_ROOT' "$HOOKS/hooks.json"
+check "D2 guard attivo solo con un run vivo" contains_in_file '.orchestratore/brain.lock" ] || exit 0' "$HOOKS/guard-run.sh"
+check "D2 guard blocca con exit 2" contains_in_file 'exit 2' "$HOOKS/guard-run.sh"
+check "D2 guard copre il reset distruttivo" matches_in_file 'reset --hard' "$HOOKS/guard-run.sh"
+check "D2 guard copre il merge amministrativo" contains_in_file 'gh pr merge' "$HOOKS/guard-run.sh"
+check "D2 session hook non modifica niente" contains_in_file 'Non modifica niente' "$HOOKS/session-run-state.sh"
+check "D2 gate eseguibile degli hook presente" test -x "$ROOT/tests/check-hooks.sh"
+if [ "${ORCHESTRATORE_SKIP_EXEC:-0}" = "1" ]; then
+  ok "D2 gate eseguibile degli hook verde (saltato: gia coperto dagli invarianti di testo)"
+else
+  check "D2 gate eseguibile degli hook verde" bash "$ROOT/tests/check-hooks.sh"
+fi
 
 if ((failures > 0)); then
   printf 'ROSSO: %d controlli falliti\n' "$failures"
