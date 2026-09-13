@@ -8,6 +8,16 @@ verifica = "cc"            # cc | cx | opposto
 valido_fino = "2026-10-12" # alla scadenza il cervello chiede il nuovo peso, non lo applica in silenzio
 
 [tetti]
-milestone = 3
-worker = 6
+milestone = 3       # lane attive per progetto
+task_per_milestone = 3
+builder = 9         # milestone x task; verificatori, pre-merge e integratore sono fuori da questo tetto
+verifiche_in_volo = 3
 domande_aperte = 8
+
+[rischio]
+# Un diff che tocca queste aree non va mai in auto-merge: resta PR in attesa di Andrea.
+# Glob relativi alla radice del progetto. Assente = default di references/verifica.md.
+aree_sensibili = [
+  "**/migrations/**", "**/schema*", "**/auth/**", "**/payments/**",
+  "**/billing/**", "**/users/**", "**/roles/**", "**/*secret*", "**/*.env*",
+]

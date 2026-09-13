@@ -28,11 +28,12 @@ Se non puoi ottenerlo senza input, non delegare quella lane e usa un path già `
 
 ## Worker CC via bridge
 
-`bin/spawn-cc.sh <modello> <cwd> <prompt-file>` (M2), che esegue
-`claude -p --model <modello> --permission-mode bypassPermissions --output-format json`
-con il prompt letto da file, log in `.orchestratore/logs/<task-id>.log`. Con `verifica cc`
-il verificatore è sempre `opus` via questo bridge; il prompt include il testo dell'agent
-`verificatore` del plugin (`agents/verificatore.md`, M2) e solo perimetro e branch.
+`bin/spawn-cc.sh [--dry-run] <modello> <cwd> <prompt-file>`, che esegue
+`claude -p --model <modello> --permission-mode bypassPermissions --output-format json
+--add-dir <cwd>` con il prompt su stdin, log in `<cwd>/.orchestratore/logs/<task-id>.log`.
+Stessi codici di rifiuto del bridge cx (`65` modello, `66` cwd o prompt). Con `verifica cc`
+il verificatore è sempre `opus` via questo bridge e il prompt include il testo di
+`agents/verificatore.md` più solo perimetro, branch, hash, gate verde e aree ammesse.
 
 ## Domande interattive
 

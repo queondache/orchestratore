@@ -8,13 +8,14 @@ globalmente skill/plugin, né ampliare i permessi di tool o app.
 
 | Tipo di task | Skill | CC | cx |
 |---|---|---|---|
-| Architettura, DB, tier, sicurezza | `senior-architect` + skill di progetto (`mesa-senior-architect`, `pau-senior-architect`, `zerocampo-senior-architect`) | nativa | per path `~/Dev/skills/<nome>/SKILL.md` |
+| Architettura, DB, tier, sicurezza | `senior-architect` + skill di progetto (`mesa-senior-architect`, `pau-senior-architect`, `zerocampo-senior-architect`) | nativa | per path: `~/Dev/skills/<nome>/SKILL.md` oppure `~/.claude/skills/<nome>/SKILL.md` — le skill di progetto stanno in `~/.claude/skills/`, quelle di metodo in `~/Dev/skills/`; risolvi il path prima di passarlo |
 | Implementazione con test | `superpowers:test-driven-development`, `superpowers:systematic-debugging` | nativa | per path nella cache plugin CC (`~/.claude/plugins/cache/claude-plugins-official/superpowers/<versione>/skills/<nome>/SKILL.md`) |
 | Piano di una lane | `superpowers:writing-plans` | nativa | per path come sopra |
 | UI nuova | CC: `frontend-design` o `impeccable`; cx: `design-taste-frontend`, `high-end-visual-design`, `ui-ux-pro-max` | nativa | nativa |
 | Redesign | `redesign-existing-projects` | nativa | nativa |
 | Lane milestone | `milestone` | nativa | per path `~/Dev/skills/milestone/SKILL.md` |
-| Verifica | agent `verificatore` del plugin | nativo | opus via bridge, o thread `gpt-5.6-sol` con il testo dell'agent per path |
+| Verifica | agent `verificatore` del plugin + [verifica](verifica.md) | nativo | opus via bridge, o thread `gpt-5.6-sol` con il testo dell'agent per path |
+| Integrazione branch task | agent `integratore` del plugin | nativo | thread `gpt-5.6-terra` |
 | Deploy Vercel | plugin `vercel` | nativo | nativo |
 | Output per Andrea | `i-have-adhd` sempre attiva; `caveman` se attiva | nativa | nativa |
 
