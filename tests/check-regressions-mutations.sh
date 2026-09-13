@@ -40,6 +40,36 @@ expect_rejected() {
   fi
 }
 
+# Le mutazioni sul comportamento della guardia non si vedono nel testo: vanno provate
+# facendo girare il gate eseguibile degli hook sulla copia mutata. Un meccanismo che
+# sopravvive qui e' un meccanismo che nessun test difende, cioe' un meccanismo finto.
+# Impronta dei file del plugin, per accorgersi di una mutazione che non muta niente.
+impronta() {
+  find "$1" -type f -not -path '*/.git/*' -exec shasum {} + | shasum | cut -d' ' -f1
+}
+
+expect_rejected_exec() {
+  local mutation="$1"
+  local copy prima dopo
+  copy="$(mutate_copy "$mutation")"
+  shift
+  prima="$(impronta "$copy")"
+  "$@" "$copy"
+  dopo="$(impronta "$copy")"
+  if [ "$prima" = "$dopo" ]; then
+    printf 'MUTATION VOID: %s (il pattern non ha trovato niente da cambiare)\n' "$mutation"
+    failures=$((failures + 1))
+    return
+  fi
+
+  if bash "$copy/tests/check-hooks.sh" >/dev/null 2>&1; then
+    printf 'MUTATION SURVIVED: %s\n' "$mutation"
+    failures=$((failures + 1))
+  else
+    printf 'MUTATION KILLED: %s\n' "$mutation"
+  fi
+}
+
 remove_peso_precedente() {
   local copy="$1"
   sed -i.bak '/^# Peso salvato/,$d' "$copy/templates/state.toml"
@@ -328,6 +358,76 @@ make_start_ask_defaults() {
   perl -0pi -e 's/L\x27unica domanda ammessa all\x27avvio/Chiedi ad Andrea ogni default prima di partire; la domanda ammessa all\x27avvio/' "$copy/commands/orchestra.md"
 }
 
+guard_a_capo_non_separa() {
+  local copy="$1"
+  perl -0pi -e 's/  lex.whitespace = " .t.r"/  lex.whitespace = " \\t\\r\\n"/' "$copy/hooks/guard_run.py"
+}
+
+guard_apice_inverso_non_separa() {
+  local copy="$1"
+  perl -0pi -e 's/CARATTERI_SEPARATORE = set\(";&\|\(\)<>\{\}`/CARATTERI_SEPARATORE = set(";&|()<>{}/' "$copy/hooks/guard_run.py"
+}
+
+guard_continuazione_non_unita() {
+  local copy="$1"
+  perl -0pi -e 's/    return cmd\.replace/    return cmd\n    return cmd.replace/' "$copy/hooks/guard_run.py"
+}
+
+guard_heredoc_non_piu_dato() {
+  local copy="$1"
+  perl -0pi -e 's/    righe = cmd\.split/    return cmd\n    righe = cmd.split/' "$copy/hooks/guard_run.py"
+}
+
+guard_wrapper_non_saltati() {
+  local copy="$1"
+  perl -0pi -e 's/"xargs", "exec", "builtin", "stdbuf", "setsid",/"builtin",/' "$copy/hooks/guard_run.py"
+}
+
+guard_flag_lungo_esatto() {
+  local copy="$1"
+  perl -0pi -e 's/a\.startswith\("--for"\)/a == "--force"/' "$copy/hooks/guard_run.py"
+}
+
+guard_flag_corto_esatto() {
+  local copy="$1"
+  perl -0pi -e 's/return tok\.startswith\("-"\) and not tok\.startswith\("--"\) and lettera in tok\[1:\]/return tok == "-" + lettera/' "$copy/hooks/guard_run.py"
+}
+
+guard_quote_non_rispettate() {
+  local copy="$1"
+  perl -0pi -e 's/        lex = shlex\.shlex\([^\n]*\)/        return cmd.split()/' "$copy/hooks/guard_run.py"
+}
+
+guard_comando_annidato_ignorato() {
+  local copy="$1"
+  perl -0pi -e 's/            analizza_comando\(valore, profondita \+ 1\)/            pass/' "$copy/hooks/guard_run.py"
+}
+
+guard_reset_esatto() {
+  local copy="$1"
+  perl -0pi -e 's/a\.startswith\("--h"\) and a != "--help"/a == "--hard"/' "$copy/hooks/guard_run.py"
+}
+
+guard_rm_non_analizzato() {
+  local copy="$1"
+  perl -0pi -e 's/            analizza_rm\(segmento\[i \+ 1:\]\)/            pass/' "$copy/hooks/guard_run.py"
+}
+
+guard_find_non_analizzato() {
+  local copy="$1"
+  perl -0pi -e 's/            analizza_find\(segmento\[i \+ 1:\]\)/            pass/' "$copy/hooks/guard_run.py"
+}
+
+guard_gh_non_analizzato() {
+  local copy="$1"
+  perl -0pi -e 's/            analizza_gh\(segmento\[i \+ 1:\]\)/            pass/' "$copy/hooks/guard_run.py"
+}
+
+guard_avviso_senza_python_muto() {
+  local copy="$1"
+  perl -0pi -e 's/NON e attiva/attiva/' "$copy/hooks/guard-run.sh"
+}
+
 expect_rejected "missing peso_precedente schema" remove_peso_precedente
 expect_rejected "missing one-time peso save" remove_one_time_save
 expect_rejected "missing explicit credit transitions" remove_credit_transitions
@@ -385,6 +485,20 @@ expect_rejected "D1 status command made writable" make_status_command_writable
 expect_rejected "D1 start command asks defaults" make_start_ask_defaults
 expect_rejected "D2 run guard disabled" disable_run_guard
 expect_rejected "D2 guard hook unregistered" remove_guard_hook_registration
+expect_rejected_exec "D2 heredoc trattato come codice" guard_heredoc_non_piu_dato
+expect_rejected_exec "D2 a capo non separa i comandi" guard_a_capo_non_separa
+expect_rejected_exec "D2 wrapper non piu saltati" guard_wrapper_non_saltati
+expect_rejected_exec "D2 prefisso del flag lungo ignorato" guard_flag_lungo_esatto
+expect_rejected_exec "D2 flag corti combinati ignorati" guard_flag_corto_esatto
+expect_rejected_exec "D2 tokenizzazione senza virgolette" guard_quote_non_rispettate
+expect_rejected_exec "D2 comando annidato non analizzato" guard_comando_annidato_ignorato
+expect_rejected_exec "D2 abbreviazione di --hard ignorata" guard_reset_esatto
+expect_rejected_exec "D2 rm non analizzato" guard_rm_non_analizzato
+expect_rejected_exec "D2 find non analizzato" guard_find_non_analizzato
+expect_rejected_exec "D2 gh non analizzato" guard_gh_non_analizzato
+expect_rejected_exec "D2 guardia muta quando non protegge" guard_avviso_senza_python_muto
+expect_rejected_exec "D2 apice inverso non separa" guard_apice_inverso_non_separa
+expect_rejected_exec "D2 continuazione di riga non unita" guard_continuazione_non_unita
 
 if (( failures > 0 )); then
   printf 'RED: %d mutazioni sono sopravvissute\n' "$failures"

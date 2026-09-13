@@ -77,6 +77,7 @@ done
 check "commands/orchestra.md elenca i sottocomandi" bash -c "for s in start status peso credito stop riprendi; do grep -q \"\$s\" '$ROOT/commands/orchestra.md' || exit 1; done"
 check "hooks/hooks.json esiste" test -s "$ROOT/hooks/hooks.json"
 check "hooks/guard-run.sh eseguibile" test -x "$ROOT/hooks/guard-run.sh"
+check "hooks/guard_run.py esiste" test -s "$ROOT/hooks/guard_run.py"
 check "hooks/session-run-state.sh eseguibile" test -x "$ROOT/hooks/session-run-state.sh"
 check "hook passano il gate eseguibile" bash "$ROOT/tests/check-hooks.sh"
 

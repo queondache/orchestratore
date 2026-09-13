@@ -44,7 +44,13 @@ lavoro non verificato è un run fallito.
   duplicata.
 - `hooks/`: `guard-run.sh` blocca in `PreToolUse` i comandi che la skill vieta in modo
   assoluto, ma **solo** quando esiste `.orchestratore/brain.lock`; `session-run-state.sh`
-  mette in contesto un run presente.
+  mette in contesto un run presente. L'analisi non sta nello shell ma in `guard_run.py`:
+  cinque giri di verifica hanno mostrato che un confronto a pattern non distingue un
+  comando da una stringa che parla di quel comando, quindi o lasciava passare le varianti
+  o bloccava i messaggi di commit. L'analizzatore tokenizza rispettando le virgolette,
+  tratta il corpo di un heredoc come dato e guarda programma e sottocomando. Senza
+  `python3` non c'e' analisi: la guardia lo dichiara su stderr e lascia passare, invece
+  di fingere una protezione che non c'e'.
 
 ## Gate
 
@@ -52,7 +58,7 @@ lavoro non verificato è un run fallito.
 |---|---|
 | `tests/check-structure.sh` | struttura, manifest, presenza e forma di agent, bridge, comandi, hook |
 | `tests/check-regressions.sh` | invarianti di testo: ogni regola di metodo è ancora scritta |
-| `tests/check-regressions-mutations.sh` | ogni invariante è stato visto rosso almeno una volta |
+| `tests/check-regressions-mutations.sh` | ogni invariante è stato visto rosso almeno una volta; le mutazioni sul comportamento della guardia girano contro il gate eseguibile degli hook |
 | `tests/check-bridge.sh` | i bridge compongono la riga giusta e rifiutano gli input invalidi, senza spendere credito |
 | `tests/check-hooks.sh` | la guardia blocca il distruttivo con un run attivo, non interferisce fuori |
 
