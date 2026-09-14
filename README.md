@@ -9,7 +9,8 @@ celebrazione milestone e uso libero delle skill già installate nel perimetro de
 Il routing è `cheapest-capable`: cervello cx Astra medium; dev Luna da medium, Terra da
 medium e Sol da low; Astra worker da low solo quando un trigger osservabile richiede escalation.
 Verifica indipendente a ogni consegna, non solo a fine milestone; un gate rosso non ferma il
-run (dopo due KO si cambia strategia e modello); a milestone chiusa merge, allineamento di
+run: feedback invariato deduplicato, due tentativi per approccio e massimo due approcci
+automatici prima di parcheggiare la lane e liberare lo slot. A milestone chiusa: merge, allineamento di
 ROADMAP/progress/decisioni e apertura immediata della lane successiva. Il verificatore esegue
 quattro passi con evidenza raw — hash, gate verde, oracolo (il test nuovo deve diventare rosso
 senza la modifica), perimetro — e il merge automatico vale solo per tier 1-2: tier 3 e aree

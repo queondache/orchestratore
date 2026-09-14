@@ -229,11 +229,12 @@ check "A1 vieta domande su skill tool permessi" matches_in_file 'Mai di\s+skill,
 
 # A2 — il rosso non ferma il run
 check "A2 dichiara il rosso non stop" contains_in_file 'Il rosso non è mai una condizione di stop' "$SKILL"
-check "A2 impone cambio strategia e modello dopo 2 KO" matches_in_file 'due KO consecutivi sullo stesso gate cambia strategia\s+e modello' "$SKILL"
-check "A2 lane senza tetto ai giri" contains_in_file 'Nessun tetto ai giri' "$LANE"
-check "A2 lane non sospende sul rosso" contains_in_file 'mai perché il gate resta rosso' "$LANE"
-check "A2 routing impone modello diverso dopo 2 KO" contains_in_file 'Due KO consecutivi sullo stesso gate obbligano a cambiare modello' "$ROUTING"
-check "A2 nessun tetto di 2 KO residuo" does_not_contain 'Massimo 2 KO consecutivi' "$LANE" "$SKILL"
+check "A2 firma stabile del problema" contains_in_file 'gate + errore normalizzato + hash del diff' "$LANE"
+check "A2 deduplica feedback invariato" contains_in_file 'firma invariata già consegnata è deduplicata' "$LANE"
+check "A2 limita a due tentativi per approccio" contains_in_file 'due tentativi per approccio' "$LANE"
+check "A2 limita a due approcci automatici" contains_in_file 'dopo due approcci distinti' "$LANE"
+check "A2 parcheggia la lane e continua il run" matches_in_file 'bloccata-tecnica[\s\S]*?libera lo slot[\s\S]*?continua il lavoro indipendente' "$LANE"
+check "A2 template persiste firma e approccio" matches_in_file 'Firma KO:[\s\S]*?approccio_id:[\s\S]*?Tentativi approccio' "$ROOT/templates/run.md"
 
 # A3 — verifica a ogni consegna
 check "A3 verifica obbligatoria per consegna" contains_in_file 'Verifica obbligatoria a ogni consegna, non solo a fine milestone' "$SKILL"
@@ -339,7 +340,8 @@ check "B6 assunzioni nel template" contains_in_file '## Assunzioni' "$RUN_TPL"
 check "B6 metriche nel template" contains_in_file '## Metriche' "$RUN_TPL"
 check "B6 metrica principale interruzioni" contains_in_file 'Interruzioni chieste ad Andrea' "$RUN_TPL"
 check "B6 skill aggiorna le metriche" contains_in_file 'quante volte hai interrotto Andrea' "$SKILL"
-check "B6 osservatore KO non ferma" contains_in_file 'L'"'"'osservatore rende visibile un loop patologico, non lo ferma' "$LANE"
+check "B6 loop KO finito" contains_in_file 'Nessun terzo approccio automatico' "$LANE"
+check "B6 blocco di lane non ferma il run" contains_in_file 'il rosso della lane non ferma l'"'"'intero run' "$LANE"
 
 CONFIG_TPL="$ROOT/templates/config.toml"
 check "B7 config espone i tetti a due livelli" matches_in_file 'task_per_milestone = 3[\s\S]*?builder = 9' "$CONFIG_TPL"
@@ -366,7 +368,12 @@ check "C1 worker-mech si ferma se non e meccanico" contains_in_file 'non meccani
 # C2 — bridge: validano prima di spendere credito
 check "C2 cx usa yolo" contains_in_file 'codex exec --yolo' "$BIN/spawn-cx.sh"
 check "C2 cx valida i modelli di routing" contains_in_file 'gpt-6-astra|gpt-5.6-sol|gpt-5.6-terra|gpt-5.6-luna' "$BIN/spawn-cx.sh"
-check "C2 cx valida effort" contains_in_file 'low|medium|high' "$BIN/spawn-cx.sh"
+check "C2 cx valida effort per modello" contains_in_file 'case "$MODEL:$EFFORT" in' "$BIN/spawn-cx.sh"
+check "C2 cx impone Luna da medium" contains_in_file 'gpt-5.6-luna:medium|gpt-5.6-luna:high' "$BIN/spawn-cx.sh"
+check "C2 cx impone Terra da medium" contains_in_file 'gpt-5.6-terra:medium|gpt-5.6-terra:high' "$BIN/spawn-cx.sh"
+check "C2 cx consente Sol da low" contains_in_file 'gpt-5.6-sol:low|gpt-5.6-sol:medium|gpt-5.6-sol:high' "$BIN/spawn-cx.sh"
+check "C2 cx vieta Luna low" does_not_contain 'gpt-5.6-luna:low' "$BIN/spawn-cx.sh"
+check "C2 cx vieta Terra low" does_not_contain 'gpt-5.6-terra:low' "$BIN/spawn-cx.sh"
 check "C2 cc usa bypassPermissions" contains_in_file '--permission-mode bypassPermissions' "$BIN/spawn-cc.sh"
 check "C2 cc valida i modelli CC" contains_in_file 'opus|sonnet|haiku' "$BIN/spawn-cc.sh"
 check "C2 bridge espongono dry-run" matches_in_file '\-\-dry-run' "$BIN/spawn-cx.sh"

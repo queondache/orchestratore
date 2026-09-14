@@ -60,12 +60,11 @@ comportamento atteso non è né osservabile né testabile, o quando una domanda 
 cambia contratto, architettura, sicurezza, schema dati, comportamento utente, oracolo di test o
 definition of done: allora checkpoint e domanda, non abbandono.
 
-**Il rosso non è mai una condizione di stop.** Build, test, lint, CI, review KO, deploy rosso:
-si lavora fino al verde. Dopo **due KO consecutivi sullo stesso gate cambia strategia
-e modello** — errore raw riletto, `superpowers:systematic-debugging`, riassegnazione a un
-modello diverso e al runtime opposto quando il peso lo consente, tier più alto se il rischio lo
-giustifica — e ripeti il cambio a ogni coppia di KO successiva. Il run si ferma solo per domanda
-di prodotto bloccante, credito esaurito o limite di contesto, mai perché un gate è difficile.
+**Il rosso non è mai una condizione di stop del run.** Per ogni KO calcola una firma stabile
+`gate + errore normalizzato + hash del diff` e persistila in `run.md`: lo stesso feedback invariato non genera un altro giro. Massimo **due tentativi per approccio**; poi cambia ipotesi,
+strategia e modello, usando il runtime opposto quando disponibile. Se la stessa firma resta rossa dopo due approcci distinti, parcheggia la lane come `bloccata-tecnica` con evidenza, owner e condizione di
+ripresa, libera lo slot e continua il lavoro indipendente. Riapri solo su input o evidenza nuovi;
+il run si ferma solo per domanda di prodotto bloccante, credito esaurito o limite di contesto.
 Lavoro autonomo non autorizza a completare la roadmap intera se Andrea non scrive `tutte`.
 
 Nel run non presidiato, commit, push e PR normali automatici sono autorizzati; auto-merge solo
@@ -232,7 +231,8 @@ sia vivo o che un lavoro sia finito.
 
 - Chiedere ad Andrea un perimetro dentro un run autorizzato, il permesso di usare una skill
   già installata, o la conferma di un default del contratto.
-- Sospendere una lane perché un gate è rosso invece di cambiare strategia e modello.
+- Ripetere feedback invariato, superare due tentativi per approccio o riaprire una lane
+  `bloccata-tecnica` senza input o evidenza nuovi.
 - Occupare uno slot senza prova di indipendenza scritta, o aprire il parallelo su glob che si
   intersecano invece di fare prima la lane contract-first.
 - Cervello che scrive codice, integra branch o risolve conflitti.

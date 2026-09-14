@@ -45,7 +45,8 @@ task successivo al default del suo tier: l'escalation non diventa un nuovo defau
    ammesso solo qui o su un trigger registrato.
 4. **Solo-cx** (CC esaurito): meccanico → Luna medium costruisce, Terra medium verifica;
    basic → Terra medium costruisce, Luna medium verifica; importante → Sol low/medium
-   costruisce, Terra high verifica, Luna medium fa il pre-merge. Astra parte da low solo se
+   costruisce, Terra medium verifica, Luna medium fa il pre-merge. Terra sale a high solo
+   con un trigger registrato. Astra parte da low solo se
    scatta un trigger; non è il verificatore predefinito.
 5. Il failover è simmetrico e persistente. I task in volo sul runtime esaurito finiscono
    solo il checkpoint atomico sicuro. Se quel runtime ospita il cervello e l'altro è
@@ -59,11 +60,12 @@ task successivo al default del suo tier: l'escalation non diventa un nuovo defau
    salvato prima del failover.
 7. Modello ed effort non si alzano per prudenza generica: valgono solo i trigger della
    sezione precedente. De-escalation sul follow-up meccanico e dopo un gate verde.
-7-bis. **Due KO consecutivi sullo stesso gate obbligano a cambiare modello**, non solo
-   strategia: riassegna il task a un modello diverso da quello che ha fallito, al runtime
-   opposto quando il peso lo consente, e annota il cambio in `run.md`. Riprovare lo stesso
-   gate con lo stesso modello e lo stesso approccio non è un tentativo nuovo. Nessun tetto
-   ai giri: il rosso tecnico non sospende la lane.
+7-bis. Ogni KO usa la firma `gate + errore normalizzato + hash del diff`; feedback con firma
+   invariata è deduplicato. Sono ammessi **due tentativi per approccio**. Poi cambia ipotesi,
+   strategia e modello, al runtime opposto quando il peso lo consente. Se due approcci distinti
+   falliscono con la stessa firma, parcheggia la lane come `bloccata-tecnica`, libera lo slot e
+   continua le lane indipendenti. Registra firma, `approccio_id`, tentativi, modelli, owner e
+   condizione di ripresa; riapri solo con input o evidenza nuovi.
 8. Effort: il cervello rispetta i minimi per modello (`Luna ≥ medium`, `Terra ≥ medium`,
    `Sol ≥ low`, `Astra ≥ low`; cervello Astra = `medium`) e scrive scelta e motivo nel
    contratto. In cx si passa con `-c model_reasoning_effort=<low|medium|high>`; in CC con

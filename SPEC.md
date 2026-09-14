@@ -36,7 +36,7 @@ Terra da medium e Sol da low; Astra worker da low solo su escalation osservabile
 | I1 | Chi scrive non verifica. Verificatore e pre-merge su modelli diversi dal builder. |
 | I2 | Nessuno stato avanza senza verdetto con hash e output raw dei comandi eseguiti. |
 | I3 | Un test nuovo deve essere visto rosso senza la modifica, altrimenti non prova niente. |
-| I4 | Un gate rosso non è mai una condizione di stop: dopo due KO si cambia strategia e modello. |
+| I4 | Un gate rosso non ferma il run: firma e tentativi persistiti, due tentativi per approccio, massimo due approcci automatici; poi la lane è parcheggiata e il lavoro indipendente continua. |
 | I5 | Uno slot di parallelismo si occupa solo con prova di indipendenza scritta sui file reali. |
 | I6 | Il cervello non scrive codice e non integra branch. |
 | I7 | Auto-merge solo tier 1-2 sul diff reale; tier 3 e aree sensibili restano PR in attesa. |

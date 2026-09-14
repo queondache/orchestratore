@@ -51,15 +51,14 @@ e aree ammesse. Mai il piano, il ledger o l'opinione del builder. I quattro pass
 - OK → Fase 4.
 - OK CON RISERVE → correzioni dentro perimetro, un secondo giro, poi Fase 4 con riserve nel report.
 - `KO: oracolo assente` e `KO: fuori perimetro` sono KO pieni, mai riserve.
-- KO → correzioni e nuovo giro. **Nessun tetto ai giri**: si lavora fino al verde. Due KO
-  consecutivi sullo stesso gate obbligano a **cambiare strategia e modello** —
-  `superpowers:systematic-debugging` sull'errore raw, riassegnazione a un modello diverso e
-  al runtime opposto quando il peso lo consente, tier più alto se il rischio lo giustifica —
-  e il cambio si ripete a ogni coppia di KO successiva, annotato in `run.md`. La lane si
-  sospende solo se emerge una domanda di prodotto bloccante, mai perché il gate resta rosso.
-- **Osservatore**: ogni tre coppie di KO sullo stesso gate il cervello scrive nel report gate,
-  tentativi, cambi di modello già fatti e costo se il runtime lo espone, poi **continua**.
-  L'osservatore rende visibile un loop patologico, non lo ferma.
+- KO → calcola la firma `gate + errore normalizzato + hash del diff` e confrontala con il
+  registro. Una firma invariata già consegnata è deduplicata: non genera un altro giro.
+- Massimo **due tentativi per approccio**. Dopo il secondo KO cambia ipotesi, strategia e
+  modello; usa il runtime opposto quando disponibile e registra un nuovo `approccio_id`.
+- Se la stessa firma resta rossa dopo due approcci distinti, stato `bloccata-tecnica`: scrivi
+  evidenza raw, tentativi, modelli, owner e condizione osservabile di ripresa; libera lo slot e
+  continua il lavoro indipendente. Nessun terzo approccio automatico. Riapri solo quando cambia
+  input, diff o evidenza; il rosso della lane non ferma l'intero run.
 - **Regola dell'hash**: l'OK vale solo sul codice esatto che va in PR. Ogni correzione dopo
   un verdetto, anche una riga, obbliga a un giro di conferma che non conta nel tetto.
   Nessuna PR senza OK sull'hash che contiene.

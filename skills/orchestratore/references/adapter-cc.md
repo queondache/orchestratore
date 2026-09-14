@@ -31,6 +31,8 @@ Tool `Agent`. Regole:
 l'alias di `--dangerously-bypass-approvals-and-sandbox`) con il prompt su stdin, log in
 `<cwd>/.orchestratore/logs/<task-id>.log`, exit code restituito. Rifiuta prima di spendere
 credito: modello fuori routing `65`, effort non ammesso `65`, cwd o prompt mancanti `66`.
+La validazione è sulla coppia modello/effort: Luna e Terra rifiutano `low`; Sol accetta da
+`low`; Astra accetta da `low`, ma il contratto deve registrarne il trigger di escalation.
 `--dry-run` stampa la riga di comando senza eseguire: usalo per provare il cablaggio.
 Lancialo con `Bash` in background (`run_in_background: true`) e leggi il log al
 checkpoint. Modelli cx: `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`.

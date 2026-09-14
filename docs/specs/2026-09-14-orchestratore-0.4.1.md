@@ -11,7 +11,12 @@ selezione del modello e dell'effort più economici capaci di chiudere ogni task.
 - Modello ed effort dipendono dal task: `low` non è più un default indiscriminato.
 - Il verificatore resta distinto dal builder e sceglie il profilo meno costoso compatibile
   con indipendenza, rischio e qualità richiesta.
+- Il bridge Codex rifiuta prima della spesa le coppie vietate `Luna low` e `Terra low`.
 - `run.md` registra scelta, trigger ed eventuale escalation per rendere il costo auditabile.
+- I KO usano firma persistita, deduplica e budget finito: due tentativi per approccio, due
+  approcci automatici, poi lane parcheggiata mentre il run continua altrove. Il pattern è
+  adattato da [Untrivial AI Agent Orchestrator](https://github.com/Untrivial-ai/agent-orchestrator/blob/a342f8eb518bc9a389ed4cf6e7d20e047de8160d/backend/internal/lifecycle/reactions.go),
+  progetto Apache-2.0 con 12.010 stelle al momento della release.
 
 ## Compatibilità
 

@@ -21,9 +21,11 @@ case "$MODEL" in
   *) printf 'modello cx non ammesso: %s\n' "$MODEL" >&2; exit 65 ;;
 esac
 
-case "$EFFORT" in
-  low|medium|high) ;;
-  *) printf 'effort non ammesso: %s (low|medium|high)\n' "$EFFORT" >&2; exit 65 ;;
+case "$MODEL:$EFFORT" in
+  gpt-5.6-luna:medium|gpt-5.6-luna:high|gpt-5.6-terra:medium|gpt-5.6-terra:high) ;;
+  gpt-5.6-sol:low|gpt-5.6-sol:medium|gpt-5.6-sol:high) ;;
+  gpt-6-astra:low|gpt-6-astra:medium|gpt-6-astra:high) ;;
+  *) printf 'combinazione modello/effort non ammessa: %s %s\n' "$MODEL" "$EFFORT" >&2; exit 65 ;;
 esac
 
 [ -d "$CWD" ] || { printf 'cwd inesistente: %s\n' "$CWD" >&2; exit 66; }
