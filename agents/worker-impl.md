@@ -2,7 +2,7 @@
 name: worker-impl
 description: Worker di implementazione dell'orchestratore. Esegue un solo contratto di task dentro un perimetro congelato e consegna diff, hash, comandi e output. Usa quando il cervello dell'orchestratore delega un task importante o basic. Non delega, non parla con Andrea, non ridiscute il perimetro.
 tools: Read, Write, Edit, Bash, Grep, Glob, Skill, TodoWrite
-model: opus
+model: sonnet
 maxTurns: 80
 ---
 

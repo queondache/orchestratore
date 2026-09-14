@@ -14,9 +14,10 @@ Il catalogo CC (`~/Dev/skills/cc-installed-plugins.md`) non dice cosa ha cx, e v
 
 ## Worker cx nativi
 
-Un thread per incarico, con modello ed effort dichiarati nel contratto del task
-(`gpt-5.6-sol` importante, `gpt-5.6-terra` basic, `gpt-5.6-luna` meccanico; verifica
-`gpt-5.6-sol`). Prompt del worker come in adapter-cc: contratto + perimetro + skill con
+Un thread per incarico, con modello ed effort dichiarati nel contratto del task. Il cervello
+usa `gpt-6-astra` medium; i dev usano `gpt-5.6-luna` da medium per il meccanico,
+`gpt-5.6-terra` da medium per il basic e `gpt-5.6-sol` da low per l'importante. Astra parte
+da low solo su escalation e non è un dev di primo tentativo. Prompt del worker come in adapter-cc: contratto + perimetro + skill con
 path + boundary + «non delegare, domande nel registro quesiti, checkpoint con diff, hash,
 comandi e output». Se il runtime non permette di scegliere il modello per thread, usa
 `codex exec` con `-m` dal cervello stesso e dichiaralo nel contratto.
@@ -32,7 +33,8 @@ Se non puoi ottenerlo senza input, non delegare quella lane e usa un path già `
 `claude -p --model <modello> --permission-mode bypassPermissions --output-format json
 --add-dir <cwd>` con il prompt su stdin, log in `<cwd>/.orchestratore/logs/<task-id>.log`.
 Stessi codici di rifiuto del bridge cx (`65` modello, `66` cwd o prompt). Con `verifica cc`
-il verificatore è sempre `opus` via questo bridge e il prompt include il testo di
+il verificatore segue il tier di `routing.md`: Haiku per meccanico/basic, Sonnet per
+importante, Opus solo su trigger o in solo-CC importante. Il prompt include il testo di
 `agents/verificatore.md` più solo perimetro, branch, hash, gate verde e aree ammesse.
 
 ## Domande interattive

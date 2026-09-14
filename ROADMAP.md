@@ -1,8 +1,8 @@
 # ROADMAP — orchestratore
 
 Delta fra `SPEC.md` e il codice reale. Stato con evidenza eseguita, mai per assunzione.
-Ultimo allineamento: 13/09/2026, versione 0.4.0, PR
-[#1](https://github.com/queondache/orchestratore/pull/1).
+Ultimo allineamento: 14/09/2026, versione 0.4.1, release
+[`v0.4.1`](https://github.com/queondache/orchestratore/releases/tag/v0.4.1).
 
 ## Stato per milestone
 
@@ -17,6 +17,7 @@ Ultimo allineamento: 13/09/2026, versione 0.4.0, PR
 | M7 | Contesto e memoria del run: recon, assunzioni, metriche, osservatore KO | **FATTO** | `project-adapter.md` §3-bis; sezioni `## Assunzioni` e `## Metriche` in `templates/run.md`; invarianti B6 |
 | M8 | Run pilota end-to-end su un progetto reale | **MANCANTE** | nessun run mai eseguito; `SPEC.md [APERTO-01]` |
 | M9 | Evidenza del modello che ha davvero girato | **MANCANTE** | `routing.md` regola 9 lo esige, nessun meccanismo lo produce; `SPEC.md [APERTO-02]` |
+| M10 | Routing economico per modello, effort e task | **FATTO** | `references/routing.md`; invariante I11; gate e mutazioni verdi; review indipendente sul commit di release |
 
 M4-M7 sono state consegnate nella stessa PR #1, verificata in modo indipendente da Fable
 sull'hash che va in `main`.

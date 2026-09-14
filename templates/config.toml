@@ -7,6 +7,10 @@ dev = { cx = 100, cc = 0 }
 verifica = "cc"            # cc | cx | opposto
 valido_fino = "2026-10-12" # alla scadenza il cervello chiede il nuovo peso, non lo applica in silenzio
 
+[costo]
+strategia = "cheapest-capable"
+premium_solo_con_trigger = true # Astra/Opus/high: KO, disaccordo, ambiguità o rischio emerso
+
 [tetti]
 milestone = 3       # lane attive per progetto
 task_per_milestone = 3

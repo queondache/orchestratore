@@ -1,6 +1,6 @@
 ---
 name: pre-merge
-description: Gate pre-merge dell'orchestratore. Con PR aperta e verdetto del verificatore, ricalcola la classe di rischio sul diff reale e risponde "suggerisco merge sì o no". Usa come terzo modello, diverso dal builder e dal verificatore. Sola lettura più gh.
+description: Gate pre-merge dell'orchestratore. Con PR aperta e verdetto del verificatore, ricalcola la classe di rischio sul diff reale e risponde "suggerisco merge sì o no". Usa un modello diverso dal builder e, quando non richiede promozione premium, dal verificatore. Sola lettura più gh.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 maxTurns: 40

@@ -10,12 +10,13 @@ ultimo aggiornamento: <ISO 8601>
 Run mode: milestone-budget | while-quality-high
 Milestone budget: <n | tutte | n/a>
 Peso: dev cx <n> / cc <n>; verifica <cc|cx|opposto>
+Politica costo: cheapest-capable; Astra cervello=medium; Luna>=medium; Terra>=medium; Sol>=low; Astra worker>=low
 Tetto: 3 milestone × 3 task = max 9 worker builder; pool verifica separato, max 3 in volo
 Tetto domande aperte: <n>
 Gate verde: build=<cmd> test=<cmd> lint=<cmd>
 Required checks sul branch base: sì | no (se no vale il fallback suite locale)
 Verifica: obbligatoria a ogni consegna di codice, verificatore ≠ builder
-Rosso: mai uno stop; dopo 2 KO consecutivi cambia strategia e modello
+Rosso: firma persistita e deduplicata; max 2 tentativi/approccio, max 2 approcci automatici; poi lane bloccata-tecnica e run continua
 Stop aggiuntivi: <condizioni osservabili>
 Run non presidiato: sì | no
 Skill: usa liberamente skill installate disponibili; nome/path + SKILL.md completo; fallback equivalente/base se manca
@@ -57,6 +58,7 @@ Dipendenze completate e contratto congelato:
 File scrivibili (un owner per file):
 File condivisi che integra il cervello:
 Tier / runtime / modello / effort:
+Motivo del modello/effort ed eventuale trigger premium:
 Skill obbligatorie: <nome → path esatto>
 Recon: .orchestratore/recon.md (revisione base <sha>)
 Gate verde (comandi esatti di build, test, lint):
@@ -68,7 +70,9 @@ Prossimo checkpoint:
 Consegna: <hash, comandi eseguiti, output, limiti residui>
 verifica T-001: <modello/runtime del verificatore> su <hash> → OK | OK CON RISERVE | KO
 comando: <comando eseguito dal verificatore> → <esito raw>
-KO consecutivi: <n> — cambio strategia/modello: <cosa è cambiato | n/a>
+Firma KO: <gate|errore normalizzato|hash diff> — approccio_id: <A1|A2>
+Tentativi approccio: <0|1|2> — cambio ipotesi/strategia/modello: <cosa è cambiato | n/a>
+Blocco tecnico: <no | evidenza, owner, condizione di ripresa>
 
 ## Domande (dettaglio in .claude/decisioni.md)
 
@@ -88,6 +92,7 @@ Milestone chiuse: <n> · PR in attesa di Andrea: <n>
 Interruzioni chieste ad Andrea: <n>   ← metrica principale
 Giri di KO totali: <n> (per milestone: <ID n, ID n>)
 Rilavorazioni dopo verifica: <n> · Verifiche riassegnate per verdetto senza evidenza: <n>
+Escalation premium (Astra/Opus/high): <n; task e trigger>
 Durata per milestone: <ID hh:mm> · Token: <input/output | non disponibile>
 
 ## Handoff

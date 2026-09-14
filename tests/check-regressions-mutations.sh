@@ -25,10 +25,18 @@ mutate_copy() {
 
 expect_rejected() {
   local mutation="$1"
-  local copy
+  local copy prima dopo
   copy="$(mutate_copy "$mutation")"
   shift
+  prima="$(impronta "$copy")"
   "$@" "$copy"
+  dopo="$(impronta "$copy")"
+
+  if [ "$prima" = "$dopo" ]; then
+    printf 'MUTATION VOID: %s (il pattern non ha trovato niente da cambiare)\n' "$mutation"
+    failures=$((failures + 1))
+    return
+  fi
 
   # I gate eseguibili girano una volta sola nella suite normale: qui basta il testo,
   # e ogni mutazione di bridge o hook e comunque coperta da un invariante di testo.
@@ -98,7 +106,7 @@ remove_restore_guard() {
 
 downgrade_y2_version() {
   local copy="$1"
-  sed -i.bak 's/"0\.4\.0"/"0.1.1"/g' "$copy/.claude-plugin/plugin.json"
+  sed -i.bak 's/"0\.4\.1"/"0.4.0"/g' "$copy/.claude-plugin/plugin.json"
   rm -f "$copy/.claude-plugin/plugin.json.bak"
 }
 
@@ -198,14 +206,24 @@ restore_skill_permission_question() {
   perl -0pi -e 's/Mai di\nskill, tool, modelli, permessi, approccio tecnico o conferma di un default del contratto:/Chiedi anche di skill, tool e permessi:/' "$copy/skills/orchestratore/SKILL.md"
 }
 
-allow_stop_on_red() {
+weaken_cost_floor() {
   local copy="$1"
-  perl -0pi -e 's/\*\*Il rosso non è mai una condizione di stop\.\*\*/Un gate rosso ferma il run./' "$copy/skills/orchestratore/SKILL.md"
+  perl -0pi -e 's/`gpt-5\.6-luna`: solo task meccaniche e delimitate; `medium` o `high`, mai `low`/`gpt-5.6-luna`: task meccaniche; parte da `low`/' "$copy/skills/orchestratore/references/routing.md"
 }
 
-restore_ko_cap() {
+weaken_bridge_cost_floor() {
   local copy="$1"
-  perl -0pi -e 's/\*\*Nessun tetto ai giri\*\*/Massimo 2 KO consecutivi; al terzo la lane si sospende/' "$copy/skills/orchestratore/references/lane.md"
+  perl -0pi -e 's/gpt-5\.6-luna:medium\|gpt-5\.6-luna:high/gpt-5.6-luna:low|gpt-5.6-luna:medium|gpt-5.6-luna:high/' "$copy/bin/spawn-cx.sh"
+}
+
+allow_stop_on_red() {
+  local copy="$1"
+  perl -0pi -e 's/\*\*Il rosso non è mai una condizione di stop del run\.\*\*/Un gate rosso ferma il run./' "$copy/skills/orchestratore/SKILL.md"
+}
+
+remove_retry_budget() {
+  local copy="$1"
+  perl -0pi -e 's/Massimo \*\*due tentativi per approccio\*\*/Tentativi senza limite per approccio/' "$copy/skills/orchestratore/references/lane.md"
 }
 
 remove_per_delivery_verification() {
@@ -290,7 +308,7 @@ remove_metrics() {
 
 remove_ko_observer() {
   local copy="$1"
-  perl -0pi -e 's/L\x27osservatore rende visibile un loop patologico, non lo ferma\./Al terzo ciclo la lane si sospende./' "$copy/skills/orchestratore/references/lane.md"
+  perl -0pi -e 's/Nessun terzo approccio automatico\./Continua con altri approcci finche diventa verde./' "$copy/skills/orchestratore/references/lane.md"
 }
 
 remove_config_risk_areas() {
@@ -519,13 +537,14 @@ expect_rejected "S4 CC additive global skill changes allowed" add_cc_allow_globa
 expect_rejected "A1 default contract question restored" restore_default_question
 expect_rejected "A1 skill and permission questions restored" restore_skill_permission_question
 expect_rejected "A2 stop on red allowed" allow_stop_on_red
-expect_rejected "A2 KO cap restored" restore_ko_cap
+expect_rejected "A2 retry budget removed" remove_retry_budget
 expect_rejected "A3 per-delivery verification removed" remove_per_delivery_verification
 expect_rejected "A4 local suite fallback removed" remove_local_suite_fallback
 expect_rejected "A4 green gate definition removed" remove_green_gate_definition
 expect_rejected "A5 doc alignment on close removed" remove_doc_alignment_on_close
 expect_rejected "A5 stop after one milestone" stop_after_one_milestone
 expect_rejected "A6 answer propagation removed" remove_answer_propagation
+expect_rejected "E1 Luna low allowed" weaken_cost_floor
 expect_rejected "B1 parallel plan removed" remove_parallel_plan
 expect_rejected "B1 independence proof removed" remove_independence_proof
 expect_rejected "B2 contract-first removed" remove_contract_first
@@ -545,6 +564,7 @@ expect_rejected "C1 integrator allowed to implement" allow_integrator_to_impleme
 expect_rejected "C1 worker delegation allowed" allow_worker_delegation
 expect_rejected "C2 bridge sandbox weakened" weaken_bridge_sandbox
 expect_rejected "C2 bridge model validation removed" remove_bridge_model_validation
+expect_rejected "C2 bridge allows Luna low" weaken_bridge_cost_floor
 expect_rejected "C2 bridge dry-run removed" remove_bridge_dry_run
 expect_rejected "D1 status command made writable" make_status_command_writable
 expect_rejected "D1 start command asks defaults" make_start_ask_defaults

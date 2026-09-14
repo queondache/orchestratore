@@ -13,6 +13,8 @@ Un run di sviluppo autonomo fallisce in tre modi, tutti osservati:
    verifica; i test nuovi non provano niente; il merge avviene senza evidenza eseguita.
 3. **Non parallelizza davvero.** Le lane si toccano, i worker si pestano, il cervello satura
    il contesto integrando a mano.
+4. **Spende più del necessario.** Modelli premium ed effort alto partono senza che rischio,
+   fallimenti o ambiguità dimostrino che servono.
 
 ## 2. Obiettivo
 
@@ -24,6 +26,8 @@ milestone chiuse, giri di KO, rilavorazioni dopo verifica.
 
 Velocità e qualità non sono in trade-off: un run veloce che consegna lavoro non verificato è
 un run fallito.
+Il costo è ottimizzato per consegna verificata: cervello cx Astra medium; dev Luna da medium,
+Terra da medium e Sol da low; Astra worker da low solo su escalation osservabile.
 
 ## 3. Invarianti — non negoziabili
 
@@ -32,13 +36,14 @@ un run fallito.
 | I1 | Chi scrive non verifica. Verificatore e pre-merge su modelli diversi dal builder. |
 | I2 | Nessuno stato avanza senza verdetto con hash e output raw dei comandi eseguiti. |
 | I3 | Un test nuovo deve essere visto rosso senza la modifica, altrimenti non prova niente. |
-| I4 | Un gate rosso non è mai una condizione di stop: dopo due KO si cambia strategia e modello. |
+| I4 | Un gate rosso non ferma il run: firma e tentativi persistiti, due tentativi per approccio, massimo due approcci automatici; poi la lane è parcheggiata e il lavoro indipendente continua. |
 | I5 | Uno slot di parallelismo si occupa solo con prova di indipendenza scritta sui file reali. |
 | I6 | Il cervello non scrive codice e non integra branch. |
 | I7 | Auto-merge solo tier 1-2 sul diff reale; tier 3 e aree sensibili restano PR in attesa. |
 | I8 | Ad Andrea si chiede solo di prodotto, SPEC o autorizzazione fuori perimetro. |
 | I9 | Una risposta di Andrea si propaga nello stesso turno in SPEC, ROADMAP e perimetri. |
 | I10 | Nessun aumento di budget, spend limit o credito. Mai. Prevale su ogni altra regola. |
+| I11 | Routing cheapest-capable per task: effort minimo per modello, premium/high solo con trigger registrato. |
 
 ## 4. Perimetro
 

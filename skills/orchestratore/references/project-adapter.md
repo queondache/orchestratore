@@ -12,7 +12,8 @@
    registralo: decide quale forma del gate di merge vale (lane.md).
 3. Crea `.orchestratore/` (aggiungila a `.gitignore` del progetto se manca) e copia
    `templates/run.md` in `.orchestratore/run.md`. Opzionale: `.orchestratore/config.toml`
-   dal template per un peso diverso dal globale o per `aree_sensibili`.
+   dal template per peso, costo o `aree_sensibili` diversi dal globale. Registra sempre
+   `cheapest-capable` e i minimi per modello nel contratto del run.
 3-bis. Scrivi **una volta** `.orchestratore/recon.md`: revisione base (`sha`), comandi del
    gate verde, mappa moduli → path, punti di estensione, convenzioni, ambiente di test, aree
    sensibili rilevate. Ogni contratto di task lo passa **per path**: i worker non riesplorano

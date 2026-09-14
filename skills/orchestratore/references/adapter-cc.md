@@ -12,7 +12,9 @@ Tool `Agent`. Regole:
   `general-purpose` passando il testo dell'agent per path (`agents/<nome>.md`): il `model`
   resta esplicito e diverso da quello del builder. Mancanza di un agent non è mai un motivo
   per saltare la verifica.
-- `model`: sempre esplicito (`opus`, `sonnet`, `haiku`). Mai lasciare il default.
+- `model`: sempre esplicito (`opus`, `sonnet`, `haiku`). Segui `routing.md`: Haiku per il
+  meccanico, Sonnet per il basic/importante, Opus solo su trigger o verifica importante
+  in solo-CC. Scrivi anche l'effort nel prompt; mai lasciare modello o effort al default.
 - Per cervello e worker nativo verifica `bypassPermissions` effettivo per sessione; se non
   è disponibile senza input, non delegare la lane e usa un path già bypassPermissions.
 - `isolation: "worktree"` per ogni lane di implementazione parallela. Il verificatore
@@ -29,6 +31,8 @@ Tool `Agent`. Regole:
 l'alias di `--dangerously-bypass-approvals-and-sandbox`) con il prompt su stdin, log in
 `<cwd>/.orchestratore/logs/<task-id>.log`, exit code restituito. Rifiuta prima di spendere
 credito: modello fuori routing `65`, effort non ammesso `65`, cwd o prompt mancanti `66`.
+La validazione è sulla coppia modello/effort: Luna e Terra rifiutano `low`; Sol accetta da
+`low`; Astra accetta da `low`, ma il contratto deve registrarne il trigger di escalation.
 `--dry-run` stampa la riga di comando senza eseguire: usalo per provare il cablaggio.
 Lancialo con `Bash` in background (`run_in_background: true`) e leggi il log al
 checkpoint. Modelli cx: `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`.

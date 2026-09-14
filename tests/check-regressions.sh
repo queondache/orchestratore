@@ -8,6 +8,7 @@ CATALOG="$ROOT/skills/orchestratore/references/codex-skills-catalog.jsonl"
 SKILL="$ROOT/skills/orchestratore/SKILL.md"
 ROUTING="$ROOT/skills/orchestratore/references/routing.md"
 STATE="$ROOT/templates/state.toml"
+CONFIG="$ROOT/templates/config.toml"
 CREDITO="$ROOT/skills/orchestratore/references/credito.md"
 README="$ROOT/README.md"
 CC_MANIFEST="$ROOT/.claude-plugin/plugin.json"
@@ -73,7 +74,7 @@ does_not_match_in_files() {
 
 json_version_is() {
   local file="$1"
-  [[ "$(jq -r '.version' "$file")" == "0.4.0" ]]
+  [[ "$(jq -r '.version' "$file")" == "0.4.1" ]]
 }
 
 catalog_entry_count() {
@@ -141,16 +142,16 @@ fi
 
 cc_version="$(jq -r '.version' "$CC_MANIFEST")"
 cx_version="$(jq -r '.version' "$CX_MANIFEST")"
-if [[ "$cc_version" == "0.4.0" && "$cx_version" == "0.4.0" && "$cc_version" == "$cx_version" ]]; then
-  ok "manifest CC e cx allineati alla versione 0.4.0"
+if [[ "$cc_version" == "0.4.1" && "$cx_version" == "0.4.1" && "$cc_version" == "$cx_version" ]]; then
+  ok "manifest CC e cx allineati alla versione 0.4.1"
 else
-  ko "manifest CC e cx allineati alla versione 0.4.0"
+  ko "manifest CC e cx allineati alla versione 0.4.1"
 fi
 
-check "manifest CC versione 0.4.0" json_version_is "$CC_MANIFEST"
-check "manifest cx versione 0.4.0" json_version_is "$CX_MANIFEST"
-check "marketplace CC versione 0.4.0" json_version_is "$CC_MARKETPLACE"
-check "marketplace agenti versione 0.4.0" json_version_is "$AGENT_MARKETPLACE"
+check "manifest CC versione 0.4.1" json_version_is "$CC_MANIFEST"
+check "manifest cx versione 0.4.1" json_version_is "$CX_MANIFEST"
+check "marketplace CC versione 0.4.1" json_version_is "$CC_MARKETPLACE"
+check "marketplace agenti versione 0.4.1" json_version_is "$AGENT_MARKETPLACE"
 
 check "README documenta snapshot/cache" contains_fixed "snapshot/cache" "$README"
 check "README richiede bump di versione" contains_fixed "bump di versione" "$README"
@@ -228,11 +229,12 @@ check "A1 vieta domande su skill tool permessi" matches_in_file 'Mai di\s+skill,
 
 # A2 — il rosso non ferma il run
 check "A2 dichiara il rosso non stop" contains_in_file 'Il rosso non è mai una condizione di stop' "$SKILL"
-check "A2 impone cambio strategia e modello dopo 2 KO" matches_in_file 'due KO consecutivi sullo stesso gate cambia strategia\s+e modello' "$SKILL"
-check "A2 lane senza tetto ai giri" contains_in_file 'Nessun tetto ai giri' "$LANE"
-check "A2 lane non sospende sul rosso" contains_in_file 'mai perché il gate resta rosso' "$LANE"
-check "A2 routing impone modello diverso dopo 2 KO" contains_in_file 'Due KO consecutivi sullo stesso gate obbligano a cambiare modello' "$ROUTING"
-check "A2 nessun tetto di 2 KO residuo" does_not_contain 'Massimo 2 KO consecutivi' "$LANE" "$SKILL"
+check "A2 firma stabile del problema" contains_in_file 'gate + errore normalizzato + hash del diff' "$LANE"
+check "A2 deduplica feedback invariato" contains_in_file 'firma invariata già consegnata è deduplicata' "$LANE"
+check "A2 limita a due tentativi per approccio" contains_in_file 'due tentativi per approccio' "$LANE"
+check "A2 limita a due approcci automatici" contains_in_file 'dopo due approcci distinti' "$LANE"
+check "A2 parcheggia la lane e continua il run" matches_in_file 'bloccata-tecnica[\s\S]*?libera lo slot[\s\S]*?continua il lavoro indipendente' "$LANE"
+check "A2 template persiste firma e approccio" matches_in_file 'Firma KO:[\s\S]*?approccio_id:[\s\S]*?Tentativi approccio' "$ROOT/templates/run.md"
 
 # A3 — verifica a ogni consegna
 check "A3 verifica obbligatoria per consegna" contains_in_file 'Verifica obbligatoria a ogni consegna, non solo a fine milestone' "$SKILL"
@@ -266,6 +268,18 @@ check "A6 allinea prima di aprire una lane" contains_in_file 'se divergono, alli
 
 # A7 — cadenza report onesta
 check "A7 rimuove la cadenza a tempo non rispettabile" does_not_contain 'comunque ogni 10 minuti' "$SKILL"
+
+# E1 — costo: modello ed effort minimi adatti alla task, escalation motivata
+check "E1 politica cheapest-capable predefinita" contains_in_file 'politica predefinita è `cheapest-capable`' "$ROUTING"
+check "E1 cervello cx Astra medium" contains_in_file '| gpt-6-astra | **medium fisso** |' "$ROUTING"
+check "E1 Luna non usa low" contains_in_file '`gpt-5.6-luna`: solo task meccaniche e delimitate; `medium` o `high`, mai `low`' "$ROUTING"
+check "E1 Terra non usa low" contains_in_file '`gpt-5.6-terra`: task basic; `medium` o `high`, mai `low`' "$ROUTING"
+check "E1 Sol può partire da low" contains_in_file '`gpt-5.6-sol`: task importanti; parte da `low`' "$ROUTING"
+check "E1 Astra worker parte da low solo in escalation" matches_in_file '`gpt-6-astra`: cervello a `medium`; nei worker parte da `low` ed entra solo per\s+escalation' "$ROUTING"
+check "E1 premium richiede trigger registrato" matches_in_file 'Ogni uso di `high`,\s+`Astra` o `Opus` registra il trigger' "$ROUTING"
+check "E1 default CC non sono premium" bash -c "grep -q '^model: sonnet$' '$ROOT/agents/worker-impl.md' && grep -q '^model: haiku$' '$ROOT/agents/verificatore.md'"
+check "E1 contratto registra politica e trigger" matches_in_file 'Politica costo: cheapest-capable[\s\S]*?Motivo del modello/effort ed eventuale trigger premium' "$RUN_TPL"
+check "E1 config vieta premium senza trigger" matches_in_file '\[costo\][\s\S]*?strategia = "cheapest-capable"[\s\S]*?premium_solo_con_trigger = true' "$CONFIG"
 
 PARALLELISMO="$ROOT/skills/orchestratore/references/parallelismo.md"
 VERIFICA="$ROOT/skills/orchestratore/references/verifica.md"
@@ -326,7 +340,8 @@ check "B6 assunzioni nel template" contains_in_file '## Assunzioni' "$RUN_TPL"
 check "B6 metriche nel template" contains_in_file '## Metriche' "$RUN_TPL"
 check "B6 metrica principale interruzioni" contains_in_file 'Interruzioni chieste ad Andrea' "$RUN_TPL"
 check "B6 skill aggiorna le metriche" contains_in_file 'quante volte hai interrotto Andrea' "$SKILL"
-check "B6 osservatore KO non ferma" contains_in_file 'L'"'"'osservatore rende visibile un loop patologico, non lo ferma' "$LANE"
+check "B6 loop KO finito" contains_in_file 'Nessun terzo approccio automatico' "$LANE"
+check "B6 blocco di lane non ferma il run" contains_in_file 'il rosso della lane non ferma l'"'"'intero run' "$LANE"
 
 CONFIG_TPL="$ROOT/templates/config.toml"
 check "B7 config espone i tetti a due livelli" matches_in_file 'task_per_milestone = 3[\s\S]*?builder = 9' "$CONFIG_TPL"
@@ -353,7 +368,12 @@ check "C1 worker-mech si ferma se non e meccanico" contains_in_file 'non meccani
 # C2 — bridge: validano prima di spendere credito
 check "C2 cx usa yolo" contains_in_file 'codex exec --yolo' "$BIN/spawn-cx.sh"
 check "C2 cx valida i modelli di routing" contains_in_file 'gpt-6-astra|gpt-5.6-sol|gpt-5.6-terra|gpt-5.6-luna' "$BIN/spawn-cx.sh"
-check "C2 cx valida effort" contains_in_file 'low|medium|high' "$BIN/spawn-cx.sh"
+check "C2 cx valida effort per modello" contains_in_file 'case "$MODEL:$EFFORT" in' "$BIN/spawn-cx.sh"
+check "C2 cx impone Luna da medium" contains_in_file 'gpt-5.6-luna:medium|gpt-5.6-luna:high' "$BIN/spawn-cx.sh"
+check "C2 cx impone Terra da medium" contains_in_file 'gpt-5.6-terra:medium|gpt-5.6-terra:high' "$BIN/spawn-cx.sh"
+check "C2 cx consente Sol da low" contains_in_file 'gpt-5.6-sol:low|gpt-5.6-sol:medium|gpt-5.6-sol:high' "$BIN/spawn-cx.sh"
+check "C2 cx vieta Luna low" does_not_contain 'gpt-5.6-luna:low' "$BIN/spawn-cx.sh"
+check "C2 cx vieta Terra low" does_not_contain 'gpt-5.6-terra:low' "$BIN/spawn-cx.sh"
 check "C2 cc usa bypassPermissions" contains_in_file '--permission-mode bypassPermissions' "$BIN/spawn-cc.sh"
 check "C2 cc valida i modelli CC" contains_in_file 'opus|sonnet|haiku' "$BIN/spawn-cc.sh"
 check "C2 bridge espongono dry-run" matches_in_file '\-\-dry-run' "$BIN/spawn-cx.sh"

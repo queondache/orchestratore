@@ -1,6 +1,6 @@
 {
   "name": "orchestratore",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Orchestratore multi-agente dual-runtime per Codex e Claude Code.",
   "author": { "name": "Andrea Pesce", "url": "https://github.com/queondache" },
   "homepage": "https://github.com/queondache/orchestratore",
