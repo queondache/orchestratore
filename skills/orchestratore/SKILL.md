@@ -36,7 +36,7 @@ Persisti in `.orchestratore/run.md` (template in `templates/run.md`) prima di de
 Cervello: cc-fable | cx-gpt-6-astra
 Run mode: milestone-budget | while-quality-high
 Milestone budget: <n | tutte | n/a>   (tutte = milestone aperte in ROADMAP.md all'avvio)
-Peso: dev cx <n> / cc <n>; verifica <cc|cx|opposto>
+Peso: dev cx <n> / cc <n>; verifica <cc|cx|opposto>; costo cheapest-capable
 Tetto: <k> milestone × <t> task / <w> builder  (default 3 milestone × 3 task / 9 builder)
 Tetto domande aperte: <n>
 Stop aggiuntivi: <condizioni osservabili>
@@ -50,7 +50,7 @@ Modalità credito: normale | solo-cc | solo-cx | fermo
 **Default quando Andrea non dice altro**, da scrivere e non da chiedere: `Run non
 presidiato: sì`, `Autorizzazioni Git: commit+push+PR automatici`, `Run mode:
 milestone-budget`, `Milestone budget: tutte`, tetti di §2, `Verifica: obbligatoria a ogni
-consegna di codice`, `Gate verde: build + test + lint`. Confermare un default con Andrea è
+consegna di codice`, `Costo: cheapest-capable`, `Gate verde: build + test + lint`. Confermare un default con Andrea è
 tempo perso: si cambia solo se lo scrive lui.
 
 `milestone-budget`: fermati quando N milestone sono **chiuse** (mergiate o consegnate come PR
@@ -74,11 +74,11 @@ spend limit o credito.
 
 ## 2. Ruoli, modelli, skill
 
-Tabella completa e regole in [routing](references/routing.md). In sintesi: il cervello sceglie
-per ogni task tier, runtime, modello ed effort e li scrive nel contratto del task. Default:
-**cx sviluppa, CC orchestra e verifica**. Il verificatore ha sempre un **modello diverso** dal
-builder, runtime opposto quando il peso lo consente. Fable orchestra e non verifica, con
-un'unica eccezione: modalità solo-CC su task importante (opus costruisce, fable verifica).
+Tabella completa e regole in [routing](references/routing.md). Il cervello cx è Astra medium;
+per ogni task sceglie il modello meno costoso adatto al tier e l'effort minimo ammesso dalla
+task, registrando ogni escalation. Default: **cx sviluppa, CC orchestra e verifica**. Il verificatore ha un **modello diverso** dal
+builder, runtime opposto quando il peso lo consente. Fable orchestra e non verifica; i
+fallback solo-runtime conservano l'indipendenza secondo la tabella di routing.
 
 Skill obbligatorie per tipo di task in [skill-map](references/skill-map.md): design,
 architettura, TDD, lane. Ai worker passi nome e path esatto. Nessun worker inventa o
@@ -183,7 +183,7 @@ cadenza a tempo che il runtime non ti permette di rispettare):
 ```text
 In corso: <milestone, owner, fase, modello/runtime>
 Verificato dall'ultimo report: <evidenza | niente di nuovo>; domande <aperte/tetto; bloccanti>
-Peso in uso: dev cx n / cc n; verifica <…>; modalità <normale|solo-cc|solo-cx|fermo>; credito cc <ok|esaurito>, cx <ok|esaurito>
+Peso in uso: dev cx n / cc n; verifica <…>; costo cheapest-capable; modalità <normale|solo-cc|solo-cx|fermo>; credito cc <ok|esaurito>, cx <ok|esaurito>
 Slot: builder <n>/9, verifiche in volo <n>/3, in coda di verifica <n>; contesto <% | non disponibile>
 Prossimo checkpoint: <gate osservabile>
 ```

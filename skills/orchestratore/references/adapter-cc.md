@@ -12,7 +12,9 @@ Tool `Agent`. Regole:
   `general-purpose` passando il testo dell'agent per path (`agents/<nome>.md`): il `model`
   resta esplicito e diverso da quello del builder. Mancanza di un agent non è mai un motivo
   per saltare la verifica.
-- `model`: sempre esplicito (`opus`, `sonnet`, `haiku`). Mai lasciare il default.
+- `model`: sempre esplicito (`opus`, `sonnet`, `haiku`). Segui `routing.md`: Haiku per il
+  meccanico, Sonnet per il basic/importante, Opus solo su trigger o verifica importante
+  in solo-CC. Scrivi anche l'effort nel prompt; mai lasciare modello o effort al default.
 - Per cervello e worker nativo verifica `bypassPermissions` effettivo per sessione; se non
   è disponibile senza input, non delegare la lane e usa un path già bypassPermissions.
 - `isolation: "worktree"` per ogni lane di implementazione parallela. Il verificatore

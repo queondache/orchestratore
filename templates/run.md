@@ -10,6 +10,7 @@ ultimo aggiornamento: <ISO 8601>
 Run mode: milestone-budget | while-quality-high
 Milestone budget: <n | tutte | n/a>
 Peso: dev cx <n> / cc <n>; verifica <cc|cx|opposto>
+Politica costo: cheapest-capable; Astra cervello=medium; Luna>=medium; Terra>=medium; Sol>=low; Astra worker>=low
 Tetto: 3 milestone × 3 task = max 9 worker builder; pool verifica separato, max 3 in volo
 Tetto domande aperte: <n>
 Gate verde: build=<cmd> test=<cmd> lint=<cmd>
@@ -57,6 +58,7 @@ Dipendenze completate e contratto congelato:
 File scrivibili (un owner per file):
 File condivisi che integra il cervello:
 Tier / runtime / modello / effort:
+Motivo del modello/effort ed eventuale trigger premium:
 Skill obbligatorie: <nome → path esatto>
 Recon: .orchestratore/recon.md (revisione base <sha>)
 Gate verde (comandi esatti di build, test, lint):
@@ -88,6 +90,7 @@ Milestone chiuse: <n> · PR in attesa di Andrea: <n>
 Interruzioni chieste ad Andrea: <n>   ← metrica principale
 Giri di KO totali: <n> (per milestone: <ID n, ID n>)
 Rilavorazioni dopo verifica: <n> · Verifiche riassegnate per verdetto senza evidenza: <n>
+Escalation premium (Astra/Opus/high): <n; task e trigger>
 Durata per milestone: <ID hh:mm> · Token: <input/output | non disponibile>
 
 ## Handoff

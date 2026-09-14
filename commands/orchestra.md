@@ -14,7 +14,7 @@ Instradamento del sottocomando:
 
 - **`start`** (o argomento vuoto) — run nuovo. Avvio sicuro, poi contratto di autonomia con i
   default di §1 senza chiederli, `## Piano di parallelizzazione` con la prova di indipendenza
-  sui file reali, e apertura delle lane. L'unica domanda ammessa all'avvio è `standard` o
+  sui file reali, routing `cheapest-capable` per task, e apertura delle lane. L'unica domanda ammessa all'avvio è `standard` o
   `alternativo` per il cervello.
 - **`status`** — report di §7 dal contenuto reale di `.orchestratore/run.md` e dallo stato Git,
   mai dalla conversazione. Include slot builder occupati, verifiche in volo, domande aperte,

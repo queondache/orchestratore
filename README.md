@@ -6,6 +6,8 @@ lane contract-first quando le milestone si toccano e integratore dedicato.
 Cervello Fable 5.1 in CC (alternativa gpt-6-astra in cx), sviluppo su cx, verifica su CC con
 modello diverso dal builder, gate pre-merge, auto-merge condizionato, registro quesiti,
 celebrazione milestone e uso libero delle skill già installate nel perimetro del run.
+Il routing è `cheapest-capable`: cervello cx Astra medium; dev Luna da medium, Terra da
+medium e Sol da low; Astra worker da low solo quando un trigger osservabile richiede escalation.
 Verifica indipendente a ogni consegna, non solo a fine milestone; un gate rosso non ferma il
 run (dopo due KO si cambia strategia e modello); a milestone chiusa merge, allineamento di
 ROADMAP/progress/decisioni e apertura immediata della lane successiva. Il verificatore esegue

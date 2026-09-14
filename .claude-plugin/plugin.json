@@ -1,6 +1,6 @@
 {
   "name": "orchestratore",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Orchestratore multi-agente dual-runtime (Claude Code + Codex): cervello Fable, worker a tier, verifica con modello diverso, gate pre-merge, peso CC/cx, celebrazione milestone.",
   "author": {
     "name": "Andrea Pesce",

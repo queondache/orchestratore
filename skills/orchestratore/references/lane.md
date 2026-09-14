@@ -43,7 +43,7 @@ non è verificato, qualunque cosa dica il builder.
 
 Il worker consegna: diff, hash, comandi eseguiti con output, limiti residui. Il cervello
 congela le scritture del builder e lancia il verificatore (agent `verificatore` in CC, o
-thread cx con `gpt-5.6-sol`) passando **solo** perimetro, branch, hash, comandi del gate verde
+thread cx col modello determinato da `routing.md`) passando **solo** perimetro, branch, hash, comandi del gate verde
 e aree ammesse. Mai il piano, il ledger o l'opinione del builder. I quattro passi obbligatori
 — hash, gate verde, **oracolo**, perimetro — e il formato del verdetto sono in
 [verifica](verifica.md): un verdetto senza i loro output raw vale come verifica non eseguita.

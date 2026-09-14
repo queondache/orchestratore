@@ -98,7 +98,7 @@ remove_restore_guard() {
 
 downgrade_y2_version() {
   local copy="$1"
-  sed -i.bak 's/"0\.4\.0"/"0.1.1"/g' "$copy/.claude-plugin/plugin.json"
+  sed -i.bak 's/"0\.4\.1"/"0.4.0"/g' "$copy/.claude-plugin/plugin.json"
   rm -f "$copy/.claude-plugin/plugin.json.bak"
 }
 
@@ -196,6 +196,11 @@ restore_default_question() {
 restore_skill_permission_question() {
   local copy="$1"
   perl -0pi -e 's/Mai di\nskill, tool, modelli, permessi, approccio tecnico o conferma di un default del contratto:/Chiedi anche di skill, tool e permessi:/' "$copy/skills/orchestratore/SKILL.md"
+}
+
+weaken_cost_floor() {
+  local copy="$1"
+  perl -0pi -e 's/`gpt-5\.6-luna`: solo task meccaniche e delimitate; `medium` o `high`, mai `low`/`gpt-5.6-luna`: task meccaniche; parte da `low`/' "$copy/skills/orchestratore/references/routing.md"
 }
 
 allow_stop_on_red() {
@@ -526,6 +531,7 @@ expect_rejected "A4 green gate definition removed" remove_green_gate_definition
 expect_rejected "A5 doc alignment on close removed" remove_doc_alignment_on_close
 expect_rejected "A5 stop after one milestone" stop_after_one_milestone
 expect_rejected "A6 answer propagation removed" remove_answer_propagation
+expect_rejected "E1 Luna low allowed" weaken_cost_floor
 expect_rejected "B1 parallel plan removed" remove_parallel_plan
 expect_rejected "B1 independence proof removed" remove_independence_proof
 expect_rejected "B2 contract-first removed" remove_contract_first

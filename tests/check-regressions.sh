@@ -8,6 +8,7 @@ CATALOG="$ROOT/skills/orchestratore/references/codex-skills-catalog.jsonl"
 SKILL="$ROOT/skills/orchestratore/SKILL.md"
 ROUTING="$ROOT/skills/orchestratore/references/routing.md"
 STATE="$ROOT/templates/state.toml"
+CONFIG="$ROOT/templates/config.toml"
 CREDITO="$ROOT/skills/orchestratore/references/credito.md"
 README="$ROOT/README.md"
 CC_MANIFEST="$ROOT/.claude-plugin/plugin.json"
@@ -73,7 +74,7 @@ does_not_match_in_files() {
 
 json_version_is() {
   local file="$1"
-  [[ "$(jq -r '.version' "$file")" == "0.4.0" ]]
+  [[ "$(jq -r '.version' "$file")" == "0.4.1" ]]
 }
 
 catalog_entry_count() {
@@ -141,16 +142,16 @@ fi
 
 cc_version="$(jq -r '.version' "$CC_MANIFEST")"
 cx_version="$(jq -r '.version' "$CX_MANIFEST")"
-if [[ "$cc_version" == "0.4.0" && "$cx_version" == "0.4.0" && "$cc_version" == "$cx_version" ]]; then
-  ok "manifest CC e cx allineati alla versione 0.4.0"
+if [[ "$cc_version" == "0.4.1" && "$cx_version" == "0.4.1" && "$cc_version" == "$cx_version" ]]; then
+  ok "manifest CC e cx allineati alla versione 0.4.1"
 else
-  ko "manifest CC e cx allineati alla versione 0.4.0"
+  ko "manifest CC e cx allineati alla versione 0.4.1"
 fi
 
-check "manifest CC versione 0.4.0" json_version_is "$CC_MANIFEST"
-check "manifest cx versione 0.4.0" json_version_is "$CX_MANIFEST"
-check "marketplace CC versione 0.4.0" json_version_is "$CC_MARKETPLACE"
-check "marketplace agenti versione 0.4.0" json_version_is "$AGENT_MARKETPLACE"
+check "manifest CC versione 0.4.1" json_version_is "$CC_MANIFEST"
+check "manifest cx versione 0.4.1" json_version_is "$CX_MANIFEST"
+check "marketplace CC versione 0.4.1" json_version_is "$CC_MARKETPLACE"
+check "marketplace agenti versione 0.4.1" json_version_is "$AGENT_MARKETPLACE"
 
 check "README documenta snapshot/cache" contains_fixed "snapshot/cache" "$README"
 check "README richiede bump di versione" contains_fixed "bump di versione" "$README"
@@ -266,6 +267,18 @@ check "A6 allinea prima di aprire una lane" contains_in_file 'se divergono, alli
 
 # A7 — cadenza report onesta
 check "A7 rimuove la cadenza a tempo non rispettabile" does_not_contain 'comunque ogni 10 minuti' "$SKILL"
+
+# E1 — costo: modello ed effort minimi adatti alla task, escalation motivata
+check "E1 politica cheapest-capable predefinita" contains_in_file 'politica predefinita è `cheapest-capable`' "$ROUTING"
+check "E1 cervello cx Astra medium" contains_in_file '| gpt-6-astra | **medium fisso** |' "$ROUTING"
+check "E1 Luna non usa low" contains_in_file '`gpt-5.6-luna`: solo task meccaniche e delimitate; `medium` o `high`, mai `low`' "$ROUTING"
+check "E1 Terra non usa low" contains_in_file '`gpt-5.6-terra`: task basic; `medium` o `high`, mai `low`' "$ROUTING"
+check "E1 Sol può partire da low" contains_in_file '`gpt-5.6-sol`: task importanti; parte da `low`' "$ROUTING"
+check "E1 Astra worker parte da low solo in escalation" matches_in_file '`gpt-6-astra`: cervello a `medium`; nei worker parte da `low` ed entra solo per\s+escalation' "$ROUTING"
+check "E1 premium richiede trigger registrato" matches_in_file 'Ogni uso di `high`,\s+`Astra` o `Opus` registra il trigger' "$ROUTING"
+check "E1 default CC non sono premium" bash -c "grep -q '^model: sonnet$' '$ROOT/agents/worker-impl.md' && grep -q '^model: haiku$' '$ROOT/agents/verificatore.md'"
+check "E1 contratto registra politica e trigger" matches_in_file 'Politica costo: cheapest-capable[\s\S]*?Motivo del modello/effort ed eventuale trigger premium' "$RUN_TPL"
+check "E1 config vieta premium senza trigger" matches_in_file '\[costo\][\s\S]*?strategia = "cheapest-capable"[\s\S]*?premium_solo_con_trigger = true' "$CONFIG"
 
 PARALLELISMO="$ROOT/skills/orchestratore/references/parallelismo.md"
 VERIFICA="$ROOT/skills/orchestratore/references/verifica.md"

@@ -2,7 +2,7 @@
 name: verificatore
 description: Verificatore indipendente dell'orchestratore. Esegue i quattro passi obbligatori — hash, gate verde, oracolo, perimetro — e produce un verdetto con evidenza raw. Usa dopo ogni consegna di codice di un worker, mai sullo stesso modello che ha costruito. Non scrive codice e non modifica file.
 tools: Read, Grep, Glob, Bash
-model: opus
+model: haiku
 maxTurns: 60
 ---
 
