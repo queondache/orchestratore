@@ -1,11 +1,10 @@
-# orchestratore
+# orchestratore 0.5.0 candidato
 
 Plugin dual-runtime (Claude Code + Codex) che orchestra worker su più milestone in parallelo e
-su più task dentro ogni milestone (3 × 3, max 9 builder), con prova di indipendenza sui file reali,
-lane contract-first quando le milestone si toccano e integratore dedicato.
-Cervello Fable 5.1 in CC (alternativa gpt-6-astra in cx), sviluppo su cx, verifica su CC con
-modello diverso dal builder, gate pre-merge, auto-merge condizionato, registro quesiti,
-celebrazione milestone e uso libero delle skill già installate nel perimetro del run.
+su più task dentro ogni milestone, con prova di indipendenza sui file reali, lane contract-first
+quando le milestone si toccano e integratore dedicato. Il controller locale usa SQLite WAL e
+lease autorevole; app Codex locale, Codex CLI e Claude CLI entrano nello stesso `run_id`.
+Il flusso standard è strategia Claude, massimo due builder Codex e review Claude separata.
 Il routing è `cheapest-capable`: cervello cx Astra medium; dev Luna da medium, Terra da
 medium e Sol da low; Astra worker da low solo quando un trigger osservabile richiede escalation.
 Verifica indipendente a ogni consegna, non solo a fine milestone; un gate rosso non ferma il
@@ -15,6 +14,11 @@ ROADMAP/progress/decisioni e apertura immediata della lane successiva. Il verifi
 quattro passi con evidenza raw — hash, gate verde, oracolo (il test nuovo deve diventare rosso
 senza la modifica), perimetro — e il merge automatico vale solo per tier 1-2: tier 3 e aree
 sensibili restano PR in attesa.
+
+La ripresa A-E richiede evidenza della fase precedente; E è completa solo con outcome PR,
+merge o attesa approvata e documenti allineati. Checkpoint e session rollover sono espliciti:
+si persiste da 50 e si apre una nuova sessione da 70 senza affidarsi all'auto-compact. Il retry
+è finito a 2×2.
 
 Spec: `docs/specs/2026-09-12-orchestratore-plugin-design.md`. Piani: `docs/plans/`.
 
@@ -57,7 +61,8 @@ In un progetto con `SPEC.md` e `ROADMAP.md`: `/orchestratore:orchestra start` (C
 - `bin/` i bridge `spawn-cx.sh` e `spawn-cc.sh`, entrambi con `--dry-run`
 - `commands/` `/orchestratore:orchestra` e `/orchestratore:orchestra-status`
 - `hooks/` guardia PreToolUse sui comandi vietati durante un run, stato del run a SessionStart
-- `tests/` gate strutturale, regressioni, mutazioni, bridge, hook
+- `controller/` riduttore di transizioni, schema SQLite e prove di recovery/idempotenza
+- `tests/` gate strutturale, regressioni, mutazioni, bridge, hook e controller
 
 ## Test
 
@@ -67,4 +72,5 @@ tests/check-regressions.sh
 tests/check-regressions-mutations.sh
 tests/check-bridge.sh
 tests/check-hooks.sh
+tests/check-controller.sh
 ```

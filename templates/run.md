@@ -11,12 +11,15 @@ Run mode: milestone-budget | while-quality-high
 Milestone budget: <n | tutte | n/a>
 Peso: dev cx <n> / cc <n>; verifica <cc|cx|opposto>
 Politica costo: cheapest-capable; Astra cervello=medium; Luna>=medium; Terra>=medium; Sol>=low; Astra worker>=low
-Tetto: 3 milestone × 3 task = max 9 worker builder; pool verifica separato, max 3 in volo
+Controller: locale esterno; ingresso app Codex locale | Codex CLI | Claude CLI; run_id: <id>
+Ruoli per-run: stratega Claude; max 2 builder Codex; reviewer Claude separato
+Tetto: max 2 builder; pool verifica separato, max 1 in volo
 Tetto domande aperte: <n>
 Gate verde: build=<cmd> test=<cmd> lint=<cmd>
 Required checks sul branch base: sì | no (se no vale il fallback suite locale)
 Verifica: obbligatoria a ogni consegna di codice, verificatore ≠ builder
 Rosso: firma persistita e deduplicata; max 2 tentativi/approccio, max 2 approcci automatici; poi lane bloccata-tecnica e run continua
+Contesto: >=50% checkpoint con summary/fase/hash/fingerprint/session id; >=70% sessione fresca; auto-compact non presunto
 Stop aggiuntivi: <condizioni osservabili>
 Run non presidiato: sì | no
 Skill: usa liberamente skill installate disponibili; nome/path + SKILL.md completo; fallback equivalente/base se manca
@@ -27,6 +30,12 @@ Auto-merge: solo hash revisionato + verifier indipendente finale OK + pre-merge 
 Chiusura milestone: merge + ROADMAP + progress + decisioni allineati, poi lane successiva
 Al limite CC: handoff e stop
 Credito: cc <ok|esaurito>; cx <ok|esaurito>
+
+## Stato durevole del controller
+
+Fase: <strategia|implementata|verificata|pronta|integrata|documentata|finalizzata>
+Finalizzata: <sì|no> (solo sì equivale a completata; caso E resta riprendibile)
+Ripresa parziale: <A|B|C|D|E|nessuna> — prima fase non provata: <fase>
 
 ## Piano di parallelizzazione
 

@@ -12,10 +12,8 @@ strategia = "cheapest-capable"
 premium_solo_con_trigger = true # Astra/Opus/high: KO, disaccordo, ambiguità o rischio emerso
 
 [tetti]
-milestone = 3       # lane attive per progetto
-task_per_milestone = 3
-builder = 9         # milestone x task; verificatori, pre-merge e integratore sono fuori da questo tetto
-verifiche_in_volo = 3
+builder = 2           # massimo globale per run; builder Codex
+verifiche_in_volo = 1 # reviewer Claude separato
 domande_aperte = 8
 
 [rischio]

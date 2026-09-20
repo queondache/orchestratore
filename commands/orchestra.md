@@ -7,7 +7,9 @@ allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Skill, Agent, TodoWrite, Ask
 Sottocomando richiesto: **$ARGUMENTS** (vuoto = `start`).
 
 Carica la skill `orchestratore` e seguila per intero: è lei la fonte di verità, questo comando
-è solo la porta d'ingresso. Prima di qualsiasi azione esegui l'avvio sicuro (§0 della skill):
+è solo la porta d'ingresso. App Codex locale, Codex CLI e Claude CLI sono ingressi equivalenti
+al controller locale di `references/controller.md`: usa lo stesso `run_id`, senza creare stato
+parallelo nel comando. Prima di qualsiasi azione esegui l'avvio sicuro (§0 della skill):
 istruzioni del repo, `brain.lock`, stato credito, working tree, toolchain.
 
 Instradamento del sottocomando:

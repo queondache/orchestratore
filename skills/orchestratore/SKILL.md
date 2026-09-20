@@ -21,10 +21,9 @@ milestone · **task** una parte di lane.
 4. Ispeziona working tree, branch, worktree, agenti vivi; conserva il lavoro che non è tuo,
    verifica toolchain, ambiente di test, capacità agenti, lane esterne, e scrivi una sola
    volta `.orchestratore/recon.md` ([project-adapter](references/project-adapter.md)).
-5. Se `.orchestratore/run.md` esiste con `stato: handoff`, sei in ripresa: vai a §7.
-6. Altrimenti chiedi **una** cosa: `standard` (cervello Fable 5.1 in CC) o `alternativo`
-   (cervello gpt-6-astra in cx). Tutto il resto del contratto ha un default (§1) e non si
-   chiede. Poi scrivi il contratto di autonomia e parti.
+5. Usa il controller locale secondo [controller](references/controller.md): app Codex locale,
+   Codex CLI e Claude CLI sono ingressi equivalenti allo stesso `run_id`. Se il run esiste,
+   riconcilia e riprendi la prima fase non provata; altrimenti congela i setting per-run.
 
 Progetto nuovo o ripresa: leggi [project-adapter](references/project-adapter.md).
 
@@ -37,7 +36,8 @@ Cervello: cc-fable | cx-gpt-6-astra
 Run mode: milestone-budget | while-quality-high
 Milestone budget: <n | tutte | n/a>   (tutte = milestone aperte in ROADMAP.md all'avvio)
 Peso: dev cx <n> / cc <n>; verifica <cc|cx|opposto>; costo cheapest-capable
-Tetto: <k> milestone × <t> task / <w> builder  (default 3 milestone × 3 task / 9 builder)
+Ruoli: stratega Claude / massimo 2 builder Codex / reviewer Claude separato
+Tetto: massimo 2 builder; 1 review in volo
 Tetto domande aperte: <n>
 Stop aggiuntivi: <condizioni osservabili>
 Autorizzazioni Git: <commit+push+PR automatici | solo lettura>
@@ -92,8 +92,8 @@ autorizza installare skill nuove, abilitare o modificare globalmente skill o plu
 connessioni, login, scope o segreti, mouse, azioni distruttive o aumenti di spesa: tool o app
 invocati dalla skill conservano tutti i guardrail 0.1.2.
 
-Tetti per progetto: 3 milestone × 3 task = **9 worker builder**; verificatori, pre-merge e
-integratore stanno in un pool a parte, massimo 3 verifiche in volo. Uno slot si occupa solo con
+Tetti per run: **massimo 2 builder Codex**; stratega e reviewer Claude separato, pre-merge e
+integratore stanno in un pool a parte, massimo 1 verifica in volo. Uno slot si occupa solo con
 la prova di indipendenza sui file reali scritta nel `## Piano di parallelizzazione`; glob che si
 intersecano = lane **contract-first**, non parallelo. Protocollo in
 [parallelismo](references/parallelismo.md). Chi scrive non revisiona il proprio codice; a
@@ -133,8 +133,8 @@ il task resta `in review`; il report del builder non è una verifica. Un task se
 
 **Chiusura di milestone, in un colpo solo e senza chiedere**: merge al gate (o PR in attesa) →
 `ROADMAP.md`, `progress.md` e `.claude/decisioni.md` aggiornati → contatori in `run.md` →
-celebrazione (§7) → **apri subito la lane successiva** se restano milestone e budget. Senza doc
-allineati la milestone non è `chiusa`; il run finisce col budget, non con una milestone.
+celebrazione (§7) → **apri subito la lane successiva** se restano milestone e budget. Solo
+`finalizzata` è completata: codice, PR, merge o doc parziali restano riprendibili (caso E).
 
 ## 5. Registro quesiti e gate del debito
 
@@ -183,7 +183,7 @@ cadenza a tempo che il runtime non ti permette di rispettare):
 In corso: <milestone, owner, fase, modello/runtime>
 Verificato dall'ultimo report: <evidenza | niente di nuovo>; domande <aperte/tetto; bloccanti>
 Peso in uso: dev cx n / cc n; verifica <…>; costo cheapest-capable; modalità <normale|solo-cc|solo-cx|fermo>; credito cc <ok|esaurito>, cx <ok|esaurito>
-Slot: builder <n>/9, verifiche in volo <n>/3, in coda di verifica <n>; contesto <% | non disponibile>
+Slot: builder <n>/2, verifiche in volo <n>/1, in coda di verifica <n>; contesto <% | non disponibile>
 Prossimo checkpoint: <gate osservabile>
 ```
 
@@ -207,10 +207,9 @@ Conteggi ricalcolati da `run.md`, mai dalla conversazione. `Bloccate da Andrea` 
 decisione o autorizzazione, PR in attesa incluse, mai per un blocco tecnico. `Mancanti` = totale
 del piano meno completate; fissa il totale prima di chiudere la prima milestone.
 
-**Handoff** (limite contesto, credito esaurito, `/orchestra stop`, fine run), **ripresa**
-(`riprendi`) e **contesto** (target 50%, tetto 70%): in
-[project-adapter](references/project-adapter.md). Lo stato serializzato non prova che un worker
-sia vivo o che un lavoro sia finito.
+**Handoff**, **ripresa**, fallimenti parziali A-E e **contesto** (checkpoint al 50%, rollover
+esplicito al 70%, mai auto-compact presunto): [controller](references/controller.md) e
+[project-adapter](references/project-adapter.md). Lo stato serializzato non prova vita o fine.
 
 ## 8. Confini
 

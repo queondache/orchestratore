@@ -26,7 +26,7 @@
    auto-merge resta vincolato al gate di lane.md.
 7. Scrivi il `## Piano di parallelizzazione` e la prova di indipendenza sui file reali
    ([parallelismo](parallelismo.md)) prima di occupare qualsiasi slot: un owner per file,
-   nessun ciclo di dipendenze, milestone attive ≤ 3, task per milestone ≤ 3, builder ≤ 9.
+   nessun ciclo di dipendenze e builder in volo ≤ 2 nel run.
    Intersezione di glob non vuota → lane contract-first, non parallelo.
 
 Non copiare regole di dominio da un altro progetto. Le istruzioni e le decisioni di prodotto
@@ -39,9 +39,10 @@ scrivi obiettivo, contratto e budget residuo, task attivi con owner e stato, rev
 più impronta delle modifiche non committate, domande aperte con impatto, evidenze verificate,
 una sola prossima azione. Poi `stato: handoff` e rilascia il lock.
 
-**Contesto**: target 50%, tetto 70% per ogni thread. Vale in modo forte per i worker (turno
-che finisce a un checkpoint) e best effort per il cervello. Al 50% non aprire task nuovi;
-finisci solo lo step atomico e persisti. Nessuna promessa di rollover automatico.
+**Contesto**: target 50%, tetto 70% per ogni thread. Al 50% non aprire task nuovi: finisci
+solo lo step atomico e persisti un checkpoint trasferibile. Al 70% esegui un rollover
+esplicito con handoff persistito; se la misura non è disponibile dichiaralo. Nessuna promessa
+o assunzione di auto-compact. Il protocollo completo è in [controller](controller.md).
 
 **Ripresa** (`riprendi` o `/orchestra riprendi`):
 

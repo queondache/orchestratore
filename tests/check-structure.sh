@@ -36,18 +36,20 @@ check "SKILL.md esiste" test -f "$SKILL"
 check "SKILL.md frontmatter name: orchestratore" grep -q '^name: orchestratore$' "$SKILL"
 check "SKILL.md frontmatter description" grep -q '^description: .\{40,\}' "$SKILL"
 check "SKILL.md <= 250 righe" bash -c "[ \$(wc -l < '$SKILL') -le 250 ]"
-check "SKILL.md nomina standard|alternativo" grep -q 'standard' "$SKILL"
+check "SKILL.md nomina controller locale" grep -q 'controller locale' "$SKILL"
 check "SKILL.md frase celebrazione esatta" grep -q '^una milestone meno$' "$SKILL"
 check "SKILL.md GIF delfino" grep -q 'AhV2lfKBfEvcEqj6h3' "$SKILL"
 check "SKILL.md GIF balena" grep -q 'Q6rD2TLgqMiHf4a0Pt' "$SKILL"
-check "SKILL.md tetto 3 milestone x 3 task / 9 builder" grep -q '3 milestone × 3 task' "$SKILL"
-check "SKILL.md pool di verifica separato" grep -q '9 worker builder' "$SKILL"
+check "SKILL.md tetto massimo 2 builder Codex" grep -q 'massimo 2 builder Codex' "$SKILL"
+check "SKILL.md reviewer Claude separato" grep -q 'reviewer Claude separato' "$SKILL"
 check "SKILL.md regola builder != verificatore" grep -qi 'modello diverso' "$SKILL"
 
 # References
-for f in routing.md lane.md credito.md parallelismo.md verifica.md skill-map.md adapter-cc.md adapter-cx.md project-adapter.md codex-skills-catalog.jsonl; do
+for f in controller.md routing.md lane.md credito.md parallelismo.md verifica.md skill-map.md adapter-cc.md adapter-cx.md project-adapter.md codex-skills-catalog.jsonl; do
   check "references/$f esiste" test -s "$REFS/$f"
 done
+check "controller espone JSON CLI congelata" grep -q 'init|start|add-task|schedule|complete|fail|checkpoint|status|acquire|release' "$REFS/controller.md"
+check "controller nomina i tre ingressi" bash -c "for i in 'App Codex locale' 'Codex CLI' 'Claude CLI'; do grep -q \"\$i\" '$REFS/controller.md' || exit 1; done"
 check "references vecchie rimosse" bash -c "! test -e '$REFS/runtime-bridges.md' && ! test -e '$REFS/skill-activation.md'"
 check "routing.md contiene i 10 modelli" bash -c "for m in fable gpt-6-astra opus gpt-5.6-sol sonnet gpt-5.6-terra haiku gpt-5.6-luna; do grep -q \"\$m\" '$REFS/routing.md' || exit 1; done"
 check "lane.md contiene regola verdetto su hash" grep -qi 'hash' "$REFS/lane.md"

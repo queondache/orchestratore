@@ -35,7 +35,8 @@ riserve o motivi: <max 3>
 - `OK` → il task o la milestone avanza di stato.
 - `OK CON RISERVE` → correzione dentro perimetro, un secondo giro, poi avanti con le riserve
   nel report.
-- `KO` → correzione e nuovo giro, senza tetto ai giri (lane.md). `oracolo assente` e
+- `KO` → applica il budget finito di lane.md: due tentativi per approccio e due approcci
+  distinti; poi cambio prospettiva o parcheggio. `oracolo assente` e
   `fuori perimetro` sono KO pieni, mai riserve.
 
 ## Rischio di merge: regola fissa, nessuna discrezionalità

@@ -7,6 +7,7 @@ ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)"
 CATALOG="$ROOT/skills/orchestratore/references/codex-skills-catalog.jsonl"
 SKILL="$ROOT/skills/orchestratore/SKILL.md"
 ROUTING="$ROOT/skills/orchestratore/references/routing.md"
+CONTROLLER="$ROOT/skills/orchestratore/references/controller.md"
 STATE="$ROOT/templates/state.toml"
 CONFIG="$ROOT/templates/config.toml"
 CREDITO="$ROOT/skills/orchestratore/references/credito.md"
@@ -74,7 +75,7 @@ does_not_match_in_files() {
 
 json_version_is() {
   local file="$1"
-  [[ "$(jq -r '.version' "$file")" == "0.4.1" ]]
+  [[ "$(jq -r '.version' "$file")" == "0.5.0" ]]
 }
 
 catalog_entry_count() {
@@ -142,16 +143,16 @@ fi
 
 cc_version="$(jq -r '.version' "$CC_MANIFEST")"
 cx_version="$(jq -r '.version' "$CX_MANIFEST")"
-if [[ "$cc_version" == "0.4.1" && "$cx_version" == "0.4.1" && "$cc_version" == "$cx_version" ]]; then
-  ok "manifest CC e cx allineati alla versione 0.4.1"
+if [[ "$cc_version" == "0.5.0" && "$cx_version" == "0.5.0" && "$cc_version" == "$cx_version" ]]; then
+  ok "manifest CC e cx allineati alla versione 0.5.0"
 else
-  ko "manifest CC e cx allineati alla versione 0.4.1"
+  ko "manifest CC e cx allineati alla versione 0.5.0"
 fi
 
-check "manifest CC versione 0.4.1" json_version_is "$CC_MANIFEST"
-check "manifest cx versione 0.4.1" json_version_is "$CX_MANIFEST"
-check "marketplace CC versione 0.4.1" json_version_is "$CC_MARKETPLACE"
-check "marketplace agenti versione 0.4.1" json_version_is "$AGENT_MARKETPLACE"
+check "manifest CC versione 0.5.0" json_version_is "$CC_MANIFEST"
+check "manifest cx versione 0.5.0" json_version_is "$CX_MANIFEST"
+check "marketplace CC versione 0.5.0" json_version_is "$CC_MARKETPLACE"
+check "marketplace agenti versione 0.5.0" json_version_is "$AGENT_MARKETPLACE"
 
 check "README documenta snapshot/cache" contains_fixed "snapshot/cache" "$README"
 check "README richiede bump di versione" contains_fixed "bump di versione" "$README"
@@ -285,8 +286,8 @@ PARALLELISMO="$ROOT/skills/orchestratore/references/parallelismo.md"
 VERIFICA="$ROOT/skills/orchestratore/references/verifica.md"
 
 # B1 — piano di parallelizzazione e prova di indipendenza
-check "B1 tetti a due livelli nella skill" contains_in_file '3 milestone × 3 task = **9 worker builder**' "$SKILL"
-check "B1 pool di verifica fuori dal tetto builder" matches_in_file 'verificatori, pre-merge e\s+integratore stanno in un pool a parte' "$SKILL"
+check "B1 massimo due builder Codex nella skill" contains_in_file '**massimo 2 builder Codex**' "$SKILL"
+check "B1 pool di verifica fuori dal tetto builder" matches_in_file 'reviewer Claude separato, pre-merge e\s+integratore stanno in un pool a parte' "$SKILL"
 check "B1 piano di parallelizzazione richiesto" contains_in_file '## 1. Piano di parallelizzazione, prima di qualsiasi delega' "$PARALLELISMO"
 check "B1 glob non descrizioni" contains_in_file 'Le aree scrivibili sono **glob**, non descrizioni' "$PARALLELISMO"
 check "B1 prova di indipendenza sui file reali" contains_in_file 'comm -12' "$PARALLELISMO"
@@ -344,9 +345,28 @@ check "B6 loop KO finito" contains_in_file 'Nessun terzo approccio automatico' "
 check "B6 blocco di lane non ferma il run" contains_in_file 'il rosso della lane non ferma l'"'"'intero run' "$LANE"
 
 CONFIG_TPL="$ROOT/templates/config.toml"
-check "B7 config espone i tetti a due livelli" matches_in_file 'task_per_milestone = 3[\s\S]*?builder = 9' "$CONFIG_TPL"
-check "B7 config separa il pool di verifica" contains_in_file 'verifiche_in_volo = 3' "$CONFIG_TPL"
+check "B7 config limita i builder a due" contains_in_file 'builder = 2' "$CONFIG_TPL"
+check "B7 config separa un reviewer" contains_in_file 'verifiche_in_volo = 1' "$CONFIG_TPL"
 check "B7 config elenca le aree sensibili" matches_in_file '\[rischio\][\s\S]*?aree_sensibili = \[' "$CONFIG_TPL"
+
+# B8 — controller esterno: ingressi, ruoli, persistenza e ripresa
+check "B8 tre ingressi equivalenti" matches_in_file 'App Codex locale, Codex CLI e Claude CLI sono tre ingressi equivalenti' "$CONTROLLER"
+check "B8 fonte persistente unica" contains_in_file 'stessa fonte persistente' "$CONTROLLER"
+check "B8 SQLite e lease sono autoritativi" contains_in_file 'SQLite e la lease del controller sono autoritativi' "$CONTROLLER"
+check "B8 brain lock e solo proiezione" matches_in_file '`\.orchestratore/brain\.lock` è solo una[\s\S]*?proiezione di compatibilità' "$CONTROLLER"
+check "B8 conflitto lock non crea secondo cervello" matches_in_file 'se diverge da lease/SQLite[\s\S]*?non avvia mai un secondo cervello' "$CONTROLLER"
+check "B8 stratega Claude e due builder Codex" matches_in_file 'stratega: Claude;[\s\S]*?builder: Codex, massimo 2' "$CONTROLLER"
+check "B8 reviewer Claude separato" contains_in_file 'reviewer: Claude separato' "$CONTROLLER"
+check "B8 setting congelati per run" contains_in_file 'Ogni run congela questi setting' "$CONTROLLER"
+check "B8 solo finalizzata e completata" contains_in_file 'Solo `finalizzata` è terminale/completata' "$CONTROLLER"
+check "B8 caso E resta riprendibile" matches_in_file 'caso E[\s\S]*?resta riprendibile, mai `completato`' "$CONTROLLER"
+check "B8 riprende tutti i casi A-E" bash -c "for c in A B C D E; do grep -q \"^- \$c:\" '$CONTROLLER' || exit 1; done"
+check "B8 checkpoint 50 contiene payload completo" matches_in_file 'Da 50%[\s\S]*?summary, fase, hash esatto, fingerprint del filesystem e session\s+id' "$CONTROLLER"
+check "B8 rollover 70 avvia sessione fresca" contains_in_file 'Da 70% avvia una sessione fresca da quel checkpoint' "$CONTROLLER"
+check "B8 non presume auto compact" contains_in_file 'non promette né presume auto-compact' "$CONTROLLER"
+check "B8 retry due per due poi prospettiva o park" matches_in_file 'due tentativi per approccio e due approcci distinti[\s\S]*?cambia prospettiva[\s\S]*?parcheggia' "$CONTROLLER"
+check "B8 verifica non contiene giri illimitati" does_not_contain 'senza tetto ai giri' "$VERIFICA"
+check "B8 template conserva fase durevole" matches_in_file 'Stato durevole del controller[\s\S]*?Finalizzata:[\s\S]*?Ripresa parziale:' "$RUN_TPL"
 
 AGENTS="$ROOT/agents"
 BIN="$ROOT/bin"

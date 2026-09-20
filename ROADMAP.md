@@ -1,8 +1,7 @@
 # ROADMAP — orchestratore
 
 Delta fra `SPEC.md` e il codice reale. Stato con evidenza eseguita, mai per assunzione.
-Ultimo allineamento: 14/09/2026, versione 0.4.1, release
-[`v0.4.1`](https://github.com/queondache/orchestratore/releases/tag/v0.4.1).
+Ultimo allineamento: 20/09/2026, versione candidata 0.5.0; nessun deploy o pubblicazione.
 
 ## Stato per milestone
 
@@ -18,6 +17,9 @@ Ultimo allineamento: 14/09/2026, versione 0.4.1, release
 | M8 | Run pilota end-to-end su un progetto reale | **MANCANTE** | nessun run mai eseguito; `SPEC.md [APERTO-01]` |
 | M9 | Evidenza del modello che ha davvero girato | **MANCANTE** | `routing.md` regola 9 lo esige, nessun meccanismo lo produce; `SPEC.md [APERTO-02]` |
 | M10 | Routing economico per modello, effort e task | **FATTO** | `references/routing.md`; invariante I11; gate e mutazioni verdi; review indipendente sul commit di release |
+| M11 | Controller persistente SQLite e CLI congelata | **FATTO** | `controller/**`, `bin/orchestratore-controller`, `tests/check-controller.sh`; 14 test OK; review Claude Sonnet su fingerprint `bd8f3b22` |
+| M12 | Contratto plugin, ingressi e contesto persistente | **FATTO** | skill/reference/template/test aggiornati; struttura e regressioni verdi; mutation suite verde; review Terra su `e42dba2d` |
+| M13 | Integrazione e release candidate 0.5.0 | **PRONTA** | gate finali locali verdi e review indipendente OK; produzione/installazione non eseguite |
 
 M4-M7 sono state consegnate nella stessa PR #1, verificata in modo indipendente da Fable
 sull'hash che va in `main`.
@@ -27,7 +29,7 @@ sull'hash che va in `main`.
 **M8 — Run pilota end-to-end.** Bloccata da una decisione di Andrea: su quale progetto girare
 e con che budget di credito. Il pilota deve includere almeno due milestone di cui una coppia
 con glob che si intersecano, così da esercitare la lane contract-first, e deve chiudersi
-producendo la sezione `## Metriche` di `run.md`.
+producendo la sezione `## Metriche` di `run.md`. M8 non è parte della release candidate 0.5.0.
 
 Definition of done di M8:
 
