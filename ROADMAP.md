@@ -1,7 +1,8 @@
 # ROADMAP — orchestratore
 
 Delta fra `SPEC.md` e il codice reale. Stato con evidenza eseguita, mai per assunzione.
-Ultimo allineamento: 20/09/2026, versione candidata 0.5.0; nessun deploy o pubblicazione.
+Ultimo allineamento: 21/09/2026, versione 0.5.0; PR #3 mergiata con merge SHA
+`482ca674d05114d41e83db0ee18984c176c13495`.
 
 ## Stato per milestone
 
@@ -14,12 +15,12 @@ Ultimo allineamento: 20/09/2026, versione candidata 0.5.0; nessun deploy o pubbl
 | M5 | Parallelismo a due livelli con prova di indipendenza e contract-first | **FATTO** | `references/parallelismo.md`; invarianti B1-B3; `## Piano di parallelizzazione` in `templates/RUN.md` |
 | M6 | Verifica con oracolo e merge per classe di rischio | **FATTO** | `references/verifica.md`, `agents/verificatore.md`, `agents/pre-merge.md`; invarianti B4-B5 |
 | M7 | Contesto e memoria del run: RUN unico compatto, assunzioni, metriche, osservatore KO | **FATTO** | `project-adapter.md` §3-bis; sezioni `## Assunzioni` e `## Metriche` in `templates/RUN.md`; invarianti B6-B9 |
-| M8 | Run pilota end-to-end su un progetto reale | **MANCANTE** | nessun run mai eseguito; `SPEC.md [APERTO-01]` |
-| M9 | Evidenza del modello che ha davvero girato | **MANCANTE** | `routing.md` regola 9 lo esige, nessun meccanismo lo produce; `SPEC.md [APERTO-02]` |
+| M8 | Run pilota end-to-end su un progetto reale | **MANCANTE** | fuori perimetro 0.5.0 e non bloccante; nessun run mai eseguito; `SPEC.md [APERTO-01]` |
+| M9 | Evidenza del modello che ha davvero girato | **MANCANTE** | fuori perimetro 0.5.0 e non bloccante; `routing.md` regola 9 lo esige, nessun meccanismo lo produce; `SPEC.md [APERTO-02]` |
 | M10 | Routing economico per modello, effort e task | **FATTO** | `references/routing.md`; invariante I11; gate e mutazioni verdi; review indipendente sul commit di release |
 | M11 | Controller persistente SQLite e CLI congelata | **FATTO** | `controller/**`, `bin/orchestratore-controller`, `tests/check-controller.sh`; 14 test OK; review Claude Sonnet su fingerprint `bd8f3b22` |
 | M12 | Contratto plugin, ingressi e contesto persistente | **FATTO** | skill/reference/template/test aggiornati; struttura e regressioni verdi; mutation suite verde; review Terra su `e42dba2d` |
-| M13 | Integrazione e release candidate 0.5.0 | **PRONTA** | gate finali locali verdi e review indipendente OK; produzione/installazione non eseguite |
+| M13 | Integrazione e release 0.5.0 | **FATTO** | PR #3 mergiata con merge SHA `482ca674d05114d41e83db0ee18984c176c13495`; gate finali locali verdi e review indipendente OK |
 
 M4-M7 sono state consegnate nella stessa PR #1, verificata in modo indipendente da Fable
 sull'hash che va in `main`.
@@ -29,7 +30,11 @@ sull'hash che va in `main`.
 **M8 — Run pilota end-to-end.** Bloccata da una decisione di Andrea: su quale progetto girare
 e con che budget di credito. Il pilota deve includere almeno due milestone di cui una coppia
 con glob che si intersecano, così da esercitare la lane contract-first, e deve chiudersi
-producendo la sezione `## Metriche` di `RUN.md`. M8 non è parte della release candidate 0.5.0.
+producendo la sezione `## Metriche` di `RUN.md`. M8 non è parte della release 0.5.0 e non ne
+blocca la consegna.
+
+M9 resta fuori perimetro 0.5.0 e non bloccante: l'evidenza runtime del modello sarà affrontata
+in una milestone successiva.
 
 Definition of done di M8:
 

@@ -1,4 +1,4 @@
-# orchestratore 0.5.0 candidato
+# orchestratore 0.5.0
 
 Plugin dual-runtime (Claude Code + Codex) che orchestra worker su più milestone in parallelo e
 su più task dentro ogni milestone, con prova di indipendenza sui file reali, lane contract-first
@@ -21,6 +21,13 @@ si persiste da 50 e si apre una nuova sessione da 70 senza affidarsi all'auto-co
 è finito a 2×2.
 
 Spec: `docs/specs/2026-09-12-orchestratore-plugin-design.md`. Piani: `docs/plans/`.
+
+## Stato release 0.5.0
+
+La release è stata integrata con PR #3, merge SHA
+`482ca674d05114d41e83db0ee18984c176c13495`. Claude Code è aggiornato da 0.4.0 a 0.5.0 e
+Codex è installato alla 0.5.0. È necessaria una nuova sessione per applicare la versione
+aggiornata.
 
 ## Install
 
