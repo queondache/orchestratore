@@ -26,17 +26,20 @@ Tool `Agent`. Regole:
 
 ## Worker cx via bridge
 
-`bin/spawn-cx.sh [--dry-run] <modello> <effort> <cwd> <prompt-file>`, che esegue
+`bin/spawn-cx.sh [--dry-run] <modello> <effort> <cwd> <task-id>`, che esegue
 `codex exec --yolo -m <modello> -c model_reasoning_effort=<effort> -C <cwd> -` (`--yolo` è
 l'alias di `--dangerously-bypass-approvals-and-sandbox`) con il prompt su stdin, log in
 `<cwd>/.orchestratore/logs/<task-id>.log`, exit code restituito. Rifiuta prima di spendere
-credito: modello fuori routing `65`, effort non ammesso `65`, cwd o prompt mancanti `66`.
+credito: modello fuori routing `65`, effort non ammesso `65`, cwd o RUN mancanti `66`, task-id non valido `65`.
+Il bridge genera lo stdin minimo dal `task-id`: indica di leggere `SPEC.md`, `ROADMAP.md` e
+`.orchestratore/RUN.md`, eseguire solo la sezione task corrispondente e aggiornare soltanto
+quella sezione con esito e checkpoint. Non accetta né crea prompt-file permanenti.
 La validazione è sulla coppia modello/effort: Luna e Terra rifiutano `low`; Sol accetta da
 `low`; Astra accetta da `low`, ma il contratto deve registrarne il trigger di escalation.
 `--dry-run` stampa la riga di comando senza eseguire: usalo per provare il cablaggio.
 Lancialo con `Bash` in background (`run_in_background: true`) e leggi il log al
 checkpoint. Modelli cx: `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`.
-Il bridge non decide niente: modello, effort e prompt li scegli tu.
+Il bridge non decide modello, effort, ownership o gate: li scegli tu nel contratto del task.
 
 ## Domande interattive
 
@@ -54,7 +57,7 @@ Output raw nel report, mai riassunto.
 
 Il root CC non legge la propria percentuale in modo affidabile: lavora per checkpoint
 frequenti e scrivi l'handoff presto. I worker hanno contesto proprio: ogni turno finisce a
-un checkpoint. Se il runtime segnala compattazione, ricarica solo `run.md` e ricontrolla
+un checkpoint. Se il runtime segnala compattazione, ricarica solo `RUN.md` e ricontrolla
 l'impronta del filesystem prima di continuare.
 
 ## Lock e stato

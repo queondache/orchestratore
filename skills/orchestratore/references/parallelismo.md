@@ -1,13 +1,13 @@
 # Parallelismo a due livelli: milestone e task
 
-Due livelli: **lane** = una milestone, **task** = una parte di una lane. Tetti per progetto:
-3 milestone attive × 3 task per milestone, **massimo 9 worker builder**. Verificatori,
-integratore e pre-merge non occupano slot builder: pool di verifica separato, massimo 3
-verifiche in volo. Uno slot builder si occupa solo con la prova di indipendenza qui sotto.
+Due livelli: **lane** = una milestone, **task** = una parte di una lane. Il controller
+ammette **massimo 2 builder Codex in volo** nel run. Stratega e reviewer Claude sono ruoli
+separati e non occupano slot builder; una sola review è in volo. Uno slot builder si occupa
+solo con la prova di indipendenza qui sotto.
 
 ## 1. Piano di parallelizzazione, prima di qualsiasi delega
 
-Il cervello scrive in `run.md` la sezione `## Piano di parallelizzazione`, una riga per
+Il cervello scrive in `RUN.md` la sezione `## Piano di parallelizzazione`, una riga per
 milestone aperta:
 
 ```text
@@ -26,7 +26,7 @@ Due milestone vanno in parallelo solo se valgono **entrambe** le condizioni:
   `comm -12 <(git ls-files <glob A> | sort) <(git ls-files <glob B> | sort)` senza output;
 - nessuna interfaccia condivisa dichiarata scrivibile da più di una lane.
 
-Esito in `run.md`: coppie parallelizzabili e coppie in conflitto con i file che si
+Esito in `RUN.md`: coppie parallelizzabili e coppie in conflitto con i file che si
 sovrappongono. Intersezione non vuota = il parallelo **non** si apre. Nessuna prova scritta =
 nessuno slot occupato.
 
@@ -66,11 +66,11 @@ meccanici, gate verde sull'integrazione, consegna con hash e output raw. Nessuna
 implementazione nuova: un conflitto che richiede una decisione torna al cervello, che riapre
 il task giusto invece di farlo risolvere all'integratore.
 
-**Il cervello non scrive codice.** Scrive `run.md`, il registro quesiti, i contratti e
+**Il cervello non scrive codice.** Scrive `RUN.md`, il registro quesiti, i contratti e
 l'handoff. Se integra, satura il contesto proprio quando le lane sono più aperte.
 
 ## 6. Precedenza e code
 
-Una consegna pronta ha sempre precedenza su una nuova assegnazione. Oltre le 3 verifiche in
+Una consegna pronta ha sempre precedenza su una nuova assegnazione. Con una review già in
 volo la consegna resta in coda e il report la segnala come `in coda di verifica`. Uno slot
 builder libero senza lavoro indipendente dimostrato resta libero: i tetti non sono obiettivi.

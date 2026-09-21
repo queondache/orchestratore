@@ -50,7 +50,7 @@ task successivo al default del suo tier: l'escalation non diventa un nuovo defau
    scatta un trigger; non è il verificatore predefinito.
 5. Il failover è simmetrico e persistente. I task in volo sul runtime esaurito finiscono
    solo il checkpoint atomico sicuro. Se quel runtime ospita il cervello e l'altro è
-   disponibile: stato e handoff in `run.md`, rilascio di `brain.lock`, passaggio esplicito
+   disponibile: stato e handoff in `RUN.md`, rilascio di `brain.lock`, passaggio esplicito
    all'altro runtime e stop. Se è l'altro runtime: il cervello continua e usa la tabella
    sopra, mantenendo builder, verificatore e pre-merge su modelli diversi. Con entrambi
    esauriti, modalità
@@ -72,8 +72,8 @@ task successivo al default del suo tier: l'escalation non diventa un nuovo defau
    la definizione dell'agent o l'istruzione nel prompt.
 9. Mai dichiarare che un modello ha girato se il runtime non lo riporta. Il log del bridge
    e il campo `model` della risposta sono l'unica evidenza.
-10. **Tetti separati**: 9 slot builder (3 milestone × 3 task) e un pool di verifica a parte,
-   massimo 3 verifiche in volo. Verificatore, pre-merge e integratore non consumano slot
+10. **Tetti separati**: massimo 2 builder Codex e un reviewer Claude separato, configurati
+   per run; una sola verifica in volo. Verificatore, pre-merge e integratore non consumano slot
    builder, altrimenti la verifica affama l'implementazione. Dettaglio in
    [parallelismo](parallelismo.md).
 11. Il verificatore esegue i quattro passi di [verifica](verifica.md), oracolo incluso. Un

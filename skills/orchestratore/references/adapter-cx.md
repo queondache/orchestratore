@@ -29,13 +29,17 @@ Se non puoi ottenerlo senza input, non delegare quella lane e usa un path già `
 
 ## Worker CC via bridge
 
-`bin/spawn-cc.sh [--dry-run] <modello> <cwd> <prompt-file>`, che esegue
+`bin/spawn-cc.sh [--dry-run] <modello> <cwd> <task-id>`, che esegue
 `claude -p --model <modello> --permission-mode bypassPermissions --output-format json
 --add-dir <cwd>` con il prompt su stdin, log in `<cwd>/.orchestratore/logs/<task-id>.log`.
-Stessi codici di rifiuto del bridge cx (`65` modello, `66` cwd o prompt). Con `verifica cc`
+Stessi codici di rifiuto del bridge cx (`65` modello/task-id, `66` cwd o RUN). Con `verifica cc`
 il verificatore segue il tier di `routing.md`: Haiku per meccanico/basic, Sonnet per
-importante, Opus solo su trigger o in solo-CC importante. Il prompt include il testo di
-`agents/verificatore.md` più solo perimetro, branch, hash, gate verde e aree ammesse.
+importante, Opus solo su trigger o in solo-CC importante. La sezione task del verificatore
+nel RUN rimanda a `agents/verificatore.md` e contiene solo perimetro, branch, hash, gate
+verde e aree ammesse.
+Il bridge genera lo stdin minimo dal `task-id`: indica di leggere `SPEC.md`, `ROADMAP.md` e
+`.orchestratore/RUN.md`, eseguire solo la sezione task corrispondente e aggiornare soltanto
+quella sezione con esito e checkpoint. Non accetta né crea prompt-file permanenti.
 
 ## Domande interattive
 

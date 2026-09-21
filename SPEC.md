@@ -1,7 +1,8 @@
-# SPEC — orchestratore
+# SPEC — orchestratore 0.5.0 candidato
 
 Plugin dual-runtime (Claude Code + Codex) che trasforma una ROADMAP in consegne verificate,
-lavorando in parallelo su più milestone e su più task dentro ogni milestone.
+lavorando in parallelo su più milestone e su più task dentro ogni milestone. La release 0.5.0
+aggiunge un controller locale persistente per rendere ripresa e idempotenza osservabili.
 
 ## 1. Problema
 
@@ -49,9 +50,11 @@ Terra da medium e Sol da low; Astra worker da low solo su escalation osservabile
 
 **Dentro**: contratto di autonomia, piano di parallelizzazione, delega a worker CC e cx,
 protocollo di verifica, gate pre-merge, merge condizionato, registro quesiti e assunzioni,
-failover del credito, handoff e ripresa, celebrazione, metriche.
+failover del credito, handoff e ripresa, celebrazione, metriche, controller SQLite con WAL e
+lease autorevole e CLI congelata per gli ingressi app Codex locale, Codex CLI e Claude CLI.
 
-**Fuori**: costruire strumenti di coordinamento nuovi (code server, dashboard, DB di stato);
+**Fuori**: servizi remoti, dashboard e dipendenze nuove; il controller SQLite locale è parte
+della release e non sostituisce il piano persistente del run;
 sostituire `milestone`, `allineamento` o `spec-builder`; decidere regole di prodotto dei
 progetti ospiti; installare o abilitare skill e plugin; qualunque azione che aumenti la spesa.
 
@@ -64,8 +67,13 @@ progetti ospiti; installare o abilitare skill e plugin; qualunque azione che aum
 - **Bridge**: `bin/spawn-cx.sh`, `bin/spawn-cc.sh`, entrambi con `--dry-run`.
 - **Comandi**: `/orchestratore:orchestra`, `/orchestratore:orchestra-status`.
 - **Hook**: guardia `PreToolUse` attiva solo con un run vivo; stato del run a `SessionStart`.
-- **Stato su file**: `.orchestratore/run.md`, `recon.md`, `brain.lock`, `config.toml`;
+- **Stato su file**: `.orchestratore/RUN.md` come unica fonte operativa, `brain.lock` e
+  `config.toml`; SPEC è fonte requisiti e ROADMAP fonte milestone/stato. Nessun recon o
+  prompt-file permanente;
   `~/.orchestratore/state.toml` per il credito.
+- **Controller**: `bin/orchestratore-controller` e `controller/**`, con SQLite in WAL mode,
+  lease verificata nel database e JSON CLI `--db` per `init`, `start`, `add-task`, `schedule`,
+  `complete`, `fail`, `checkpoint`, `status`, `acquire` e `release`.
 
 ## 6. Definition of done del plugin
 
@@ -80,6 +88,14 @@ senza spendere credito.
 | `tests/check-regressions-mutations.sh` | ogni invariante è stato visto rosso |
 | `tests/check-bridge.sh` | i bridge compongono la riga giusta e rifiutano l'input invalido |
 | `tests/check-hooks.sh` | la guardia blocca il distruttivo con un run vivo, e solo allora |
+| `tests/check-controller.sh` | transizioni, lease, recovery A-E, idempotenza, retry 2×2 e capienza builder |
+
+Il controller non considera concluso un run finché non sono provati outcome PR, merge o attesa
+approvata e allineamento documentale. Il caso E è quindi una ripresa verificata, non un successo
+implicito. Il checkpoint persiste summary, fase, hash/impronta e sessione; a soglia 50 si salva
+il checkpoint e a soglia 70 si apre esplicitamente una nuova sessione senza assumere auto-compact.
+Il retry è finito: due tentativi per approccio e due approcci; il fallimento ripetuto viene
+parcheggiato. Il routing standard è Claude per strategia e review, massimo due builder Codex.
 
 ## 7. Quesiti aperti
 

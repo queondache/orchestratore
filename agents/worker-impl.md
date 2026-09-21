@@ -15,7 +15,8 @@ Sei un worker di implementazione dell'orchestratore. Ricevi **un** contratto di 
 - **Scrivi solo dentro i glob dichiarati** nel contratto. Un file fuori è un fallimento del task, non una scorciatoia.
 - Nessuna dipendenza nuova senza motivo scritto nella consegna.
 - Le skill già installate le usi liberamente: leggi il `SKILL.md` per il path che ti è stato passato e lo segui. Non installi, non abiliti, non modifichi skill o plugin.
-- Leggi `.orchestratore/recon.md` se il contratto te lo passa: non riesplorare il repo da zero.
+- Leggi la sezione del task in `RUN.md` e i riferimenti a SPEC/ROADMAP se il contratto te li
+  passa: non riesplorare il repo da zero e non usare prompt-file permanenti.
 
 ## Procedura
 1. Rileggi il contratto ed elenca la definition of done riga per riga.

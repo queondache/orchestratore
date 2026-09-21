@@ -11,9 +11,8 @@ TMP="$(mktemp -d "${TMPDIR:-/tmp}/orchestratore-bridge.XXXXXX")"
 cleanup() { [ -n "${TMP:-}" ] && [ -d "$TMP" ] && command rm -r -f -- "$TMP"; }
 trap cleanup EXIT
 
-PROMPT="$TMP/T-007.md"
-printf 'contratto del task\n' > "$PROMPT"
-VUOTO="$TMP/vuoto.md"; : > "$VUOTO"
+mkdir -p "$TMP/.orchestratore"
+printf '# Run\n' > "$TMP/.orchestratore/RUN.md"
 
 failures=0
 ok() { printf 'OK: %s\n' "$1"; }
@@ -38,35 +37,43 @@ expect_stdout() { # expect_stdout <needle> <label> <cmd...>
 # Riga di comando composta: il bridge non decide, riporta quello che gli è stato detto
 expect_stdout 'codex exec --yolo -m gpt-5.6-terra -c model_reasoning_effort=medium' \
   "cx compone modello ed effort dichiarati" \
-  "$CX" --dry-run gpt-5.6-terra medium "$TMP" "$PROMPT"
+  "$CX" --dry-run gpt-5.6-terra medium "$TMP" T-007
 expect_stdout "-C $TMP" "cx passa il cwd del progetto" \
-  "$CX" --dry-run gpt-5.6-sol high "$TMP" "$PROMPT"
+  "$CX" --dry-run gpt-5.6-sol high "$TMP" T-007
 expect_stdout "$TMP/.orchestratore/logs/T-007.log" "cx deriva il log dal task id" \
-  "$CX" --dry-run gpt-5.6-sol high "$TMP" "$PROMPT"
+  "$CX" --dry-run gpt-5.6-sol high "$TMP" T-007
+expect_stdout 'Esegui solo la sezione task T-007' "cx costruisce stdin task-specific" \
+  "$CX" --dry-run gpt-5.6-sol high "$TMP" T-007
 expect_stdout 'claude -p --model opus --permission-mode bypassPermissions' \
   "cc compone modello e bypassPermissions" \
-  "$CC" --dry-run opus "$TMP" "$PROMPT"
+  "$CC" --dry-run opus "$TMP" T-008
 expect_stdout '--output-format json' "cc chiede output json" \
-  "$CC" --dry-run sonnet "$TMP" "$PROMPT"
-expect_stdout "$TMP/.orchestratore/logs/T-007.log" "cc deriva il log dal task id" \
-  "$CC" --dry-run haiku "$TMP" "$PROMPT"
+  "$CC" --dry-run sonnet "$TMP" T-008
+expect_stdout "$TMP/.orchestratore/logs/T-008.log" "cc deriva il log dal task id" \
+  "$CC" --dry-run haiku "$TMP" T-008
+expect_stdout 'Esegui solo la sezione task T-008' "cc costruisce stdin task-specific" \
+  "$CC" --dry-run haiku "$TMP" T-008
 
 # Validazione: il bridge rifiuta prima di spendere credito
 expect_exit 64 "cx rifiuta un numero di argomenti sbagliato" "$CX" --dry-run gpt-5.6-sol high "$TMP"
-expect_exit 65 "cx rifiuta un modello non in routing" "$CX" --dry-run gpt-4o high "$TMP" "$PROMPT"
-expect_exit 65 "cx rifiuta un effort non ammesso" "$CX" --dry-run gpt-5.6-sol estremo "$TMP" "$PROMPT"
-expect_exit 65 "cx rifiuta Luna low" "$CX" --dry-run gpt-5.6-luna low "$TMP" "$PROMPT"
-expect_exit 65 "cx rifiuta Terra low" "$CX" --dry-run gpt-5.6-terra low "$TMP" "$PROMPT"
-expect_exit 0 "cx accetta Sol low" "$CX" --dry-run gpt-5.6-sol low "$TMP" "$PROMPT"
-expect_exit 0 "cx accetta Astra low per escalation" "$CX" --dry-run gpt-6-astra low "$TMP" "$PROMPT"
-expect_exit 66 "cx rifiuta un cwd inesistente" "$CX" --dry-run gpt-5.6-sol high "$TMP/assente" "$PROMPT"
-expect_exit 66 "cx rifiuta un prompt vuoto" "$CX" --dry-run gpt-5.6-sol high "$TMP" "$VUOTO"
+expect_exit 65 "cx rifiuta un modello non in routing" "$CX" --dry-run gpt-4o high "$TMP" T-007
+expect_exit 65 "cx rifiuta un effort non ammesso" "$CX" --dry-run gpt-5.6-sol estremo "$TMP" T-007
+expect_exit 65 "cx rifiuta Luna low" "$CX" --dry-run gpt-5.6-luna low "$TMP" T-007
+expect_exit 65 "cx rifiuta Terra low" "$CX" --dry-run gpt-5.6-terra low "$TMP" T-007
+expect_exit 0 "cx accetta Sol low" "$CX" --dry-run gpt-5.6-sol low "$TMP" T-007
+expect_exit 0 "cx accetta Astra low per escalation" "$CX" --dry-run gpt-6-astra low "$TMP" T-007
+expect_exit 66 "cx rifiuta un cwd inesistente" "$CX" --dry-run gpt-5.6-sol high "$TMP/assente" T-007
+expect_exit 65 "cx rifiuta task-id invalido" "$CX" --dry-run gpt-5.6-sol high "$TMP" '../T-007'
 expect_exit 64 "cc rifiuta un numero di argomenti sbagliato" "$CC" --dry-run opus "$TMP"
-expect_exit 65 "cc rifiuta un modello non in routing" "$CC" --dry-run fable "$TMP" "$PROMPT"
-expect_exit 66 "cc rifiuta un prompt assente" "$CC" --dry-run opus "$TMP" "$TMP/mai-scritto.md"
+expect_exit 65 "cc rifiuta un modello non in routing" "$CC" --dry-run fable "$TMP" T-008
+expect_exit 65 "cc rifiuta task-id invalido" "$CC" --dry-run opus "$TMP" 'T 008'
+
+EMPTY="$TMP/no-run"; mkdir -p "$EMPTY"
+expect_exit 66 "cx execute rifiuta RUN mancante" "$CX" gpt-5.6-sol high "$EMPTY" T-007
+expect_exit 66 "cc execute rifiuta RUN mancante" "$CC" opus "$EMPTY" T-008
 
 # Nessuna esecuzione reale in dry-run
-if [ -d "$TMP/.orchestratore" ]; then ko "dry-run non crea directory di log"; else ok "dry-run non crea directory di log"; fi
+if [ -d "$TMP/.orchestratore/logs" ]; then ko "dry-run non crea directory di log"; else ok "dry-run non crea directory di log"; fi
 
 if [ "$failures" -gt 0 ]; then printf 'ROSSO: %d controlli bridge falliti\n' "$failures"; exit 1; fi
 printf 'VERDE: bridge conformi\n'

@@ -96,7 +96,7 @@ remove_credit_transitions() {
 
 negate_handoff() {
   local copy="$1"
-  perl -0pi -e 's/Se è esaurito il runtime del cervello e l\x27altro è disponibile, scrivi l\x27handoff esplicito\n   all\x27altro runtime dopo aver completato solo il proprio checkpoint atomico, aggiornato\n   `run\.md` e lo stato credito e rilasciato `brain\.lock`; quindi fermati\./Se il cervello è esaurito, non scrivere handoff né rilasciare brain.lock, e non fermarti./' "$copy/skills/orchestratore/references/credito.md"
+  perl -0pi -e 's/Se è esaurito il runtime del cervello e l\x27altro è disponibile, scrivi l\x27handoff esplicito\n   all\x27altro runtime dopo aver completato solo il proprio checkpoint atomico, aggiornato\n   `RUN\.md` e lo stato credito e rilasciato `brain\.lock`; quindi fermati\./Se il cervello è esaurito, non scrivere handoff né rilasciare brain.lock, e non fermarti./' "$copy/skills/orchestratore/references/credito.md"
 }
 
 remove_restore_guard() {
@@ -106,7 +106,7 @@ remove_restore_guard() {
 
 downgrade_y2_version() {
   local copy="$1"
-  sed -i.bak 's/"0\.4\.1"/"0.4.0"/g' "$copy/.claude-plugin/plugin.json"
+  sed -i.bak 's/"0\.5\.0"/"0.4.1"/g' "$copy/.claude-plugin/plugin.json"
   rm -f "$copy/.claude-plugin/plugin.json.bak"
 }
 
@@ -238,7 +238,7 @@ remove_local_suite_fallback() {
 
 remove_green_gate_definition() {
   local copy="$1"
-  perl -0pi -e 's/## Gate verde: definito una volta, scritto in `run\.md`/## Note/' "$copy/skills/orchestratore/references/lane.md"
+  perl -0pi -e 's/## Gate verde: definito una volta, scritto in `RUN\.md`/## Note/' "$copy/skills/orchestratore/references/lane.md"
 }
 
 remove_doc_alignment_on_close() {
@@ -298,12 +298,12 @@ remove_sensitive_areas() {
 
 remove_recon() {
   local copy="$1"
-  perl -0pi -e 's/\.orchestratore\/recon\.md/appunti temporanei/g' "$copy/skills/orchestratore/references/project-adapter.md"
+  perl -0pi -e 's/unica memoria operativa/memoria duplicata/g' "$copy/skills/orchestratore/references/project-adapter.md"
 }
 
 remove_metrics() {
   local copy="$1"
-  perl -0pi -e 's/## Metriche/## Note finali/' "$copy/templates/run.md"
+  perl -0pi -e 's/## Metriche/## Note finali/' "$copy/templates/RUN.md"
 }
 
 remove_ko_observer() {
@@ -314,6 +314,46 @@ remove_ko_observer() {
 remove_config_risk_areas() {
   local copy="$1"
   perl -0pi -e 's/\[rischio\]/[note]/' "$copy/templates/config.toml"
+}
+
+remove_equivalent_entries() {
+  local copy="$1"
+  perl -0pi -e 's/sono tre ingressi equivalenti/sono tre run indipendenti/' "$copy/skills/orchestratore/references/controller.md"
+}
+
+allow_complete_before_finalize() {
+  local copy="$1"
+  perl -0pi -e 's/Solo `finalizzata` è terminale\/completata/Anche `implementata` è terminale\/completata/' "$copy/skills/orchestratore/references/controller.md"
+}
+
+remove_partial_case_e() {
+  local copy="$1"
+  perl -0pi -e 's/^- E:.*\n//m' "$copy/skills/orchestratore/references/controller.md"
+}
+
+remove_explicit_rollover() {
+  local copy="$1"
+  perl -0pi -e 's/Da 70% avvia una sessione fresca da quel checkpoint/Da 70% continua nella stessa sessione/' "$copy/skills/orchestratore/references/controller.md"
+}
+
+expand_controller_builders() {
+  local copy="$1"
+  perl -0pi -e 's/builder: Codex, massimo 2/builder: Codex, massimo 4/' "$copy/skills/orchestratore/references/controller.md"
+}
+
+restore_unbounded_verification() {
+  local copy="$1"
+  perl -0pi -e 's/applica il budget finito di lane\.md: due tentativi per approccio e due approcci\n  distinti; poi cambio prospettiva o parcheggio/correzione e nuovo giro, senza tetto ai giri (lane.md)/' "$copy/skills/orchestratore/references/verifica.md"
+}
+
+weaken_sqlite_authority() {
+  local copy="$1"
+  perl -0pi -e 's/SQLite e la lease del controller sono autoritativi/brain.lock è autoritativo/' "$copy/skills/orchestratore/references/controller.md"
+}
+
+remove_checkpoint_fingerprint() {
+  local copy="$1"
+  perl -0pi -e 's/summary, fase, hash esatto, fingerprint del filesystem e session\n+id/solo summary e fase/' "$copy/skills/orchestratore/references/controller.md"
 }
 
 weaken_verifier_agent() {
@@ -368,7 +408,7 @@ remove_guard_hook_registration() {
 
 make_status_command_writable() {
   local copy="$1"
-  perl -0pi -e 's/Non aprire task, non delegare, non modificare file\./Puoi aggiornare run.md mentre leggi./' "$copy/commands/orchestra-status.md"
+  perl -0pi -e 's/Non aprire task, non delegare, non modificare file\./Puoi aggiornare RUN.md mentre leggi./' "$copy/commands/orchestra-status.md"
 }
 
 make_start_ask_defaults() {
@@ -553,10 +593,18 @@ expect_rejected "B4 verifier steps removed" remove_verifier_steps
 expect_rejected "B4 oracle KO removed" remove_oracle
 expect_rejected "B5 tier3 auto-merge allowed" allow_tier3_automerge
 expect_rejected "B5 sensitive areas removed" remove_sensitive_areas
-expect_rejected "B6 recon removed" remove_recon
+expect_rejected "B6 RUN unico rimosso" remove_recon
 expect_rejected "B6 metrics removed" remove_metrics
 expect_rejected "B6 KO observer turned into a stop" remove_ko_observer
 expect_rejected "B7 config risk areas removed" remove_config_risk_areas
+expect_rejected "B8 equivalent entries split" remove_equivalent_entries
+expect_rejected "B8 completion allowed before finalize" allow_complete_before_finalize
+expect_rejected "B8 partial case E removed" remove_partial_case_e
+expect_rejected "B8 explicit rollover removed" remove_explicit_rollover
+expect_rejected "B8 builder cap expanded" expand_controller_builders
+expect_rejected "B8 unbounded verification restored" restore_unbounded_verification
+expect_rejected "B8 SQLite authority weakened" weaken_sqlite_authority
+expect_rejected "B8 checkpoint fingerprint removed" remove_checkpoint_fingerprint
 expect_rejected "C1 verifier agent steps removed" weaken_verifier_agent
 expect_rejected "C1 verifier allowed to write" allow_verifier_writes
 expect_rejected "C1 pre-merge promotion allowed" allow_premerge_promotion

@@ -24,10 +24,10 @@ ridiscute, al massimo si ferma per una delle tre condizioni STOP.
   `.claude/decisioni.md`, mai ad Andrea. Il cervello valuta se sono bloccanti.
 - Nessun file fuori dalle aree ammesse, nessuna dipendenza nuova senza motivo nel ledger.
 
-## Gate verde: definito una volta, scritto in `run.md`
+## Gate verde: definito una volta, scritto in `RUN.md`
 
 All'avvio il cervello individua i comandi reali di build, test e lint del progetto e li
-scrive in `run.md` come `Gate verde: build=<cmd> test=<cmd> lint=<cmd>`. **Verde** significa
+scrive in `RUN.md` come `Gate verde: build=<cmd> test=<cmd> lint=<cmd>`. **Verde** significa
 i tre comandi a exit 0 con output raw nel report; niente di meno vale come verde. Se un
 comando non esiste nel progetto scrivilo (`lint=nessuno`) invece di inventarlo. Ogni worker
 riceve questi comandi nel contratto del task.
@@ -35,7 +35,7 @@ riceve questi comandi nel contratto del task.
 ## Verifica a ogni consegna, non solo a fine milestone
 
 Ogni task che consegna codice passa dal verificatore prima che il suo stato avanzi da
-`in review`. Il cervello scrive in `run.md` la riga di verifica con modello del verificatore,
+`in review`. Il cervello scrive in `RUN.md` la riga di verifica con modello del verificatore,
 hash, comando eseguito ed esito raw (formato in SKILL.md §4). Senza quella riga il task
 non è verificato, qualunque cosa dica il builder.
 
@@ -101,25 +101,26 @@ qualità eseguita, in una delle due forme.
   success. Checks assenti, pending, falliti o cancellati bloccano sempre il merge.
 - Repo **senza** required checks configurati: vale il **fallback suite locale**. Il
   verificatore — mai il builder — esegue sull'hash esatto della PR i comandi del
-  `Gate verde` di `run.md`: build, test e lint tutti a exit 0, comandi e output raw nel
-  report e in `run.md`. Suite assente, non eseguibile o parziale = merge bloccato e domanda
+  `Gate verde` di `RUN.md`: build, test e lint tutti a exit 0, comandi e output raw nel
+  report e in `RUN.md`. Suite assente, non eseguibile o parziale = merge bloccato e domanda
   ad Andrea. Un fallback dichiarato senza output raw non vale.
 
 Con il gate passato esegui
 `gh pr merge <n> --squash`, verifica con
 `gh pr view <n> --json state,mergedAt`, conserva output raw nel report e aggiorna `main`
 locale. Non usare force-push, reset o cancellazioni distruttive.
-Poi, nello stesso turno e senza chiedere, la milestone diventa **chiusa**:
+Poi, nello stesso turno e senza chiedere, la milestone diventa **chiusa**. Aggiorna prima
+`ROADMAP.md`, poi compatta `RUN.md` e apre la prossima milestone eleggibile:
 
 1. `ROADMAP.md`: milestone a FATTO con link PR e hash di merge;
 2. `progress.md`: `Dove siamo` e `Prossimo passo` riscritti sullo stato reale;
 3. `.claude/decisioni.md`: decisioni prese nella lane e risposte propagate (SKILL.md §5);
 4. `SPEC.md` solo se la lane ha cambiato una regola di prodotto già decisa da Andrea;
-5. contatori in `run.md` e celebrazione (SKILL.md §7).
+5. contatori in `RUN.md` e celebrazione (SKILL.md §7).
 
 Merge fatto e doc non allineati = milestone **non** chiusa. Chiusa la milestone,
 apri subito la lane successiva se restano milestone aperte e budget: il run non finisce
 con una milestone, finisce col budget.
 
-Stati distinti in `run.md`: `implementata`, `verificata`, `pronta` (pre-merge sì),
+Stati distinti in `RUN.md`: `implementata`, `verificata`, `pronta` (pre-merge sì),
 `integrata` (merge fatto), `chiusa` (ROADMAP e contatori aggiornati).

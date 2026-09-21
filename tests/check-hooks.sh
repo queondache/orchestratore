@@ -336,7 +336,7 @@ ERR_NO_RUN="$TMP/senza-py-no-run.err"
 # Niente pipe verso grep -q: con pipefail il SIGPIPE falserebbe l'esito.
 OUT_SENZA="$( cd "$SENZA_RUN" && "$SESS" )"
 [ -z "$OUT_SENZA" ] && ok "session hook silenzioso senza run" || ko "session hook silenzioso senza run"
-printf 'stato: attivo\ncervello: cc-fable\n' > "$CON_RUN/.orchestratore/run.md"
+printf 'stato: attivo\ncervello: cc-fable\n' > "$CON_RUN/.orchestratore/RUN.md"
 OUT_CON="$( cd "$CON_RUN" && "$SESS" )"
 case "$OUT_CON" in *"stato: attivo"*) ok "session hook riporta lo stato del run" ;; *) ko "session hook riporta lo stato del run" ;; esac
 case "$OUT_CON" in *"brain.lock"*) ok "session hook segnala il lock" ;; *) ko "session hook segnala il lock" ;; esac

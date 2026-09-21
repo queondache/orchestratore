@@ -7,6 +7,7 @@ ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)"
 CATALOG="$ROOT/skills/orchestratore/references/codex-skills-catalog.jsonl"
 SKILL="$ROOT/skills/orchestratore/SKILL.md"
 ROUTING="$ROOT/skills/orchestratore/references/routing.md"
+CONTROLLER="$ROOT/skills/orchestratore/references/controller.md"
 STATE="$ROOT/templates/state.toml"
 CONFIG="$ROOT/templates/config.toml"
 CREDITO="$ROOT/skills/orchestratore/references/credito.md"
@@ -74,7 +75,7 @@ does_not_match_in_files() {
 
 json_version_is() {
   local file="$1"
-  [[ "$(jq -r '.version' "$file")" == "0.4.1" ]]
+  [[ "$(jq -r '.version' "$file")" == "0.5.0" ]]
 }
 
 catalog_entry_count() {
@@ -142,16 +143,16 @@ fi
 
 cc_version="$(jq -r '.version' "$CC_MANIFEST")"
 cx_version="$(jq -r '.version' "$CX_MANIFEST")"
-if [[ "$cc_version" == "0.4.1" && "$cx_version" == "0.4.1" && "$cc_version" == "$cx_version" ]]; then
-  ok "manifest CC e cx allineati alla versione 0.4.1"
+if [[ "$cc_version" == "0.5.0" && "$cx_version" == "0.5.0" && "$cc_version" == "$cx_version" ]]; then
+  ok "manifest CC e cx allineati alla versione 0.5.0"
 else
-  ko "manifest CC e cx allineati alla versione 0.4.1"
+  ko "manifest CC e cx allineati alla versione 0.5.0"
 fi
 
-check "manifest CC versione 0.4.1" json_version_is "$CC_MANIFEST"
-check "manifest cx versione 0.4.1" json_version_is "$CX_MANIFEST"
-check "marketplace CC versione 0.4.1" json_version_is "$CC_MARKETPLACE"
-check "marketplace agenti versione 0.4.1" json_version_is "$AGENT_MARKETPLACE"
+check "manifest CC versione 0.5.0" json_version_is "$CC_MANIFEST"
+check "manifest cx versione 0.5.0" json_version_is "$CX_MANIFEST"
+check "marketplace CC versione 0.5.0" json_version_is "$CC_MARKETPLACE"
+check "marketplace agenti versione 0.5.0" json_version_is "$AGENT_MARKETPLACE"
 
 check "README documenta snapshot/cache" contains_fixed "snapshot/cache" "$README"
 check "README richiede bump di versione" contains_fixed "bump di versione" "$README"
@@ -174,7 +175,7 @@ check "routing vieta assegnazioni in fermo" matches_in_file 'Con entrambi\s+esau
 check "credito impone handoff positivo, rilascio lock e stop" matches_in_file 'Se è esaurito il runtime del cervello e l\x27altro è disponibile, scrivi l\x27handoff esplicito\s+all\x27altro runtime dopo aver completato solo il proprio checkpoint atomico, aggiornato\s+`run\.md` e lo stato credito e rilasciato `brain\.lock`; quindi fermati\.' "$CREDITO"
 check "credito ripristina il peso solo con entrambi ok" matches_in_file 'quando entrambi sono `ok`, ripristina\s+il peso salvato, torna a `normale`' "$CREDITO"
 
-Y2_FILES=("$SKILL" "$ROOT/skills/orchestratore/references/lane.md" "$ROOT/skills/orchestratore/references/adapter-cc.md" "$ROOT/skills/orchestratore/references/adapter-cx.md" "$ROOT/skills/orchestratore/references/project-adapter.md" "$ROOT/templates/run.md" "$README")
+Y2_FILES=("$SKILL" "$ROOT/skills/orchestratore/references/lane.md" "$ROOT/skills/orchestratore/references/adapter-cc.md" "$ROOT/skills/orchestratore/references/adapter-cx.md" "$ROOT/skills/orchestratore/references/project-adapter.md" "$ROOT/templates/RUN.md" "$README")
 check "Y2 dichiara run non presidiato" contains_in_file 'Run non presidiato' "$SKILL"
 check "Y2 limita Codex a --yolo" contains_in_file 'codex exec --yolo' "$ROOT/skills/orchestratore/references/adapter-cc.md"
 check "Y2 limita Claude a bypassPermissions" contains_in_file '--permission-mode bypassPermissions' "$ROOT/skills/orchestratore/references/adapter-cx.md"
@@ -216,7 +217,7 @@ check "S4 nessun fermo per skill o consenso" does_not_match_in_files '(?<!non\s)
 check "S4 nessuna installazione o abilitazione globale consentita" does_not_match_in_files '(?<!non\s)(?:consenti|autorizza|puoi)(?:\s+\p{L}+){0,8}\s+(?:installare|abilitare)(?:\s+\p{L}+){0,8}\s+globalmente\s+skill(?:/plugin|\s+o\s+plugin)?' "${S2_FILES[@]}"
 
 LANE="$ROOT/skills/orchestratore/references/lane.md"
-RUN_TPL="$ROOT/templates/run.md"
+RUN_TPL="$ROOT/templates/RUN.md"
 PROJECT_ADAPTER="$ROOT/skills/orchestratore/references/project-adapter.md"
 ADAPTER_CC="$ROOT/skills/orchestratore/references/adapter-cc.md"
 
@@ -234,18 +235,18 @@ check "A2 deduplica feedback invariato" contains_in_file 'firma invariata già c
 check "A2 limita a due tentativi per approccio" contains_in_file 'due tentativi per approccio' "$LANE"
 check "A2 limita a due approcci automatici" contains_in_file 'dopo due approcci distinti' "$LANE"
 check "A2 parcheggia la lane e continua il run" matches_in_file 'bloccata-tecnica[\s\S]*?libera lo slot[\s\S]*?continua il lavoro indipendente' "$LANE"
-check "A2 template persiste firma e approccio" matches_in_file 'Firma KO:[\s\S]*?approccio_id:[\s\S]*?Tentativi approccio' "$ROOT/templates/run.md"
+check "A2 template persiste firma e approccio" matches_in_file 'Firma KO:[\s\S]*?approccio_id:[\s\S]*?Tentativi approccio' "$ROOT/templates/RUN.md"
 
 # A3 — verifica a ogni consegna
 check "A3 verifica obbligatoria per consegna" contains_in_file 'Verifica obbligatoria a ogni consegna, non solo a fine milestone' "$SKILL"
 check "A3 formato riga di verifica con hash" contains_in_file 'verifica T-<id>' "$SKILL"
 check "A3 senza riga il task resta in review" contains_in_file 'il task resta `in review`' "$SKILL"
 check "A3 lane ripete la verifica per consegna" contains_in_file '## Verifica a ogni consegna, non solo a fine milestone' "$LANE"
-check "A3 template registra la verifica" contains_in_file 'verifica T-001:' "$RUN_TPL"
+check "A3 template registra la verifica parametrica" contains_in_file 'verifica T-<id>:' "$RUN_TPL"
 check "A3 agent mancante non salta la verifica" matches_in_file 'Mancanza di un agent non è mai un motivo\s+per saltare la verifica' "$ADAPTER_CC"
 
 # A4 — gate verde definito e fallback di merge senza CI
-check "A4 definisce il gate verde" contains_in_file '## Gate verde: definito una volta, scritto in `run.md`' "$LANE"
+check "A4 definisce il gate verde" contains_in_file '## Gate verde: definito una volta, scritto in `RUN.md`' "$LANE"
 check "A4 gate verde nel template" contains_in_file 'Gate verde: build=' "$RUN_TPL"
 check "A4 gate verde nel project adapter" contains_in_file 'Gate verde: build=' "$PROJECT_ADAPTER"
 check "A4 fallback suite locale senza required checks" contains_in_file 'fallback suite locale' "$LANE"
@@ -285,8 +286,8 @@ PARALLELISMO="$ROOT/skills/orchestratore/references/parallelismo.md"
 VERIFICA="$ROOT/skills/orchestratore/references/verifica.md"
 
 # B1 — piano di parallelizzazione e prova di indipendenza
-check "B1 tetti a due livelli nella skill" contains_in_file '3 milestone × 3 task = **9 worker builder**' "$SKILL"
-check "B1 pool di verifica fuori dal tetto builder" matches_in_file 'verificatori, pre-merge e\s+integratore stanno in un pool a parte' "$SKILL"
+check "B1 massimo due builder Codex nella skill" contains_in_file '**massimo 2 builder Codex**' "$SKILL"
+check "B1 pool di verifica fuori dal tetto builder" matches_in_file 'reviewer Claude separato, pre-merge e\s+integratore stanno in un pool a parte' "$SKILL"
 check "B1 piano di parallelizzazione richiesto" contains_in_file '## 1. Piano di parallelizzazione, prima di qualsiasi delega' "$PARALLELISMO"
 check "B1 glob non descrizioni" contains_in_file 'Le aree scrivibili sono **glob**, non descrizioni' "$PARALLELISMO"
 check "B1 prova di indipendenza sui file reali" contains_in_file 'comm -12' "$PARALLELISMO"
@@ -331,10 +332,10 @@ check "B5 auto-merge solo tier 1-2" contains_in_file 'Per le sole milestone tier
 check "B5 template registra la classe" contains_in_file 'Classe di rischio:' "$RUN_TPL"
 check "B5 confini limitano auto-merge ai tier bassi" matches_in_file 'auto-merge sono autorizzati solo al gate di §4 e per\s+le sole milestone tier 1-2' "$SKILL"
 
-# B6 — recon, assunzioni, metriche, osservatore
-check "B6 recon riusabile" contains_in_file '.orchestratore/recon.md' "$PROJECT_ADAPTER"
-check "B6 recon scade con la revisione base" contains_in_file 'il recon è scaduto' "$PROJECT_ADAPTER"
-check "B6 contratto passa il recon per path" contains_in_file '.orchestratore/recon.md` per path' "$SKILL"
+# B6 — RUN unico, assunzioni, metriche, osservatore
+check "B6 RUN operativo riusabile" contains_in_file 'unica memoria operativa' "$PROJECT_ADAPTER"
+check "B6 RUN si compatta" contains_in_file 'compatta ciò che è superato' "$PROJECT_ADAPTER"
+check "B6 contratto passa la sezione task RUN" contains_in_file 'sezione del task nel RUN' "$SKILL"
 check "B6 assunzioni reversibili non sono domande" contains_in_file 'non è una domanda: decidi, registrala in' "$SKILL"
 check "B6 assunzioni nel template" contains_in_file '## Assunzioni' "$RUN_TPL"
 check "B6 metriche nel template" contains_in_file '## Metriche' "$RUN_TPL"
@@ -343,10 +344,57 @@ check "B6 skill aggiorna le metriche" contains_in_file 'quante volte hai interro
 check "B6 loop KO finito" contains_in_file 'Nessun terzo approccio automatico' "$LANE"
 check "B6 blocco di lane non ferma il run" contains_in_file 'il rosso della lane non ferma l'"'"'intero run' "$LANE"
 
+# B9 — fonte operativa unica e memoria compatta
+check "B9 RUN e la fonte operativa unica" contains_in_file 'unica fonte operativa' "$SKILL"
+check "B9 ROADMAP e fonte milestone" contains_in_file 'ROADMAP.md` la fonte delle milestone e del loro stato' "$SKILL"
+check "B9 seleziona al massimo due milestone" contains_in_file 'massimo 2 milestone aperte' "$SKILL"
+check "B9 RUN non e append-only" contains_in_file 'non è append-only' "$SKILL"
+check "B9 SQLite resta stato macchina" contains_in_file 'SQLite conserva solo stato macchina' "$SKILL"
+check "B9 niente recon operativo" does_not_contain '.orchestratore/recon.md' "$SKILL"
+check "B9 niente prompt-file permanenti" contains_in_file 'prompt-file permanenti' "$SKILL"
+check "B9 template dichiara limite 300 righe" contains_in_file '300 righe' "$RUN_TPL"
+check "B9 template contiene milestone attive" contains_in_file '## Milestone attive' "$RUN_TPL"
+check "B9 chiusura aggiorna ROADMAP prima" matches_in_file 'ROADMAP\.md.*prima.*RUN' "$LANE"
+check "B9 worker legge sezione task RUN" contains_in_file 'sezione del task in `RUN.md`' "$ROOT/agents/worker-impl.md"
+check "B9 session hook rileva RUN" contains_in_file 'RUN=".orchestratore/RUN.md"' "$ROOT/hooks/session-run-state.sh"
+check "B9 ownership globale e task esplicita" contains_in_file 'ogni worker può aggiornare esclusivamente' "$SKILL"
+check "B9 adapter cx firma task-id" contains_in_file 'spawn-cx.sh [--dry-run] <modello> <effort> <cwd> <task-id>' "$ROOT/skills/orchestratore/references/adapter-cc.md"
+check "B9 adapter cc firma task-id" contains_in_file 'spawn-cc.sh [--dry-run] <modello> <cwd> <task-id>' "$ROOT/skills/orchestratore/references/adapter-cx.md"
+check "B9 adapter cx genera stdin minimo" contains_in_file 'Il bridge genera lo stdin minimo dal `task-id`' "$ROOT/skills/orchestratore/references/adapter-cc.md"
+check "B9 adapter cc genera stdin minimo" contains_in_file 'Il bridge genera lo stdin minimo dal `task-id`' "$ROOT/skills/orchestratore/references/adapter-cx.md"
+check "B9 adapter cx non accetta prompt-file" contains_in_file 'Non accetta né crea prompt-file permanenti' "$ROOT/skills/orchestratore/references/adapter-cc.md"
+check "B9 adapter cc non accetta prompt-file" contains_in_file 'Non accetta né crea prompt-file permanenti' "$ROOT/skills/orchestratore/references/adapter-cx.md"
+check "B9 template non duplica verifica T-001" bash -c "[ \$(grep -c 'verifica T-001:' '$RUN_TPL') -eq 0 ]"
+check "B9 template ha una sola sezione assunzioni" bash -c "[ \$(grep -c '^## Assunzioni' '$RUN_TPL') -eq 1 ]"
+check "B9 template mantiene tabella assunzioni" matches_in_file '## Assunzioni[\s\S]*?\| ID \| Assunzione \| Reversibile \| Punto di applicazione \| Stato \|' "$RUN_TPL"
+
 CONFIG_TPL="$ROOT/templates/config.toml"
-check "B7 config espone i tetti a due livelli" matches_in_file 'task_per_milestone = 3[\s\S]*?builder = 9' "$CONFIG_TPL"
-check "B7 config separa il pool di verifica" contains_in_file 'verifiche_in_volo = 3' "$CONFIG_TPL"
+check "B7 config limita i builder a due" contains_in_file 'builder = 2' "$CONFIG_TPL"
+check "B7 config separa un reviewer" contains_in_file 'verifiche_in_volo = 1' "$CONFIG_TPL"
 check "B7 config elenca le aree sensibili" matches_in_file '\[rischio\][\s\S]*?aree_sensibili = \[' "$CONFIG_TPL"
+
+# B8 — controller esterno: ingressi, ruoli, persistenza e ripresa
+check "B8 tre ingressi equivalenti" matches_in_file 'App Codex locale, Codex CLI e Claude CLI sono tre ingressi equivalenti' "$CONTROLLER"
+check "B8 fonte persistente unica" contains_in_file 'stessa fonte persistente' "$CONTROLLER"
+check "B8 dispatch fa parte dell interfaccia congelata" matches_in_file 'interfaccia congelata[\s\S]*?schedule\|dispatch\|complete' "$CONTROLLER"
+check "B8 dispatch passa task-id al bridge" matches_in_file '`dispatch`[\s\S]*?bridge[\s\S]*?`task-id`' "$CONTROLLER"
+check "B8 SQLite limita lo stato macchina" matches_in_file 'conserva soltanto stato macchina[\s\S]*?lease[\s\S]*?fasi dei task[\s\S]*?retry[\s\S]*?checkpoint ed event-id' "$CONTROLLER"
+check "B8 SQLite non duplica documenti domande credito" contains_in_file 'Documenti, domande e credito' "$CONTROLLER"
+check "B8 SQLite e lease sono autoritativi" contains_in_file 'SQLite e la lease del controller sono autoritativi' "$CONTROLLER"
+check "B8 brain lock e solo proiezione" matches_in_file '`\.orchestratore/brain\.lock` è solo una[\s\S]*?proiezione di compatibilità' "$CONTROLLER"
+check "B8 conflitto lock non crea secondo cervello" matches_in_file 'se diverge da lease/SQLite[\s\S]*?non avvia mai un secondo cervello' "$CONTROLLER"
+check "B8 stratega Claude e due builder Codex" matches_in_file 'stratega: Claude;[\s\S]*?builder: Codex, massimo 2' "$CONTROLLER"
+check "B8 reviewer Claude separato" contains_in_file 'reviewer: Claude separato' "$CONTROLLER"
+check "B8 setting congelati per run" contains_in_file 'Ogni run congela questi setting' "$CONTROLLER"
+check "B8 solo finalizzata e completata" contains_in_file 'Solo `finalizzata` è terminale/completata' "$CONTROLLER"
+check "B8 caso E resta riprendibile" matches_in_file 'caso E[\s\S]*?resta riprendibile, mai `completato`' "$CONTROLLER"
+check "B8 riprende tutti i casi A-E" bash -c "for c in A B C D E; do grep -q \"^- \$c:\" '$CONTROLLER' || exit 1; done"
+check "B8 checkpoint 50 contiene payload completo" matches_in_file 'Da 50%[\s\S]*?summary, fase, hash esatto, fingerprint del filesystem e session\s+id' "$CONTROLLER"
+check "B8 rollover 70 avvia sessione fresca" contains_in_file 'Da 70% avvia una sessione fresca da quel checkpoint' "$CONTROLLER"
+check "B8 non presume auto compact" contains_in_file 'non promette né presume auto-compact' "$CONTROLLER"
+check "B8 retry due per due poi prospettiva o park" matches_in_file 'due tentativi per approccio e due approcci distinti[\s\S]*?cambia prospettiva[\s\S]*?parcheggia' "$CONTROLLER"
+check "B8 verifica non contiene giri illimitati" does_not_contain 'senza tetto ai giri' "$VERIFICA"
+check "B8 template conserva fase durevole" matches_in_file 'Stato durevole del controller[\s\S]*?Finalizzata:[\s\S]*?Ripresa parziale:' "$RUN_TPL"
 
 AGENTS="$ROOT/agents"
 BIN="$ROOT/bin"
