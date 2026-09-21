@@ -96,7 +96,7 @@ remove_credit_transitions() {
 
 negate_handoff() {
   local copy="$1"
-  perl -0pi -e 's/Se è esaurito il runtime del cervello e l\x27altro è disponibile, scrivi l\x27handoff esplicito\n   all\x27altro runtime dopo aver completato solo il proprio checkpoint atomico, aggiornato\n   `run\.md` e lo stato credito e rilasciato `brain\.lock`; quindi fermati\./Se il cervello è esaurito, non scrivere handoff né rilasciare brain.lock, e non fermarti./' "$copy/skills/orchestratore/references/credito.md"
+  perl -0pi -e 's/Se è esaurito il runtime del cervello e l\x27altro è disponibile, scrivi l\x27handoff esplicito\n   all\x27altro runtime dopo aver completato solo il proprio checkpoint atomico, aggiornato\n   `RUN\.md` e lo stato credito e rilasciato `brain\.lock`; quindi fermati\./Se il cervello è esaurito, non scrivere handoff né rilasciare brain.lock, e non fermarti./' "$copy/skills/orchestratore/references/credito.md"
 }
 
 remove_restore_guard() {
@@ -238,7 +238,7 @@ remove_local_suite_fallback() {
 
 remove_green_gate_definition() {
   local copy="$1"
-  perl -0pi -e 's/## Gate verde: definito una volta, scritto in `run\.md`/## Note/' "$copy/skills/orchestratore/references/lane.md"
+  perl -0pi -e 's/## Gate verde: definito una volta, scritto in `RUN\.md`/## Note/' "$copy/skills/orchestratore/references/lane.md"
 }
 
 remove_doc_alignment_on_close() {
@@ -298,12 +298,12 @@ remove_sensitive_areas() {
 
 remove_recon() {
   local copy="$1"
-  perl -0pi -e 's/\.orchestratore\/recon\.md/appunti temporanei/g' "$copy/skills/orchestratore/references/project-adapter.md"
+  perl -0pi -e 's/unica memoria operativa/memoria duplicata/g' "$copy/skills/orchestratore/references/project-adapter.md"
 }
 
 remove_metrics() {
   local copy="$1"
-  perl -0pi -e 's/## Metriche/## Note finali/' "$copy/templates/run.md"
+  perl -0pi -e 's/## Metriche/## Note finali/' "$copy/templates/RUN.md"
 }
 
 remove_ko_observer() {
@@ -408,7 +408,7 @@ remove_guard_hook_registration() {
 
 make_status_command_writable() {
   local copy="$1"
-  perl -0pi -e 's/Non aprire task, non delegare, non modificare file\./Puoi aggiornare run.md mentre leggi./' "$copy/commands/orchestra-status.md"
+  perl -0pi -e 's/Non aprire task, non delegare, non modificare file\./Puoi aggiornare RUN.md mentre leggi./' "$copy/commands/orchestra-status.md"
 }
 
 make_start_ask_defaults() {
@@ -593,7 +593,7 @@ expect_rejected "B4 verifier steps removed" remove_verifier_steps
 expect_rejected "B4 oracle KO removed" remove_oracle
 expect_rejected "B5 tier3 auto-merge allowed" allow_tier3_automerge
 expect_rejected "B5 sensitive areas removed" remove_sensitive_areas
-expect_rejected "B6 recon removed" remove_recon
+expect_rejected "B6 RUN unico rimosso" remove_recon
 expect_rejected "B6 metrics removed" remove_metrics
 expect_rejected "B6 KO observer turned into a stop" remove_ko_observer
 expect_rejected "B7 config risk areas removed" remove_config_risk_areas

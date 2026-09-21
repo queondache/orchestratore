@@ -67,7 +67,9 @@ progetti ospiti; installare o abilitare skill e plugin; qualunque azione che aum
 - **Bridge**: `bin/spawn-cx.sh`, `bin/spawn-cc.sh`, entrambi con `--dry-run`.
 - **Comandi**: `/orchestratore:orchestra`, `/orchestratore:orchestra-status`.
 - **Hook**: guardia `PreToolUse` attiva solo con un run vivo; stato del run a `SessionStart`.
-- **Stato su file**: `.orchestratore/run.md`, `recon.md`, `brain.lock`, `config.toml`;
+- **Stato su file**: `.orchestratore/RUN.md` come unica fonte operativa, `brain.lock` e
+  `config.toml`; SPEC è fonte requisiti e ROADMAP fonte milestone/stato. Nessun recon o
+  prompt-file permanente;
   `~/.orchestratore/state.toml` per il credito.
 - **Controller**: `bin/orchestratore-controller` e `controller/**`, con SQLite in WAL mode,
   lease verificata nel database e JSON CLI `--db` per `init`, `start`, `add-task`, `schedule`,

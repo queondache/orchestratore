@@ -14,10 +14,10 @@ Quando un runtime passa a `esaurito`:
    sovrascriverlo durante ulteriori cambi di credito. Marca runtime, timestamp, motivo e
    modalità: `solo-cx` se è esaurito CC, `solo-cc` se è esaurito cx, `fermo` se lo sono entrambi.
 2. I task in volo su quel runtime completano solo il checkpoint atomico sicuro; esito e lavoro
-   residuo in `run.md`, poi nessuna nuova assegnazione a quel runtime.
+   residuo in `RUN.md`, poi nessuna nuova assegnazione a quel runtime.
 3. Se è esaurito il runtime del cervello e l'altro è disponibile, scrivi l'handoff esplicito
    all'altro runtime dopo aver completato solo il proprio checkpoint atomico, aggiornato
-   `run.md` e lo stato credito e rilasciato `brain.lock`; quindi fermati. La ripresa usa
+   `RUN.md` e lo stato credito e rilasciato `brain.lock`; quindi fermati. La ripresa usa
    `riprendi` sul runtime disponibile.
 4. Se è esaurito l'altro runtime, il cervello continua in `solo-cc` o `solo-cx`: builder,
    verificatore e pre-merge nel proprio runtime, su modelli diversi secondo

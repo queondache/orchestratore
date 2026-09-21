@@ -332,7 +332,7 @@ def parser() -> argparse.ArgumentParser:
     status = subs.add_parser("status"); status.add_argument("run_id")
     lock = subs.add_parser("acquire"); lock.add_argument("name"); lock.add_argument("holder"); lock.add_argument("--seconds", type=int, default=60)
     unlock = subs.add_parser("release"); unlock.add_argument("name"); unlock.add_argument("holder")
-    dispatch = subs.add_parser("dispatch"); dispatch.add_argument("run_id"); dispatch.add_argument("--dry-run", action="store_true"); dispatch.add_argument("--execute", action="store_true"); dispatch.add_argument("--cwd"); dispatch.add_argument("--prompt-file"); dispatch.add_argument("--holder")
+    dispatch = subs.add_parser("dispatch"); dispatch.add_argument("run_id"); dispatch.add_argument("--dry-run", action="store_true"); dispatch.add_argument("--execute", action="store_true"); dispatch.add_argument("--cwd"); dispatch.add_argument("--holder")
     return p
 
 
@@ -403,16 +403,18 @@ def main(argv: list[str] | None = None) -> int:
             actions = plan(db, args.run_id, args.dry_run)
             root = Path(__file__).resolve().parents[1]
             commands = []
+            stdin_template = "Leggi SPEC.md, ROADMAP.md e .orchestratore/RUN.md. Esegui solo la sezione task {task}. Rispetta owner, perimetro e gate. Aggiorna la sezione task {task} con esito e checkpoint."
             for action in actions:
                 if action["action"] in ("checkpoint", "rollover"):
                     continue
                 bridge = root / "bin" / ("spawn-cx.sh" if action["provider"] == "codex" else "spawn-cc.sh")
                 prefix = [] if args.execute else ["--dry-run"]
-                command = [str(bridge), *prefix, action["model"], action["effort"], args.cwd, args.prompt_file] if action["provider"] == "codex" and args.cwd and args.prompt_file else [str(bridge), *prefix, action["model"], args.cwd, args.prompt_file] if args.cwd and args.prompt_file else [str(bridge), *prefix, action["model"]]
-                commands.append({"task": action["task"], "bridge": command})
+                cwd = args.cwd or "<cwd>"
+                command = [str(bridge), *prefix, action["model"], action["effort"], cwd, action["task"]] if action["provider"] == "codex" else [str(bridge), *prefix, action["model"], cwd, action["task"]]
+                commands.append({"task": action["task"], "bridge": command, "stdin": stdin_template.format(task=action["task"])})
             if args.execute:
-                if not args.cwd or not args.prompt_file:
-                    raise ValueError("dispatch --execute requires --cwd and --prompt-file")
+                if not args.cwd:
+                    raise ValueError("dispatch --execute requires --cwd")
                 for item in commands:
                     subprocess.run(item["bridge"], check=True)
             print_json({"dry_run": args.dry_run, "commands": commands})

@@ -50,7 +50,7 @@ task successivo al default del suo tier: l'escalation non diventa un nuovo defau
    scatta un trigger; non è il verificatore predefinito.
 5. Il failover è simmetrico e persistente. I task in volo sul runtime esaurito finiscono
    solo il checkpoint atomico sicuro. Se quel runtime ospita il cervello e l'altro è
-   disponibile: stato e handoff in `run.md`, rilascio di `brain.lock`, passaggio esplicito
+   disponibile: stato e handoff in `RUN.md`, rilascio di `brain.lock`, passaggio esplicito
    all'altro runtime e stop. Se è l'altro runtime: il cervello continua e usa la tabella
    sopra, mantenendo builder, verificatore e pre-merge su modelli diversi. Con entrambi
    esauriti, modalità

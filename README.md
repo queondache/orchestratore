@@ -51,11 +51,17 @@ In un progetto con `SPEC.md` e `ROADMAP.md`: `/orchestratore:orchestra start` (C
 «avvia il run» (cx). Sottocomandi: `start`, `status`, `peso`, `credito`, `stop`, `riprendi`;
 `/orchestratore:orchestra-status` è il report di sola lettura.
 
+`SPEC.md` è la fonte dei requisiti, `ROADMAP.md` la fonte delle milestone e del loro stato,
+`.orchestratore/RUN.md` l'unica fonte operativa. All'avvio il RUN contiene al massimo due
+milestone aperte; viene aggiornato e ricompattato entro 300 righe/15 KB. Non vengono creati
+`recon.md`, context pack o prompt-file permanenti; SQLite conserva soltanto stato macchina,
+lease, fasi, retry, checkpoint ed event-id.
+
 ## Struttura
 
 - `skills/orchestratore/` la skill e le reference (routing, lane, parallelismo, verifica,
   credito, skill-map, adapter-cc, adapter-cx, project-adapter)
-- `templates/` run.md, config.toml, state.toml
+- `templates/` RUN.md, config.toml, state.toml
 - `agents/` i cinque agent del plugin (worker-impl, worker-mech, verificatore, pre-merge,
   integratore)
 - `bin/` i bridge `spawn-cx.sh` e `spawn-cc.sh`, entrambi con `--dry-run`

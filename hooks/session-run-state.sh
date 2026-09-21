@@ -3,7 +3,7 @@
 # Silenzioso in ogni altro caso. Non modifica niente.
 set -uo pipefail
 
-RUN=".orchestratore/run.md"
+RUN=".orchestratore/RUN.md"
 [ -f "$RUN" ] || exit 0
 
 STATO="$(sed -n 's/^stato: //p' "$RUN" | head -n 1)"

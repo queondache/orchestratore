@@ -48,7 +48,7 @@ check "SKILL.md regola builder != verificatore" grep -qi 'modello diverso' "$SKI
 for f in controller.md routing.md lane.md credito.md parallelismo.md verifica.md skill-map.md adapter-cc.md adapter-cx.md project-adapter.md codex-skills-catalog.jsonl; do
   check "references/$f esiste" test -s "$REFS/$f"
 done
-check "controller espone JSON CLI congelata" grep -q 'init|start|add-task|schedule|complete|fail|checkpoint|status|acquire|release' "$REFS/controller.md"
+check "controller espone JSON CLI congelata" grep -q 'init|start|add-task|schedule|dispatch|complete|fail|checkpoint|status|acquire|release' "$REFS/controller.md"
 check "controller nomina i tre ingressi" bash -c "for i in 'App Codex locale' 'Codex CLI' 'Claude CLI'; do grep -q \"\$i\" '$REFS/controller.md' || exit 1; done"
 check "references vecchie rimosse" bash -c "! test -e '$REFS/runtime-bridges.md' && ! test -e '$REFS/skill-activation.md'"
 check "routing.md contiene i 10 modelli" bash -c "for m in fable gpt-6-astra opus gpt-5.6-sol sonnet gpt-5.6-terra haiku gpt-5.6-luna; do grep -q \"\$m\" '$REFS/routing.md' || exit 1; done"
@@ -84,7 +84,9 @@ check "hooks/session-run-state.sh eseguibile" test -x "$ROOT/hooks/session-run-s
 check "hook passano il gate eseguibile" bash "$ROOT/tests/check-hooks.sh"
 
 # Template
-check "templates/run.md" test -s "$ROOT/templates/run.md"
+check "templates/RUN.md" test -s "$ROOT/templates/RUN.md"
+check "template legacy run.md rimosso dall'indice Git" bash -c "! git -C '$ROOT' ls-files --error-unmatch templates/run.md >/dev/null 2>&1"
+check "RUN template limita la memoria" bash -c "[ \$(wc -l < '$ROOT/templates/RUN.md') -le 300 ] && [ \$(wc -c < '$ROOT/templates/RUN.md') -le 15360 ]"
 check "templates/config.toml con peso default" bash -c "grep -q 'cx = 100' '$ROOT/templates/config.toml' && grep -q 'valido_fino = \"2026-10-12\"' '$ROOT/templates/config.toml'"
 check "templates/state.toml" test -s "$ROOT/templates/state.toml"
 

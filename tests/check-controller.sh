@@ -122,6 +122,30 @@ need "$CTL" --db "$DB" complete task-config --evidence strategy
 OUT="$($CTL --db "$DB" dispatch run-config --dry-run)"
 has "$OUT" 'spawn-cx.sh'
 has "$OUT" '"gpt-5.6-terra"'
+has "$OUT" '"task": "task-config"'
+has "$OUT" 'Esegui solo la sezione task task-config'
+if has "$OUT" 'prompt-file'; then echo "dispatch retained prompt-file" >&2; exit 1; fi
+
+# Every action receives its own task id and deterministic stdin contract.
+need "$CTL" --db "$DB" add-task run-config task-config-2 configured-2
+need "$CTL" --db "$DB" complete task-config-2 --evidence strategy
+OUT="$($CTL --db "$DB" dispatch run-config --dry-run --cwd "$WORK")"
+has "$OUT" 'Esegui solo la sezione task task-config'
+has "$OUT" 'Esegui solo la sezione task task-config-2'
+[[ "$(rg -c 'Esegui solo la sezione task task-config' <<<"$OUT")" -ge 2 ]]
+if "$CTL" --db "$DB" dispatch run-config --execute --holder owner-a >/dev/null 2>&1; then
+  echo "dispatch execute accepted missing cwd" >&2; exit 1
+fi
+mkdir -p "$WORK/.orchestratore" "$WORK/fakebin"
+printf '# RUN\n' > "$WORK/.orchestratore/RUN.md"
+printf '#!/usr/bin/env bash\ncat\n' > "$WORK/fakebin/codex"
+chmod +x "$WORK/fakebin/codex"
+PATH="$WORK/fakebin:$PATH" "$CTL" --db "$DB" dispatch run-config --execute --cwd "$WORK" --holder owner-a >/dev/null
+has "$(cat "$WORK/.orchestratore/logs/task-config.log")" 'sezione task task-config.'
+has "$(cat "$WORK/.orchestratore/logs/task-config-2.log")" 'sezione task task-config-2.'
+if has "$(cat "$WORK/.orchestratore/logs/task-config.log")" 'sezione task task-config-2.'; then
+  echo "task-config reused another task prompt" >&2; exit 1
+fi
 
 # Three ready builders never dispatch more than two global slots.
 need "$CTL" --db "$DB" start run-builders

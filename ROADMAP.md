@@ -11,9 +11,9 @@ Ultimo allineamento: 20/09/2026, versione candidata 0.5.0; nessun deploy o pubbl
 | M2 | Agent del plugin e bridge verso l'altro runtime | **FATTO** | `agents/` (5 file), `bin/spawn-*.sh`, `tests/check-bridge.sh` verde; PR #1 |
 | M3 | Comandi slash e hook | **FATTO** | `commands/` (2 file), `hooks/hooks.json` + 2 script, `tests/check-hooks.sh` verde; PR #1 |
 | M4 | Autonomia: default scritti, rosso mai stop, chiusura con doc allineati | **FATTO** | invarianti A1-A7 in `check-regressions.sh`; mutazioni A uccise |
-| M5 | Parallelismo a due livelli con prova di indipendenza e contract-first | **FATTO** | `references/parallelismo.md`; invarianti B1-B3; `## Piano di parallelizzazione` in `templates/run.md` |
+| M5 | Parallelismo a due livelli con prova di indipendenza e contract-first | **FATTO** | `references/parallelismo.md`; invarianti B1-B3; `## Piano di parallelizzazione` in `templates/RUN.md` |
 | M6 | Verifica con oracolo e merge per classe di rischio | **FATTO** | `references/verifica.md`, `agents/verificatore.md`, `agents/pre-merge.md`; invarianti B4-B5 |
-| M7 | Contesto e memoria del run: recon, assunzioni, metriche, osservatore KO | **FATTO** | `project-adapter.md` §3-bis; sezioni `## Assunzioni` e `## Metriche` in `templates/run.md`; invarianti B6 |
+| M7 | Contesto e memoria del run: RUN unico compatto, assunzioni, metriche, osservatore KO | **FATTO** | `project-adapter.md` §3-bis; sezioni `## Assunzioni` e `## Metriche` in `templates/RUN.md`; invarianti B6-B9 |
 | M8 | Run pilota end-to-end su un progetto reale | **MANCANTE** | nessun run mai eseguito; `SPEC.md [APERTO-01]` |
 | M9 | Evidenza del modello che ha davvero girato | **MANCANTE** | `routing.md` regola 9 lo esige, nessun meccanismo lo produce; `SPEC.md [APERTO-02]` |
 | M10 | Routing economico per modello, effort e task | **FATTO** | `references/routing.md`; invariante I11; gate e mutazioni verdi; review indipendente sul commit di release |
@@ -29,11 +29,11 @@ sull'hash che va in `main`.
 **M8 — Run pilota end-to-end.** Bloccata da una decisione di Andrea: su quale progetto girare
 e con che budget di credito. Il pilota deve includere almeno due milestone di cui una coppia
 con glob che si intersecano, così da esercitare la lane contract-first, e deve chiudersi
-producendo la sezione `## Metriche` di `run.md`. M8 non è parte della release candidate 0.5.0.
+producendo la sezione `## Metriche` di `RUN.md`. M8 non è parte della release candidate 0.5.0.
 
 Definition of done di M8:
 
-- `run.md` reale con piano di parallelizzazione e prova di indipendenza sui file veri;
+- `RUN.md` reale con piano di parallelizzazione e prova di indipendenza sui file veri;
 - almeno una lane contract-first mergiata prima delle consumatrici;
 - almeno un task verificato con i quattro passi, oracolo incluso, output raw nel log;
 - almeno una milestone chiusa con merge automatico e una lasciata come PR in attesa;

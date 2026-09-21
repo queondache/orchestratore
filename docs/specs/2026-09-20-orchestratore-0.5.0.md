@@ -21,7 +21,7 @@ Data: 20/09/2026. Release candidate locale; non pubblicata e non installata in p
 
 ## Gate della candidate
 
-I gate locali da eseguire prima di dichiarare la candidate pronta sono elencati in `run.md`:
+I gate locali da eseguire prima di dichiarare la candidate pronta sono elencati in `RUN.md`:
 struttura, regressioni, controller, bridge, hook, compilazione e controllo diff. La suite di
 mutazione è stata eseguita sul tree finale e ha concluso `GREEN: tutte le mutazioni sono
 respinte` con exit 0. La release candidate resta locale: produzione e installazione non sono

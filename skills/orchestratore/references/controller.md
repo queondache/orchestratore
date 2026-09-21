@@ -5,10 +5,12 @@ protocollo; non simula scheduler, persistenza o processi che il controller non e
 L'interfaccia congelata è JSON CLI:
 
 ```text
-bin/orchestratore-controller --db <path> init|start|add-task|schedule|complete|fail|checkpoint|status|acquire|release
+bin/orchestratore-controller --db <path> init|start|add-task|schedule|dispatch|complete|fail|checkpoint|status|acquire|release
 ```
 
-`dispatch` e `run-once` possono aggiungersi, ma il contratto non ne presume la presenza.
+`dispatch` restituisce azioni JSON oppure, con `--execute --cwd <path>`, invoca il bridge
+scelto passando il `task-id`. `run-once` potrà aggiungersi, ma il contratto non ne presume
+la presenza.
 
 ## Ingressi equivalenti
 
@@ -39,9 +41,11 @@ Ogni transizione è persistita prima di schedulare il passo seguente. `implement
 Solo `finalizzata` è terminale/completata: codice finito senza PR, merge o documenti
 richiesti è il caso E e resta riprendibile, mai `completato`.
 
-Il controller conserva run, task, tentativi, firme KO, hash revisionato, PR/CI/merge,
-documenti, domande, credito e checkpoint fino a `finalize`. Un riavvio riconcilia gli
-effetti esterni prima di ripeterli e riparte dalla prima fase non provata.
+Il controller conserva soltanto stato macchina del run, lease, fasi dei task, retry,
+checkpoint ed event-id. Hash revisionato e identificatori PR/CI/merge sono ammessi solo
+quando servono a provare o riconciliare la fase corrente. Documenti, domande e credito
+restano nelle rispettive fonti su file e non vengono duplicati in SQLite. Un riavvio
+riconcilia gli effetti esterni prima di ripeterli e riparte dalla prima fase non provata.
 
 SQLite e la lease del controller sono autoritativi. `.orchestratore/brain.lock` è solo una
 proiezione di compatibilità: se diverge da lease/SQLite, riconcilia oppure ferma il run e

@@ -7,7 +7,7 @@ diverso dal builder, runtime opposto quando il peso lo consente (routing regola 
 ## I quattro passi obbligatori
 
 1. **Hash esatto**: lavora sull'hash consegnato e lo dimostra con `git rev-parse HEAD`.
-2. **Gate verde**: esegue build, test e lint dichiarati in `run.md`, con output raw.
+2. **Gate verde**: esegue build, test e lint dichiarati in `RUN.md`, con output raw.
 3. **Oracolo**: prova che i test nuovi provano qualcosa. Sui soli file **non di test** del
    diff applica il rovescio (`git checkout <base> -- <file di produzione toccati>`) e rilancia
    la suite mirata: deve diventare **rossa**. Se resta verde il test non copre il criterio di
