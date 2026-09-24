@@ -3,6 +3,8 @@
 Plugin dual-runtime (Claude Code + Codex) che trasforma una ROADMAP in consegne verificate,
 lavorando in parallelo su più milestone e su più task dentro ogni milestone. La release 0.5.0
 aggiunge un controller locale persistente per rendere ripresa e idempotenza osservabili.
+Il parallelismo ha due profili congelati per run: fino a 5 builder per milestone e fino a 15
+per bug fixing indipendente, con review separata e proporzionata.
 
 ## 1. Problema
 
@@ -45,13 +47,19 @@ Terra da medium e Sol da low; Astra worker da low solo su escalation osservabile
 | I9 | Una risposta di Andrea si propaga nello stesso turno in SPEC, ROADMAP e perimetri. |
 | I10 | Nessun aumento di budget, spend limit o credito. Mai. Prevale su ogni altra regola. |
 | I11 | Routing cheapest-capable per task: effort minimo per modello, premium/high solo con trigger registrato. |
+| I12 | Profilo concreto prima del dispatch: milestone ≤5 builder o bugfix ≤15; owner esclusivo per file, conflitti contract-first/seriali, review fuori quota `ceil(builder wave/3)` cap 2/5. |
 
 ## 4. Perimetro
 
-**Dentro**: contratto di autonomia, piano di parallelizzazione, delega a worker CC e cx,
+**Dentro**: contratto di autonomia, piano di parallelizzazione, profili milestone/bugfix,
+fonte bug congelata con ID/riproduzione/oracolo, delega a worker CC e cx,
 protocollo di verifica, gate pre-merge, merge condizionato, registro quesiti e assunzioni,
 failover del credito, handoff e ripresa, celebrazione, metriche, controller SQLite con WAL e
 lease autorevole e CLI congelata per gli ingressi app Codex locale, Codex CLI e Claude CLI.
+Il profilo `milestone` governa ROADMAP, feature, refactor e run misti; `bugfix` richiede bug
+riproducibili con oracolo individuale e una fonte congelata. Le policy di arresto predefinite
+sono rispettivamente `milestone-budget: tutte` e `bug-budget: tutti`. I processi pesanti
+locali restano serializzati.
 
 **Fuori**: servizi remoti, dashboard e dipendenze nuove; il controller SQLite locale è parte
 della release e non sostituisce il piano persistente del run;
@@ -95,7 +103,9 @@ approvata e allineamento documentale. Il caso E è quindi una ripresa verificata
 implicito. Il checkpoint persiste summary, fase, hash/impronta e sessione; a soglia 50 si salva
 il checkpoint e a soglia 70 si apre esplicitamente una nuova sessione senza assumere auto-compact.
 Il retry è finito: due tentativi per approccio e due approcci; il fallimento ripetuto viene
-parcheggiato. Il routing standard è Claude per strategia e review, massimo due builder Codex.
+parcheggiato. Il routing standard è Claude per strategia e review, builder Codex e profilo
+concreto: massimo 5 builder su milestone o 15 su bugfix. Reviewer e pre-merge sono fuori quota;
+il pool review vale `ceil(builder della wave/3)`, cap 2/5, con precedenza sulle nuove assegnazioni.
 
 ## 7. Quesiti aperti
 

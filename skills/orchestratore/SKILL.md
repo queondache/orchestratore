@@ -9,22 +9,25 @@ sessione che esegue questa skill · **worker** agente lanciato dal cervello · *
 milestone · **task** una parte di lane.
 ## 0. Avvio sicuro
 1. Leggi le istruzioni del repo (CLAUDE.md, AGENTS.md, SPEC.md, ROADMAP.md, progress.md,
-   `.claude/decisioni.md`). Le decisioni di prodotto del progetto prevalgono su questa skill.
+   `.claude/decisioni.md`) e la fonte bug indicata. Nel profilo `bugfix` ROADMAP è opzionale;
+   la fonte bug congelata contiene ID, riproduzione e oracolo. Le decisioni di prodotto prevalgono.
 2. Controlla `.orchestratore/brain.lock`: se vivo (pid esistente, aggiornato da meno di
    10 minuti) fermati e chiedi. Se stantio, segnalalo e sovrascrivi solo su conferma.
 3. Leggi `~/.orchestratore/state.toml` (credito) e `config.toml` globale + `.orchestratore/config.toml`
    del progetto (peso). Se `valido_fino` è passato, chiedi il nuovo peso invece di applicarlo.
 4. Ispeziona working tree, branch, worktree, agenti vivi; conserva il lavoro che non è tuo,
    verifica toolchain, ambiente di test, capacità agenti e lane esterne. Leggi `SPEC.md` come
-   fonte requisiti e `ROADMAP.md` come fonte delle milestone e del loro stato; seleziona
-   massimo 2 milestone aperte eleggibili e aggiorna `.orchestratore/RUN.md` ([project-adapter](references/project-adapter.md)).
+   fonte requisiti e `ROADMAP.md` come fonte delle milestone e del loro stato; congela il
+   profilo `milestone` o `bugfix`, seleziona il lavoro eleggibile entro il relativo tetto e
+   aggiorna `.orchestratore/RUN.md` ([project-adapter](references/project-adapter.md)).
 5. Usa il controller locale secondo [controller](references/controller.md): app Codex locale,
    Codex CLI e Claude CLI sono ingressi equivalenti allo stesso `run_id`. Se il run esiste,
    riconcilia e riprendi la prima fase non provata; altrimenti congela i setting per-run.
 Progetto nuovo o ripresa: leggi [project-adapter](references/project-adapter.md).
-`SPEC.md` è la fonte dei requisiti, `ROADMAP.md` la fonte delle milestone e del loro stato,
-`.orchestratore/RUN.md` l'unica fonte operativa. All'avvio copia nel RUN solo le milestone
-aperte eleggibili, massimo 2, e i relativi task. Il RUN viene aggiornato e ricompattato,
+`SPEC.md` è la fonte dei requisiti, `ROADMAP.md` quella delle milestone e del loro stato; nel
+profilo `bugfix` la fonte bug congelata sostituisce ROADMAP come elenco operativo,
+`.orchestratore/RUN.md` l'unica fonte operativa. All'avvio copia nel RUN solo milestone o bug
+eleggibili entro il tetto del profilo congelato, con i relativi task. Il RUN viene aggiornato e ricompattato,
 non è append-only, e resta entro 300 righe e 15 KB. Non creare `recon.md`, context pack o
 prompt-file permanenti: il task passa i riferimenti a SPEC, ROADMAP e alla propria sezione
 del RUN. SQLite conserva solo stato macchina, lease, fasi, retry, checkpoint ed event-id.
@@ -32,11 +35,13 @@ del RUN. SQLite conserva solo stato macchina, lease, fasi, retry, checkpoint ed 
 Persisti in `.orchestratore/RUN.md` (template in `templates/RUN.md`) prima di delegare:
 ```text
 Cervello: cc-fable | cx-gpt-6-astra
-Run mode: milestone-budget | while-quality-high
+Run mode: milestone-budget | bug-budget | while-quality-high
+Profilo parallelismo: milestone | bugfix
 Milestone budget: <n | tutte | n/a>   (tutte = milestone aperte in ROADMAP.md all'avvio)
+Bug budget: <n | tutti | n/a>         (tutti = bug della fonte congelata all'avvio)
 Peso: dev cx <n> / cc <n>; verifica <cc|cx|opposto>; costo cheapest-capable
-Ruoli: stratega Claude / massimo 2 builder Codex / reviewer Claude separato
-Tetto: massimo 2 builder; 1 review in volo
+Ruoli: stratega Claude / builder Codex / reviewer Claude separato
+Tetto: milestone 5 builder e 2 review; bugfix 15 builder e 5 review
 Tetto domande aperte: <n>
 Stop aggiuntivi: <condizioni osservabili>
 Autorizzazioni Git: <commit+push+PR automatici | solo lettura>
@@ -46,12 +51,15 @@ Credito: cc <ok|esaurito>; cx <ok|esaurito>
 Modalità credito: normale | solo-cc | solo-cx | fermo
 ```
 **Default quando Andrea non dice altro**, da scrivere e non da chiedere: `Run non
-presidiato: sì`, `Autorizzazioni Git: commit+push+PR automatici`, `Run mode:
-milestone-budget`, `Milestone budget: tutte`, tetti di §2, `Verifica: obbligatoria a ogni
-consegna di codice`, `Costo: cheapest-capable`, `Gate verde: build + test + lint`. Confermare un default con Andrea è
+presidiato: sì`, `Autorizzazioni Git: commit+push+PR automatici`, profilo rilevato e tetti di
+§2, `Verifica: obbligatoria a ogni consegna di codice`, `Costo: cheapest-capable`, `Gate
+verde: build + test + lint`. Il profilo `milestone` usa `Run mode: milestone-budget` e
+`Milestone budget: tutte`; `bugfix` usa `bug-budget` e `Bug budget: tutti`. Confermare un default con Andrea è
 tempo perso: si cambia solo se lo scrive lui.
 `milestone-budget`: fermati quando N milestone sono **chiuse** (mergiate o consegnate come PR
-in attesa, con doc allineati); parziali non contano. `while-quality-high`: continua finché ogni
+in attesa, con doc allineati); parziali non contano.
+`bug-budget`: fermati quando N bug della fonte congelata sono chiusi con verifica e outcome
+Git/documentale provato; parziali non contano. `while-quality-high`: continua finché ogni
 consegna resta verificabile con evidenza eseguita. La qualità non è più alta solo quando il
 comportamento atteso non è né osservabile né testabile, o quando una domanda di prodotto aperta
 cambia contratto, architettura, sicurezza, schema dati, comportamento utente, oracolo di test o
@@ -61,7 +69,7 @@ definition of done: allora checkpoint e domanda, non abbandono.
 strategia e modello, usando il runtime opposto quando disponibile. Se la stessa firma resta rossa dopo due approcci distinti, parcheggia la lane come `bloccata-tecnica` con evidenza, owner e condizione di
 ripresa, libera lo slot e continua il lavoro indipendente. Riapri solo su input o evidenza nuovi;
 il run si ferma solo per domanda di prodotto bloccante, credito esaurito o limite di contesto.
-Lavoro autonomo non autorizza a completare la roadmap intera se Andrea non scrive `tutte`.
+Lavoro autonomo non supera il budget congelato nel RUN.
 Nel run non presidiato, commit, push e PR normali automatici sono autorizzati; auto-merge solo
 al gate di §4, nessun login, connessione, scope o segreto nuovo e nessun aumento di budget,
 spend limit o credito.
@@ -82,10 +90,17 @@ possibile; registra solo un blocco realmente impeditivo. Questa fiducia non
 autorizza installare skill nuove, abilitare o modificare globalmente skill o plugin, né nuove
 connessioni, login, scope o segreti, mouse, azioni distruttive o aumenti di spesa: tool o app
 invocati dalla skill conservano tutti i guardrail 0.1.2.
-Tetti per run: **massimo 2 builder Codex**; stratega e reviewer Claude separato, pre-merge e
-integratore stanno in un pool a parte, massimo 1 verifica in volo. Uno slot si occupa solo con
-la prova di indipendenza sui file reali scritta nel `## Piano di parallelizzazione`; glob che si
-intersecano = lane **contract-first**, non parallelo. Protocollo in
+Il `Profilo parallelismo` è sempre concreto nel RUN: `milestone` quando l'unità di consegna
+è una milestone di ROADMAP; `bugfix` solo quando il perimetro richiesto è un insieme di bug
+indipendenti, ciascuno con riproduzione e oracolo. Un run misto usa `milestone`, oppure separa
+due fasi congelate; `auto` è ammesso solo in config e deve essere risolto prima della prima
+assegnazione. Tetti: **5 builder** in `milestone`, **15 builder** in `bugfix`, contando ogni
+runtime. Reviewer e pre-merge non consumano slot builder. Il pool review è separato e vale
+`ceil(builder della wave/3)`, massimo 2 o 5 secondo il profilo; la wave conta builder in corso
+e consegne in attesa di review, così la capacità non scende mai a zero con review pendenti. Le consegne precedono
+nuovi builder. Uno slot si occupa solo con la prova di indipendenza sui file reali scritta nel
+`## Piano di parallelizzazione`; glob che si intersecano = lane o cluster **contract-first**,
+non parallelo. Protocollo in
 [parallelismo](references/parallelismo.md). Chi scrive non revisiona il proprio codice; a
 consegna pronta la review precede nuova implementazione. **Il cervello non scrive codice**:
 fondere i branch dei task è un task con contratto dato a un integratore, non lavoro suo.
@@ -160,7 +175,7 @@ cadenza a tempo che il runtime non ti permette di rispettare):
 In corso: <milestone, owner, fase, modello/runtime>
 Verificato dall'ultimo report: <evidenza | niente di nuovo>; domande <aperte/tetto; bloccanti>
 Peso in uso: dev cx n / cc n; verifica <…>; costo cheapest-capable; modalità <normale|solo-cc|solo-cx|fermo>; credito cc <ok|esaurito>, cx <ok|esaurito>
-Slot: builder <n>/2, verifiche in volo <n>/1, in coda di verifica <n>; contesto <% | non disponibile>
+Profilo: <milestone|bugfix>; slot builder <n>/<5|15>, review <n>/<ceil(wave/3), max 2|5>, coda review <n>; contesto <% | non disponibile>
 Prossimo checkpoint: <gate osservabile>
 ```
 A ogni chiusura aggiorna `## Metriche` in `RUN.md`: milestone chiuse, PR in attesa, giri di KO,

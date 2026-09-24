@@ -25,14 +25,26 @@ un run in memoria. L'utente non deve mantenere due terminali aperti.
 Ogni run congela questi setting prima della prima assegnazione:
 
 - stratega: Claude;
-- builder: Codex, massimo 2 in volo complessivi;
+- profilo parallelismo concreto: `milestone` o `bugfix`; `auto` viene risolto dall'adapter e
+  rifiutato dal controller;
+- builder: Codex di default, massimo 5 in `milestone` o 15 in `bugfix`, contando ogni runtime;
 - reviewer: Claude separato dal builder e dalla strategia operativa della consegna;
+- pool review separato: `ceil(builder della wave/3)`, con cap 2 in `milestone` e 5 in `bugfix`;
 - modelli/effort e fallback espliciti, nel rispetto di `routing.md`;
 - gate, budget, autorizzazioni e policy Git del run.
 
 Un ingresso può chiedere un cambio solo per le assegnazioni future; il controller lo
 persiste come evento del run. Un fallback non può trasformare builder e reviewer nella
 stessa identità di verifica.
+
+Il profilo non cambia mentre esistono task in volo. Un run misto resta `milestone`, oppure
+chiude la fase corrente e apre una fase `bugfix` esplicita. Owner di file e glob sono lease
+esclusive: un dispatch in conflitto resta in coda. Review e pre-merge sono fuori dalla quota
+builder; se la coda review raggiunge la capacità corrente, il controller non assegna nuovi
+builder finché una review termina. `heavy.lock` continua a serializzare i processi pesanti.
+La wave include builder in corso e consegne in attesa di review: il completamento del builder
+non azzera la capacità necessaria a revisionare la sua consegna; con review pendenti la
+capacità minima è sempre 1.
 
 ## Stato durevole e finalizzazione
 

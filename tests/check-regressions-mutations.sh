@@ -268,7 +268,7 @@ remove_independence_proof() {
 
 remove_contract_first() {
   local copy="$1"
-  perl -0pi -e 's/lane \*\*contract-first\*\*, non parallelo/parallelo comunque/' "$copy/skills/orchestratore/SKILL.md"
+  perl -0pi -e 's/glob che si intersecano = lane o cluster \*\*contract-first\*\*,\nnon parallelo/glob che si intersecano = parallelo comunque/' "$copy/skills/orchestratore/SKILL.md"
 }
 
 allow_brain_to_code() {
@@ -338,7 +338,7 @@ remove_explicit_rollover() {
 
 expand_controller_builders() {
   local copy="$1"
-  perl -0pi -e 's/builder: Codex, massimo 2/builder: Codex, massimo 4/' "$copy/skills/orchestratore/references/controller.md"
+  perl -0pi -e 's/builder: Codex di default, massimo 5 in `milestone` o 15 in `bugfix`/builder: Codex di default, massimo 6 in `milestone` o 16 in `bugfix`/' "$copy/skills/orchestratore/references/controller.md"
 }
 
 restore_unbounded_verification() {

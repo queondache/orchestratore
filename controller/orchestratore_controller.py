@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import datetime as dt
+import fnmatch
 import json
 import os
 import sqlite3
@@ -24,7 +25,7 @@ if __package__:
 else:
     from transitions import Command, Decision, State, reduce_transition
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 STAGES = ("strategy", "build", "review", "finalize", "done", "parked")
 ACTIVE = ("strategy", "build", "review", "finalize")
 ROLE_DEFAULTS = {
@@ -38,6 +39,10 @@ MIN_EFFORT = {
     "gpt-5.6-sol": "low", "gpt-6-astra": "low",
 }
 EFFORT_RANK = {"low": 0, "medium": 1, "high": 2, "xhigh": 3, "max": 4, "ultra": 5}
+PROFILE_LIMITS = {
+    "milestone": {"builders": 5, "reviews": 2},
+    "bugfix": {"builders": 15, "reviews": 5},
+}
 
 
 def utcnow() -> str:
@@ -93,13 +98,17 @@ def initialize(db: sqlite3.Connection) -> None:
       task_id TEXT NOT NULL REFERENCES tasks(id), stage TEXT NOT NULL, approach INTEGER NOT NULL,
       signature TEXT NOT NULL, PRIMARY KEY(task_id, stage, approach, signature)
     );
-    INSERT OR REPLACE INTO meta(key,value) VALUES ('schema_version','1');
+    INSERT OR REPLACE INTO meta(key,value) VALUES ('schema_version','2');
     """)
     # Small forward-only migration for databases made by an earlier controller.
     columns = {r[1] for r in db.execute("PRAGMA table_info(tasks)")}
     for name in ("context_json", "evidence_json"):
         if name not in columns:
             db.execute("ALTER TABLE tasks ADD COLUMN %s TEXT NOT NULL DEFAULT '{}'" % name)
+    if "write_globs_json" not in columns:
+        db.execute("ALTER TABLE tasks ADD COLUMN write_globs_json TEXT NOT NULL DEFAULT '[]'")
+    if "exclusive_keys_json" not in columns:
+        db.execute("ALTER TABLE tasks ADD COLUMN exclusive_keys_json TEXT NOT NULL DEFAULT '[]'")
     db.commit()
 
 
@@ -116,7 +125,139 @@ def config_for(row: sqlite3.Row) -> dict[str, Any]:
     config.setdefault("fallback_provider", "codex")
     config.setdefault("brain_model", "gpt-6-astra")
     config.setdefault("brain_effort", "medium")
+    config.setdefault("work_profile", "milestone")
     return config
+
+
+def capacity(config: dict[str, Any]) -> dict[str, int]:
+    profile = str(config.get("work_profile", "milestone"))
+    if profile not in PROFILE_LIMITS:
+        raise ValueError("work_profile must be milestone or bugfix")
+    return PROFILE_LIMITS[profile]
+
+
+def canonical_write_glob(pattern: str) -> str:
+    value = pattern.strip()
+    if not value:
+        raise ValueError("write glob must not be empty")
+    if "\\" in value:
+        raise ValueError("write glob must use unambiguous forward slashes")
+    if value.startswith("/") or (len(value) >= 2 and value[0].isalpha() and value[1] == ":"):
+        raise ValueError("write glob must be relative")
+    if "//" in value:
+        raise ValueError("write glob must not contain empty path segments")
+    parts = value.split("/")
+    if any(part == "" for part in parts):
+        raise ValueError("write glob must not contain empty path segments")
+    if any(part == ".." for part in parts):
+        raise ValueError("write glob must not contain parent path segments")
+    canonical = "/".join(part for part in parts if part != ".")
+    if not canonical:
+        raise ValueError("write glob must identify a relative path")
+    return canonical
+
+
+def validate_ownership(
+    task_or_globs: sqlite3.Row | list[str] | tuple[str, ...],
+    keys: list[str] | tuple[str, ...] | None = None,
+    *,
+    allow_legacy_empty: bool,
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Return canonical ownership or fail closed on any malformed metadata."""
+    if isinstance(task_or_globs, sqlite3.Row):
+        try:
+            globs_value = json.loads(task_or_globs["write_globs_json"])
+            keys_value = json.loads(task_or_globs["exclusive_keys_json"])
+        except (json.JSONDecodeError, TypeError) as exc:
+            raise ValueError("ownership metadata must be valid JSON string lists") from exc
+    else:
+        globs_value = task_or_globs
+        keys_value = [] if keys is None else keys
+    if not isinstance(globs_value, (list, tuple)) or not all(
+            isinstance(item, str) for item in globs_value):
+        raise ValueError("write_globs_json must be a JSON string list")
+    if not isinstance(keys_value, (list, tuple)) or not all(
+            isinstance(item, str) for item in keys_value):
+        raise ValueError("exclusive_keys_json must be a JSON string list")
+
+    canonical_globs = tuple(dict.fromkeys(canonical_write_glob(item)
+                                          for item in globs_value))
+    canonical_keys_list: list[str] = []
+    for item in keys_value:
+        canonical = item.strip()
+        if not canonical:
+            raise ValueError("conflict key must not be empty or whitespace")
+        if canonical not in canonical_keys_list:
+            canonical_keys_list.append(canonical)
+    canonical_keys = tuple(canonical_keys_list)
+    if not canonical_globs and not canonical_keys and not allow_legacy_empty:
+        raise ValueError("new tasks require --write-glob or --conflict-key ownership")
+    return canonical_globs, canonical_keys
+
+
+def static_prefix(pattern: str) -> str:
+    positions = [pattern.find(char) for char in "*[?" if char in pattern]
+    end = min(positions) if positions else len(pattern)
+    return pattern[:end].rstrip("/")
+
+
+def globs_conflict(left: str, right: str) -> bool:
+    """Conservatively reject ownership whose concrete or wildcard roots overlap."""
+    left = left.strip().lstrip("./")
+    right = right.strip().lstrip("./")
+    if not left or not right:
+        return True
+    if left == right or fnmatch.fnmatch(left, right) or fnmatch.fnmatch(right, left):
+        return True
+    left_wild = any(char in left for char in "*[?")
+    right_wild = any(char in right for char in "*[?")
+    if not left_wild and not right_wild:
+        return left.startswith(right.rstrip("/") + "/") or right.startswith(left.rstrip("/") + "/")
+    if left_wild != right_wild:
+        concrete, pattern = (left, right) if not left_wild else (right, left)
+        prefix = static_prefix(pattern)
+        return (fnmatch.fnmatch(concrete, pattern) or not prefix or
+                concrete == prefix or concrete.startswith(prefix.rstrip("/") + "/") or
+                prefix.startswith(concrete.rstrip("/") + "/"))
+    # Two wildcard languages are considered disjoint only when their fixed
+    # directory roots are provably separate. Prefix characters within the same
+    # directory are insufficient proof: e.g. src/a*bc and src/ab*c overlap.
+    def fixed_directory(pattern: str) -> str:
+        prefix = static_prefix(pattern)
+        if pattern[:len(prefix) + 1].endswith("/"):
+            return prefix
+        return prefix.rsplit("/", 1)[0] if "/" in prefix else ""
+    left_dir, right_dir = fixed_directory(left), fixed_directory(right)
+    if not left_dir or not right_dir:
+        return True
+    related = (left_dir == right_dir or
+               left_dir.startswith(right_dir.rstrip("/") + "/") or
+               right_dir.startswith(left_dir.rstrip("/") + "/"))
+    return related
+
+
+def tasks_conflict(left: sqlite3.Row, right: sqlite3.Row) -> bool:
+    left_ownership = validate_ownership(left, allow_legacy_empty=True)
+    right_ownership = validate_ownership(right, allow_legacy_empty=True)
+    left_globs, left_keys = left_ownership
+    right_globs, right_keys = right_ownership
+    if set(left_keys) & set(right_keys):
+        return True
+    # Legacy tasks predate ownership metadata. Keep them schedulable; every new
+    # task with declared ownership gets the strict conflict check.
+    if not left_globs or not right_globs:
+        return False
+    return any(globs_conflict(a, b) for a in left_globs for b in right_globs)
+
+
+def review_capacity(rows: list[sqlite3.Row], review_cap: int) -> int:
+    waiting_tasks = [task for task in rows if task["stage"] == "review"]
+    if not waiting_tasks:
+        return 0
+    active_builders = sum(task["builder_count"] for task in rows if task["stage"] == "build")
+    waiting_builders = sum(task["builder_count"] for task in waiting_tasks)
+    builder_wave = active_builders + waiting_builders
+    return min(review_cap, max(1, (builder_wave + 2) // 3))
 
 
 def ensure_effort(model: str, effort: str) -> None:
@@ -175,17 +316,40 @@ def plan(db: sqlite3.Connection, run_id: str, dry_run: bool) -> list[dict[str, A
     if run["status"] != "active":
         return []
     config = config_for(run)
+    limits = capacity(config)
     rows = db.execute("SELECT * FROM tasks WHERE run_id=? AND stage IN ('strategy','build','review','finalize') ORDER BY updated_at,id", (run_id,)).fetchall()
+    # Review work has priority but uses its own proportional pool. Finalize is
+    # also separate; neither stage consumes a builder slot.
+    stage_priority = {"review": 0, "finalize": 1, "strategy": 2, "build": 3}
+    rows = sorted(rows, key=lambda row: (stage_priority[row["stage"]], row["updated_at"], row["id"]))
+    # Validate every active record before considering capacity or conflicts. This
+    # makes corrupt ownership fail closed even for the first or only task.
+    for task in rows:
+        validate_ownership(task, allow_legacy_empty=True)
     planned: list[dict[str, Any]] = []
     builder_slots = 0
+    review_slots = 0
+    selected_builds: list[sqlite3.Row] = []
+    review_backlog = sum(task["stage"] == "review" for task in rows)
+    available_reviews = review_capacity(rows, limits["reviews"])
+    pause_new_builds = review_backlog >= available_reviews > 0
     for task in rows:
         # Finalization is never skipped: it explicitly gates PR/merge/docs.
-        # Corrupt/legacy state can contain more than two build tasks.  Dispatch
+        # Corrupt/legacy state can exceed the configured builder pool. Dispatch
         # only the first fitting tasks instead of letting an overfull sum starve all.
         if task["stage"] == "build":
-            if builder_slots + task["builder_count"] > 2:
+            if pause_new_builds:
+                continue
+            if builder_slots + task["builder_count"] > limits["builders"]:
+                continue
+            if any(tasks_conflict(task, selected) for selected in selected_builds):
                 continue
             builder_slots += task["builder_count"]
+            selected_builds.append(task)
+        elif task["stage"] == "review":
+            if review_slots >= available_reviews:
+                continue
+            review_slots += 1
         if task["checkpoint"] >= 70:
             action = {"task": task["id"], "action": "rollover", "session": task["session"] + 1,
                       "reason": "checkpoint >= 70; start a fresh session"}
@@ -242,22 +406,32 @@ def remember_event(db: sqlite3.Connection, task: sqlite3.Row, operation: str, id
 
 
 def complete(db: sqlite3.Connection, task_id: str, evidence: str, event_id: str | None) -> str:
-    task = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
-    if not task:
-        raise ValueError("unknown task: %s" % task_id)
-    decision = transition_for(db, task, Command("complete", evidence, event_id=event_id))
-    if decision.result == "deduplicated":
-        return decision.result
-    if task["stage"] == "strategy":
-        active_builders = db.execute("SELECT COALESCE(SUM(builder_count),0) FROM tasks WHERE run_id=? AND stage='build'", (task["run_id"],)).fetchone()[0]
-        if active_builders + task["builder_count"] > 2:
-            raise ValueError("max two active builders; complete a build first")
-    evidence_value: Any = final_evidence(evidence) if task["stage"] == "finalize" else evidence
-    stored = json.loads(task["evidence_json"])
-    nxt = decision.state.stage
-    implementation_done = 1 if task["stage"] == "build" else task["implementation_done"]
-    finalized = 1 if task["stage"] == "finalize" else task["finalized"]
-    with db:
+    # BEGIN IMMEDIATE serializes admission decisions across controller processes:
+    # cap/conflict checks and strategy->build become one atomic write decision.
+    db.execute("BEGIN IMMEDIATE")
+    try:
+        task = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+        if not task:
+            raise ValueError("unknown task: %s" % task_id)
+        decision = transition_for(db, task, Command("complete", evidence, event_id=event_id))
+        if decision.result == "deduplicated":
+            db.commit()
+            return decision.result
+        if task["stage"] == "strategy":
+            run = db.execute("SELECT * FROM runs WHERE id=?", (task["run_id"],)).fetchone()
+            limits = capacity(config_for(run))
+            active_builders = db.execute("SELECT COALESCE(SUM(builder_count),0) FROM tasks WHERE run_id=? AND stage='build'", (task["run_id"],)).fetchone()[0]
+            if active_builders + task["builder_count"] > limits["builders"]:
+                raise ValueError("max %d active builders for this work profile; complete a build first" % limits["builders"])
+            active_tasks = db.execute("SELECT * FROM tasks WHERE run_id=? AND stage='build'", (task["run_id"],)).fetchall()
+            conflict = next((other for other in active_tasks if tasks_conflict(task, other)), None)
+            if conflict:
+                raise ValueError("ownership or incompatibility conflicts with active build task %s" % conflict["id"])
+        evidence_value: Any = final_evidence(evidence) if task["stage"] == "finalize" else evidence
+        stored = json.loads(task["evidence_json"])
+        nxt = decision.state.stage
+        implementation_done = 1 if task["stage"] == "build" else task["implementation_done"]
+        finalized = 1 if task["stage"] == "finalize" else task["finalized"]
         remember_event(db, task, "complete", decision.identity)
         db.execute("INSERT INTO attempts(task_id,approach,attempt,stage,provider,model,effort,result,evidence,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
                    (task_id, task["approach"], task["attempts"], task["stage"], task["owner_provider"] or "unknown", task["owner_model"] or "unknown", task["owner_effort"] or "unknown", "ok", evidence, utcnow()))
@@ -265,7 +439,11 @@ def complete(db: sqlite3.Connection, task_id: str, evidence: str, event_id: str 
         db.execute("UPDATE tasks SET stage=?,implementation_done=?,finalized=?,checkpoint=0,evidence_json=?,updated_at=? WHERE id=?",
                    (nxt, implementation_done, finalized, json.dumps(stored, sort_keys=True), utcnow(), task_id))
         event(db, task["run_id"], "completed", task_id, stage=task["stage"], next_stage=nxt, evidence=evidence)
-    return decision.result
+        db.commit()
+        return decision.result
+    except Exception:
+        db.rollback()
+        raise
 
 
 def fail(db: sqlite3.Connection, task_id: str, signature: str, evidence: str, event_id: str | None) -> str:
@@ -324,7 +502,7 @@ def parser() -> argparse.ArgumentParser:
     subs = p.add_subparsers(dest="command", required=True)
     subs.add_parser("init")
     start = subs.add_parser("start"); start.add_argument("run_id"); start.add_argument("--config", default="{}"); start.add_argument("--holder", required=True); start.add_argument("--seconds", type=int, default=60)
-    add = subs.add_parser("add-task"); add.add_argument("run_id"); add.add_argument("task_id"); add.add_argument("title"); add.add_argument("--builders", type=int, default=1); add.add_argument("--holder", required=True)
+    add = subs.add_parser("add-task"); add.add_argument("run_id"); add.add_argument("task_id"); add.add_argument("title"); add.add_argument("--builders", type=int, default=1); add.add_argument("--write-glob", action="append", default=[]); add.add_argument("--conflict-key", action="append", default=[]); add.add_argument("--holder", required=True)
     schedule = subs.add_parser("schedule"); schedule.add_argument("run_id"); schedule.add_argument("--dry-run", action="store_true"); schedule.add_argument("--holder")
     done = subs.add_parser("complete"); done.add_argument("task_id"); done.add_argument("--evidence", required=True); done.add_argument("--event-id"); done.add_argument("--holder")
     bad = subs.add_parser("fail"); bad.add_argument("task_id"); bad.add_argument("signature"); bad.add_argument("--evidence", required=True); bad.add_argument("--event-id"); bad.add_argument("--holder")
@@ -344,6 +522,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "init": print_json({"db": args.db, "schema_version": SCHEMA_VERSION})
         elif args.command == "start":
             config = json.loads(args.config); ensure_effort(config.get("brain_model", "gpt-6-astra"), config.get("brain_effort", "medium"))
+            capacity(config)
             if config.get("brain_model", "gpt-6-astra") != "gpt-6-astra" or config.get("brain_effort", "medium") != "medium":
                 raise ValueError("brain must use gpt-6-astra at medium effort")
             if config.get("strategy_provider", "claude") != "claude":
@@ -365,8 +544,10 @@ def main(argv: list[str] | None = None) -> int:
             print_json({"run": args.run_id, "status": "active", "lease_holder": args.holder, "lease_expires_at": expiry})
         elif args.command == "add-task":
             if args.builders not in (1, 2): raise ValueError("builders must be 1 or 2")
+            canonical_globs, canonical_keys = validate_ownership(
+                args.write_glob, args.conflict_key, allow_legacy_empty=False)
             require_lease(db, args.run_id, args.holder)
-            with db: db.execute("INSERT INTO tasks(id,run_id,title,stage,builder_count,updated_at) VALUES(?,?,?,?,?,?)", (args.task_id,args.run_id,args.title,"strategy",args.builders,utcnow()))
+            with db: db.execute("INSERT INTO tasks(id,run_id,title,stage,builder_count,updated_at,write_globs_json,exclusive_keys_json) VALUES(?,?,?,?,?,?,?,?)", (args.task_id,args.run_id,args.title,"strategy",args.builders,utcnow(),json.dumps(canonical_globs),json.dumps(canonical_keys)))
             print_json({"task": args.task_id, "stage": "strategy"})
         elif args.command == "schedule":
             if not args.dry_run: require_lease(db, args.run_id, args.holder)
@@ -395,7 +576,7 @@ def main(argv: list[str] | None = None) -> int:
             tasks = []
             for row in db.execute("SELECT * FROM tasks WHERE run_id=? ORDER BY id", (args.run_id,)):
                 item = dict(row); item.update(recovery(db, row)); tasks.append(item)
-            print_json({"run":dict(run),"tasks":tasks,"events":[dict(x) for x in db.execute("SELECT * FROM events WHERE run_id=? ORDER BY id",(args.run_id,))]})
+            print_json({"run":dict(run),"capacity":capacity(config_for(run)),"tasks":tasks,"events":[dict(x) for x in db.execute("SELECT * FROM events WHERE run_id=? ORDER BY id",(args.run_id,))]})
         elif args.command == "acquire": print_json({"acquired":acquire(db,args.name,args.holder,args.seconds)})
         elif args.command == "release": print_json({"released":release(db,args.name,args.holder)})
         elif args.command == "dispatch":
@@ -415,9 +596,20 @@ def main(argv: list[str] | None = None) -> int:
             if args.execute:
                 if not args.cwd:
                     raise ValueError("dispatch --execute requires --cwd")
-                for item in commands:
-                    subprocess.run(item["bridge"], check=True)
-            print_json({"dry_run": args.dry_run, "commands": commands})
+                processes = [(item, subprocess.Popen(item["bridge"], stdout=subprocess.PIPE,
+                                                     stderr=subprocess.PIPE, text=True))
+                             for item in commands]
+                failed = False
+                for item, process in processes:
+                    stdout, stderr = process.communicate()
+                    item["result"] = {"exit_code": process.returncode,
+                                      "stdout": stdout, "stderr": stderr}
+                    failed = failed or process.returncode != 0
+                print_json({"dry_run": args.dry_run, "commands": commands})
+                if failed:
+                    return 2
+            else:
+                print_json({"dry_run": args.dry_run, "commands": commands})
         return 0
     except (ValueError, sqlite3.IntegrityError, json.JSONDecodeError) as exc:
         print("controller: " + str(exc), file=sys.stderr); return 2

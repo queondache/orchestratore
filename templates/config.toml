@@ -11,9 +11,16 @@ valido_fino = "2026-10-12" # alla scadenza il cervello chiede il nuovo peso, non
 strategia = "cheapest-capable"
 premium_solo_con_trigger = true # Astra/Opus/high: KO, disaccordo, ambiguità o rischio emerso
 
+[parallelismo]
+# auto viene risolto in milestone|bugfix prima del primo dispatch e non entra mai nel RUN.
+work_profile = "auto"     # auto | milestone | bugfix
+builder_milestone = 5
+builder_bugfix = 15
+review_ogni_builder = 3   # capacità = ceil(builder della wave / 3), mai 0 con review pendenti
+review_milestone = 2      # cap; reviewer fuori quota builder
+review_bugfix = 5         # cap; reviewer fuori quota builder
+
 [tetti]
-builder = 2           # massimo globale per run; builder Codex
-verifiche_in_volo = 1 # reviewer Claude separato
 domande_aperte = 8
 
 [rischio]

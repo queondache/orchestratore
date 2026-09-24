@@ -286,8 +286,8 @@ PARALLELISMO="$ROOT/skills/orchestratore/references/parallelismo.md"
 VERIFICA="$ROOT/skills/orchestratore/references/verifica.md"
 
 # B1 — piano di parallelizzazione e prova di indipendenza
-check "B1 massimo due builder Codex nella skill" contains_in_file '**massimo 2 builder Codex**' "$SKILL"
-check "B1 pool di verifica fuori dal tetto builder" matches_in_file 'reviewer Claude separato, pre-merge e\s+integratore stanno in un pool a parte' "$SKILL"
+check "B1 tetti builder 5 milestone e 15 bugfix" matches_in_file 'Tetti: \*\*5 builder\*\* in `milestone`, \*\*15 builder\*\* in `bugfix`' "$SKILL"
+check "B1 pool di verifica fuori dal tetto builder" contains_in_file 'Reviewer e pre-merge non consumano slot builder' "$SKILL"
 check "B1 piano di parallelizzazione richiesto" contains_in_file '## 1. Piano di parallelizzazione, prima di qualsiasi delega' "$PARALLELISMO"
 check "B1 glob non descrizioni" contains_in_file 'Le aree scrivibili sono **glob**, non descrizioni' "$PARALLELISMO"
 check "B1 prova di indipendenza sui file reali" contains_in_file 'comm -12' "$PARALLELISMO"
@@ -296,7 +296,7 @@ check "B1 piano nel template run" contains_in_file '## Piano di parallelizzazion
 check "B1 project adapter impone il piano" contains_in_file 'Piano di parallelizzazione' "$PROJECT_ADAPTER"
 
 # B2 — contract-first
-check "B2 contract-first nella skill" contains_in_file 'lane **contract-first**, non parallelo' "$SKILL"
+check "B2 contract-first nella skill" contains_in_file 'lane o cluster **contract-first**' "$SKILL"
 check "B2 contract-first merge su main prima del parallelo" contains_in_file 'mergiare su main**. Solo dopo partono in parallelo' "$PARALLELISMO"
 check "B2 interfaccia congelata per le consumatrici" contains_in_file '**file congelato** per le lane consumatrici' "$PARALLELISMO"
 check "B2 fallback seriale se non isolabile" contains_in_file 'le milestone vanno **seriali**' "$PARALLELISMO"
@@ -346,14 +346,14 @@ check "B6 blocco di lane non ferma il run" contains_in_file 'il rosso della lane
 
 # B9 — fonte operativa unica e memoria compatta
 check "B9 RUN e la fonte operativa unica" contains_in_file 'unica fonte operativa' "$SKILL"
-check "B9 ROADMAP e fonte milestone" contains_in_file 'ROADMAP.md` la fonte delle milestone e del loro stato' "$SKILL"
-check "B9 seleziona al massimo due milestone" contains_in_file 'massimo 2 milestone aperte' "$SKILL"
+check "B9 ROADMAP e fonte milestone" contains_in_file '`ROADMAP.md` quella delle milestone e del loro stato' "$SKILL"
+check "B9 seleziona entro il tetto del profilo" contains_in_file 'eleggibili entro il tetto del profilo congelato' "$SKILL"
 check "B9 RUN non e append-only" contains_in_file 'non è append-only' "$SKILL"
 check "B9 SQLite resta stato macchina" contains_in_file 'SQLite conserva solo stato macchina' "$SKILL"
 check "B9 niente recon operativo" does_not_contain '.orchestratore/recon.md' "$SKILL"
 check "B9 niente prompt-file permanenti" contains_in_file 'prompt-file permanenti' "$SKILL"
 check "B9 template dichiara limite 300 righe" contains_in_file '300 righe' "$RUN_TPL"
-check "B9 template contiene milestone attive" contains_in_file '## Milestone attive' "$RUN_TPL"
+check "B9 template contiene unita attive con tetti" contains_in_file '## Unità attive (massimo 5 milestone o 15 bug)' "$RUN_TPL"
 check "B9 chiusura aggiorna ROADMAP prima" matches_in_file 'ROADMAP\.md.*prima.*RUN' "$LANE"
 check "B9 worker legge sezione task RUN" contains_in_file 'sezione del task in `RUN.md`' "$ROOT/agents/worker-impl.md"
 check "B9 session hook rileva RUN" contains_in_file 'RUN=".orchestratore/RUN.md"' "$ROOT/hooks/session-run-state.sh"
@@ -369,8 +369,8 @@ check "B9 template ha una sola sezione assunzioni" bash -c "[ \$(grep -c '^## As
 check "B9 template mantiene tabella assunzioni" matches_in_file '## Assunzioni[\s\S]*?\| ID \| Assunzione \| Reversibile \| Punto di applicazione \| Stato \|' "$RUN_TPL"
 
 CONFIG_TPL="$ROOT/templates/config.toml"
-check "B7 config limita i builder a due" contains_in_file 'builder = 2' "$CONFIG_TPL"
-check "B7 config separa un reviewer" contains_in_file 'verifiche_in_volo = 1' "$CONFIG_TPL"
+check "B7 config limita builder milestone e bugfix" bash -c "grep -q '^builder_milestone = 5' '$CONFIG_TPL' && grep -q '^builder_bugfix = 15' '$CONFIG_TPL'"
+check "B7 config separa review proporzionali" matches_in_file 'review_ogni_builder = 3[\s\S]*?review_milestone = 2[\s\S]*?review_bugfix = 5' "$CONFIG_TPL"
 check "B7 config elenca le aree sensibili" matches_in_file '\[rischio\][\s\S]*?aree_sensibili = \[' "$CONFIG_TPL"
 
 # B8 — controller esterno: ingressi, ruoli, persistenza e ripresa
@@ -383,7 +383,7 @@ check "B8 SQLite non duplica documenti domande credito" contains_in_file 'Docume
 check "B8 SQLite e lease sono autoritativi" contains_in_file 'SQLite e la lease del controller sono autoritativi' "$CONTROLLER"
 check "B8 brain lock e solo proiezione" matches_in_file '`\.orchestratore/brain\.lock` è solo una[\s\S]*?proiezione di compatibilità' "$CONTROLLER"
 check "B8 conflitto lock non crea secondo cervello" matches_in_file 'se diverge da lease/SQLite[\s\S]*?non avvia mai un secondo cervello' "$CONTROLLER"
-check "B8 stratega Claude e due builder Codex" matches_in_file 'stratega: Claude;[\s\S]*?builder: Codex, massimo 2' "$CONTROLLER"
+check "B8 stratega Claude e tetti builder per profilo" matches_in_file 'stratega: Claude;[\s\S]*?builder: Codex di default, massimo 5 in `milestone` o 15 in `bugfix`' "$CONTROLLER"
 check "B8 reviewer Claude separato" contains_in_file 'reviewer: Claude separato' "$CONTROLLER"
 check "B8 setting congelati per run" contains_in_file 'Ogni run congela questi setting' "$CONTROLLER"
 check "B8 solo finalizzata e completata" contains_in_file 'Solo `finalizzata` è terminale/completata' "$CONTROLLER"

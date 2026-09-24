@@ -4,7 +4,11 @@ Plugin dual-runtime (Claude Code + Codex) che orchestra worker su più milestone
 su più task dentro ogni milestone, con prova di indipendenza sui file reali, lane contract-first
 quando le milestone si toccano e integratore dedicato. Il controller locale usa SQLite WAL e
 lease autorevole; app Codex locale, Codex CLI e Claude CLI entrano nello stesso `run_id`.
-Il flusso standard è strategia Claude, massimo due builder Codex e review Claude separata.
+Il flusso standard è strategia Claude, builder Codex e review Claude separata. Il profilo
+`milestone` ammette fino a 5 builder simultanei; `bugfix` fino a 15, ma solo per bug
+riproducibili con ownership di file disgiunta. Reviewer e pre-merge sono fuori quota builder.
+La capacità review è `ceil(builder della wave/3)`, con cap 2/5, e le consegne hanno precedenza
+sulle nuove assegnazioni. I processi pesanti locali restano serializzati.
 Il routing è `cheapest-capable`: cervello cx Astra medium; dev Luna da medium, Terra da
 medium e Sol da low; Astra worker da low solo quando un trigger osservabile richiede escalation.
 Verifica indipendente a ogni consegna, non solo a fine milestone; un gate rosso non ferma il
@@ -55,14 +59,20 @@ marketplace e l'update o la reinstallazione del plugin in ciascun runtime.
 ## Uso
 
 In un progetto con `SPEC.md` e `ROADMAP.md`: `/orchestratore:orchestra start` (CC) oppure
-«avvia il run» (cx). Sottocomandi: `start`, `status`, `peso`, `credito`, `stop`, `riprendi`;
+«avvia il run» (cx). In `bugfix`, ROADMAP è opzionale: indica una fonte congelata con ID,
+riproduzione e oracolo per ogni bug. Sottocomandi: `start`, `status`, `peso`, `credito`, `stop`, `riprendi`;
 `/orchestratore:orchestra-status` è il report di sola lettura.
 
 `SPEC.md` è la fonte dei requisiti, `ROADMAP.md` la fonte delle milestone e del loro stato,
-`.orchestratore/RUN.md` l'unica fonte operativa. All'avvio il RUN contiene al massimo due
-milestone aperte; viene aggiornato e ricompattato entro 300 righe/15 KB. Non vengono creati
+`.orchestratore/RUN.md` l'unica fonte operativa. All'avvio il RUN congela un profilo concreto:
+`milestone` per ROADMAP, feature, refactor o run misti; `bugfix` solo per un insieme di bug
+indipendenti con riproduzione/oracolo. La precedenza è prompt, config progetto, rilevamento;
+`auto` non entra mai nel RUN. Il RUN contiene massimo 5 milestone o 15 bug aperti e viene
+aggiornato e ricompattato entro 300 righe/15 KB. Non vengono creati
 `recon.md`, context pack o prompt-file permanenti; SQLite conserva soltanto stato macchina,
 lease, fasi, retry, checkpoint ed event-id.
+La policy di arresto predefinita segue il profilo: `milestone-budget: tutte` oppure
+`bug-budget: tutti` dalla fonte bug congelata.
 
 ## Struttura
 

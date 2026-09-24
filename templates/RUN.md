@@ -7,14 +7,18 @@ ultimo aggiornamento: <ISO 8601>
 
 ## Contratto di autonomia
 
-Run mode: milestone-budget | while-quality-high
+Run mode: milestone-budget | bug-budget | while-quality-high
+Profilo parallelismo: milestone | bugfix
+Fonte profilo: <richiesta esplicita | config progetto | rilevamento> — <evidenza>
 Milestone budget: <n | tutte | n/a>
+Bug budget: <n | tutti | n/a>
 Peso: dev cx <n> / cc <n>; verifica <cc|cx|opposto>
 Politica costo: cheapest-capable; Astra cervello=medium; Luna>=medium; Terra>=medium; Sol>=low; Astra worker>=low
 Motivo del modello/effort ed eventuale trigger premium: <motivo | n/a>
 Controller: SQLite locale per stato macchina, lease, fasi, retry, checkpoint ed event-id; run_id: <id>
-Ruoli: stratega Claude; massimo 2 builder Codex; reviewer Claude separato
-Tetto: max 2 builder; pool verifica separato, max 1 in volo
+Ruoli: stratega Claude; builder Codex di default; reviewer Claude separato
+Tetto: milestone max 5 builder / 2 review; bugfix max 15 builder / 5 review
+Capacità review corrente: ceil(builder della wave/3), entro il cap del profilo; coda review: <n>
 Tetto domande aperte: <n>
 Gate verde: build=<cmd> test=<cmd> lint=<cmd>
 Required checks sul branch base: sì | no
@@ -26,34 +30,35 @@ Classe di rischio: tier 1-2 auto-merge; tier 3 o area sensibile PR in attesa
 
 Fonte requisiti: `SPEC.md`.
 Fonte milestone e del loro stato: `ROADMAP.md`.
+Fonte bug e del loro stato: <path/query congelata | n/a>.
 SPEC.md è la fonte dei requisiti; ROADMAP.md è la fonte delle milestone e del loro stato.
 Fonte operativa unica: questo documento `.orchestratore/RUN.md`.
-Il RUN contiene solo le milestone attive (massimo 2), i task e gli handoff necessari.
+Il RUN contiene solo le unità attive (massimo 5 milestone o 15 bug), i task e gli handoff necessari.
 È aggiornato e ricompattato, non è append-only; limite: massimo 300 righe e 15 KB.
 Non esistono `recon.md`, context pack o prompt-file permanenti: i worker ricevono riferimenti
 a SPEC, ROADMAP e alla sezione task pertinente. SQLite non sostituisce questo documento.
 
 ## Piano di parallelizzazione
 
-Solo le milestone attive selezionate da `ROADMAP.md` sono riportate qui; le altre restano
-nella ROADMAP. Una riga per milestone, glob e dipendenze reali.
+Solo le unità attive selezionate dalla fonte sono riportate qui; le altre restano nella
+ROADMAP o nel bug tracker. Una riga per unità, glob e dipendenze reali.
 
 ```text
-<ID> | tier <1|2|3> | scrivibili: <glob, glob> | interfacce: <schema/tipi/firme> | dipende da: <ID | nessuna>
+<ID> | tipo <milestone|bug> | tier <1|2|3> | riproduzione/oracolo <ref|n/a> | scrivibili: <glob, glob> | interfacce: <schema/tipi/firme> | dipende da: <ID | nessuna>
 ```
 
 Prova di indipendenza (file reali, `comm -12` sui glob):
 - parallelizzabili: <coppie>
 - in conflitto: <coppia → file sovrapposti> → contract-first <ID>
 
-## Milestone attive (massimo 2)
+## Unità attive (massimo 5 milestone o 15 bug)
 
-| ID | Milestone | Stato | Dipendenze | Owner |
-|---|---|---|---|---|
-| M<n> | <nome da ROADMAP> | in coda | <ID | nessuna> | Claude |
+| ID | Tipo | Unità | Stato | Dipendenze | Owner |
+|---|---|---|---|---|---|
+| M<n>/B<n> | milestone/bug | <nome dalla fonte> | in coda | <ID | nessuna> | <owner> |
 
-Se una milestone si chiude: aggiorna prima `ROADMAP.md`, poi compatta questa sezione e apri
-la prossima milestone aperta eleggibile. Non copiare l'intera ROADMAP nel RUN.
+Se un'unità si chiude: aggiorna prima la fonte, poi compatta questa sezione e apri la
+successiva unità eleggibile. Non copiare l'intera ROADMAP o bug tracker nel RUN.
 
 ## Registro task
 
@@ -62,7 +67,7 @@ la prossima milestone aperta eleggibile. Non copiare l'intera ROADMAP nel RUN.
 Risultato osservabile per l'utente:
 Dipendenze completate e contratto congelato:
 File scrivibili (un owner per file):
-File condivisi che integra il cervello:
+File condivisi riservati all'integratore:
 Tier / runtime / modello / effort:
 Strategia Claude:
 Prossimo passo builder Codex:
@@ -87,6 +92,7 @@ Le assunzioni ammesse sono reversibili e locali.
 
 | ID | Assunzione | Reversibile | Punto di applicazione | Stato |
 |---|---|---|---|---|
+| A-POOL-REVIEW | Pool review separato = ceil(builder della wave/3), cap 2 milestone / 5 bugfix; review prima di nuovi builder | sì | scheduler del run | attiva |
 | A-<id> | <testo> | sì | <file o task> | attiva |
 
 ## Stato durevole del controller

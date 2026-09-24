@@ -40,7 +40,7 @@ check "SKILL.md nomina controller locale" grep -q 'controller locale' "$SKILL"
 check "SKILL.md frase celebrazione esatta" grep -q '^una milestone meno$' "$SKILL"
 check "SKILL.md GIF delfino" grep -q 'AhV2lfKBfEvcEqj6h3' "$SKILL"
 check "SKILL.md GIF balena" grep -q 'Q6rD2TLgqMiHf4a0Pt' "$SKILL"
-check "SKILL.md tetto massimo 2 builder Codex" grep -q 'massimo 2 builder Codex' "$SKILL"
+check "SKILL.md tetti 5 milestone e 15 bugfix" bash -c "grep -q '\*\*5 builder\*\* in' '$SKILL' && grep -q '\*\*15 builder\*\* in' '$SKILL'"
 check "SKILL.md reviewer Claude separato" grep -q 'reviewer Claude separato' "$SKILL"
 check "SKILL.md regola builder != verificatore" grep -qi 'modello diverso' "$SKILL"
 

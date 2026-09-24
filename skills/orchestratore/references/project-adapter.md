@@ -3,8 +3,10 @@
 ## Progetto nuovo per l'orchestratore
 
 1. Leggi CLAUDE.md, AGENTS.md, SPEC.md, ROADMAP.md, progress.md, `.claude/decisioni.md`,
-   `lessons.md`. Se ROADMAP.md manca o è più vecchia di SPEC.md: fermati, «serve
-   `/allineamento` prima». Se SPEC.md manca: «serve `spec-builder` prima».
+   `lessons.md` e la fonte bug richiesta. Per `milestone`, se ROADMAP.md manca o è più vecchia
+   di SPEC.md: fermati, «serve `/allineamento` prima». Per `bugfix`, ROADMAP è opzionale ma la
+   fonte congelata deve dare a ogni bug ID, riproduzione e oracolo. Se SPEC.md manca:
+   «serve `spec-builder` prima».
 2. Individua i comandi reali di build, test e lint e l'ambiente disponibile (locale, CI, DB
    di test) e **scrivili in `RUN.md`** come `Gate verde: build=<cmd> test=<cmd> lint=<cmd>`;
    un comando inesistente si scrive `nessuno`, non si inventa. Controlla anche se il branch
@@ -15,21 +17,26 @@
    dal template per peso, costo o `aree_sensibili` diversi dal globale. Registra sempre
    `cheapest-capable` e i minimi per modello nel contratto del run.
 3-bis. Aggiorna `.orchestratore/RUN.md` come unica memoria operativa: conserva solo gate,
-   mappa minima dei moduli, task attivi, evidenze e prossimo passo. Seleziona da `ROADMAP.md`
-   massimo 2 milestone aperte eleggibili e riportale nella sezione `Milestone attive`; non
+   mappa minima dei moduli, task attivi, evidenze e prossimo passo. Risolvi e congela il
+   profilo con la precedenza di `parallelismo.md` (prompt → config progetto → rilevamento),
+   senza mai lasciare `auto` nel RUN. Seleziona massimo 5 milestone o 15 bug eleggibili e
+   riportali nella sezione `Unità attive`; non
    copiare l'intera roadmap. Dopo ogni consegna aggiorna la sezione task e compatta ciò che è
    superato, mantenendo il documento entro 300 righe e 15 KB. Non creare `recon.md`, context
    pack o prompt-file permanenti: il worker riceve path e sezione task del RUN. Dopo ogni
    consegna il RUN compatta ciò che è superato.
 4. Cattura stato Git in sola lettura: branch, hash, worktree, PR aperte (`gh pr list`).
-5. Leggi `ROADMAP.md` per stato e dipendenze; il RUN contiene solo le prime 2 milestone aperte
-   eleggibili. Il totale per i contatori resta nella ROADMAP, non viene duplicato nel RUN.
+5. Nel profilo `milestone`, leggi `ROADMAP.md` per stato e dipendenze; nel profilo `bugfix`,
+   registra fonte, riproduzione e oracolo di ogni bug. Il RUN contiene solo le prime 5
+   milestone o i primi 15 bug eleggibili. I totali restano nella fonte, non sono duplicati.
 6. Registra in `RUN.md` se il run è non presidiato: commit, push e PR normali sono automatici;
    auto-merge resta vincolato al gate di lane.md.
 7. Scrivi il `## Piano di parallelizzazione` e la prova di indipendenza sui file reali
    ([parallelismo](parallelismo.md)) prima di occupare qualsiasi slot: un owner per file,
-   nessun ciclo di dipendenze e builder in volo ≤ 2 nel run.
-   Intersezione di glob non vuota → lane contract-first, non parallelo.
+   nessun ciclo di dipendenze e builder in volo ≤ 5 (`milestone`) o ≤ 15 (`bugfix`) nel run.
+   Intersezione di glob non vuota → lane/cluster contract-first o seriale, non parallelo.
+   Il pool review separato vale `ceil(builder della wave/3)`, massimo 2/5, e smaltisce le
+   consegne prima di aprire nuovi builder. I processi pesanti restano seriali.
 
 Non copiare regole di dominio da un altro progetto. Le istruzioni e le decisioni di prodotto
 del repo corrente prevalgono sempre su questa skill.
