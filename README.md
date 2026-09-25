@@ -1,4 +1,4 @@
-# orchestratore — candidato v0.6.0
+# orchestratore 0.6.0
 
 Plugin dual-runtime (Claude Code + Codex) che orchestra worker su più milestone in parallelo e
 su più task dentro ogni milestone, con prova di indipendenza sui file reali, lane contract-first
@@ -34,9 +34,10 @@ Spec: `docs/specs/2026-09-12-orchestratore-plugin-design.md`. Piani: `docs/plans
 
 ## Stato release
 
-**Candidato v0.6.0**: metadati e gate locali sono in preparazione per la release di
-produzione. Non esistono ancora PR o SHA finali della v0.6.0; finché il candidato non viene
-pubblicato e installato, le sessioni correnti continuano a usare la propria versione in cache.
+La release 0.6.0 è tracciata dalla PR
+[#5](https://github.com/queondache/orchestratore/pull/5) e identificata dal tag `v0.6.0`:
+prima della creazione del tag il contenuto resta in preparazione; dopo il tag, le installazioni
+esistenti richiedono update o reinstallazione perché usano snapshot/cache.
 
 ## Install
 
