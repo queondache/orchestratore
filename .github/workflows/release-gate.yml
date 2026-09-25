@@ -22,6 +22,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install ripgrep and verify toolchain
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ripgrep
+          for tool in bash chmod cp cut date dirname env find git grep head jq ln mkdir mktemp perl python3 pwd rg sed sh shasum stat touch tr wc; do
+            command -v "$tool" >/dev/null
+          done
+
       # check-structure owns the executable bridge and hook checks.  The
       # regression gate skips those two duplicates but keeps every invariant.
       - name: Structure, bridge, and hooks
