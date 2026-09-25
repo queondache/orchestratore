@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# PreToolUse dell'orchestratore: durante un run attivo blocca i comandi che la skill vieta
-# in modo assoluto. Fuori da un run non interferisce mai.
+# PreToolUse dell'orchestratore: guardrail accidentale sui comandi esclusi dal contratto.
+# Non e' una sandbox contro codice worker ostile. Fuori da un run non interferisce mai.
 # stdin: JSON con tool_input.command e cwd. Exit 2 = blocco, motivo su stderr.
 #
 # Questo file fa solo tre cose: capire se c'e' un run attivo, e in quel caso passare il
@@ -29,13 +29,26 @@ sys.stdout.write(v if isinstance(v, str) else "")
 fi
 [ -n "$CWD" ] || CWD="$PWD"
 
-# Nessun run attivo in questo progetto: l'orchestratore non ha voce in capitolo.
-[ -f "$CWD/.orchestratore/brain.lock" ] || exit 0
+# Risolvi sempre dal git root: il tool puo partire da qualunque sottodirectory.
+# I bridge impostano ORCHESTRATORE_PROJECT_ROOT, cosi' la guardia resta attiva anche
+# quando il worker esegue nel worktree isolato e brain.lock vive nel control plane.
+ROOT="${ORCHESTRATORE_PROJECT_ROOT:-}"
+if [ -n "$ROOT" ]; then
+  ROOT="$(CDPATH= cd -- "$ROOT" 2>/dev/null && pwd -P)" || exit 0
+  [ -s "$ROOT/.orchestratore/RUN.md" ] || exit 0
+else
+  ROOT="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [ -z "$ROOT" ]; then
+    ROOT="$(CDPATH= cd -- "$CWD" 2>/dev/null && pwd -P)" || exit 0
+    while [ "$ROOT" != / ] && [ ! -f "$ROOT/.orchestratore/brain.lock" ]; do ROOT="${ROOT%/*}"; [ -n "$ROOT" ] || ROOT=/; done
+  fi
+  [ -f "$ROOT/.orchestratore/brain.lock" ] || exit 0
+fi
 
-# Senza python3 non c'e' analisi. Si passa oltre, ma lo si dice: una guardia che tace e non
-# protegge e' peggio di una che non c'e', perche' fa credere di esserci.
+# Senza python3 non c'e' feedback anticipato. Si passa oltre, ma lo si dichiara: il gate di
+# integrazione resta separato da questo guardrail accidentale.
 if ! command -v python3 >/dev/null 2>&1; then
-  printf 'orchestratore: python3 assente, la guardia sui comandi vietati NON e attiva.\n' >&2
+  printf 'orchestratore: python3 assente, il guardrail accidentale NON e attivo.\n' >&2
   exit 0
 fi
 

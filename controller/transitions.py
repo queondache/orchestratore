@@ -29,6 +29,7 @@ class State:
     stage: str
     approach: int = 1
     attempts: int = 0
+    generation: int = 0
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,7 @@ class Command:
     signature: str = ""
     event_id: str | None = None
     stage_intent: str | None = None
+    generation: int | None = None
 
 
 @dataclass(frozen=True)
@@ -65,6 +67,13 @@ def semantic_identity(task_id: str, command: Command) -> str:
             if command.stage_intent not in NEXT_STAGE:
                 raise ValueError("implicit fail requires an active stage intent")
             intent.extend([command.signature, command.stage_intent])
+    # A worker result belongs to one immutable assignment generation.  Keep
+    # legacy in-process callers compatible when these fields are absent, while
+    # the controller always supplies both for durable transitions.
+    if command.stage_intent is not None:
+        intent.extend(["stage", command.stage_intent])
+    if command.generation is not None:
+        intent.extend(["generation", command.generation])
     encoded = json.dumps([task_id, command.operation, intent], sort_keys=True,
                          separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     return "semantic-v1:" + hashlib.sha256(encoded).hexdigest()

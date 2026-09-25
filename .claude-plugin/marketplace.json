@@ -1,13 +1,13 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
   "name": "orchestratore",
-  "version": "0.5.0",
-  "description": "Marketplace privato di Andrea per il plugin orchestratore.",
+  "version": "0.6.0",
+  "description": "Marketplace del plugin Orchestratore dual-runtime per Claude Code e Codex.",
   "owner": { "name": "Andrea Pesce" },
   "plugins": [
     {
       "name": "orchestratore",
-      "description": "Orchestratore multi-agente dual-runtime (CC + cx).",
+      "description": "Controller multi-agente dual-runtime con isolamento, review indipendente e gate di merge fail-closed.",
       "source": "./",
       "category": "development"
     }

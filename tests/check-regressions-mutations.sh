@@ -106,7 +106,7 @@ remove_restore_guard() {
 
 downgrade_y2_version() {
   local copy="$1"
-  sed -i.bak 's/"0\.5\.0"/"0.4.1"/g' "$copy/.claude-plugin/plugin.json"
+  sed -i.bak 's/"0\.6\.0"/"0.5.9"/g' "$copy/.claude-plugin/plugin.json"
   rm -f "$copy/.claude-plugin/plugin.json.bak"
 }
 
@@ -137,7 +137,7 @@ weaken_spending_ban() {
 
 allow_cancelled_ci() {
   local copy="$1"
-  perl -0pi -e 's/assenti, pending, falliti o cancellati/assenti, pending, falliti o success/' "$copy/skills/orchestratore/references/lane.md"
+  perl -0pi -e 's/assenti, non configurati, pending, falliti o\n+cancellati/assenti, non configurati, pending, falliti o\n+success/' "$copy/skills/orchestratore/references/lane.md"
 }
 
 remove_mouse_ban() {
@@ -216,6 +216,31 @@ weaken_bridge_cost_floor() {
   perl -0pi -e 's/gpt-5\.6-luna:medium\|gpt-5\.6-luna:high/gpt-5.6-luna:low|gpt-5.6-luna:medium|gpt-5.6-luna:high/' "$copy/bin/spawn-cx.sh"
 }
 
+allow_cc_low() {
+  local copy="$1"
+  perl -0pi -e 's/case "\$EFFORT" in medium\)/case "\$EFFORT" in low|medium)/' "$copy/bin/spawn-cc.sh"
+}
+
+remove_write_guard_registration() {
+  local copy="$1"
+  perl -0pi -e 's/Write\|Edit\|NotebookEdit\|apply_patch/Write|Edit|apply_patch/' "$copy/hooks/hooks.json"
+}
+
+weaken_worker_push_guard() {
+  local copy="$1"
+  perl -0pi -e 's/push vietato ai worker/push consentito ai worker/' "$copy/hooks/guard_run.py"
+}
+
+remove_remote_mutation_guard() {
+  local copy="$1"
+  perl -0pi -e 's/if WORKER_STAGE:\n        esci\("gh vietato ai worker;/if False:\n        esci("gh vietato ai worker;/' "$copy/hooks/guard_run.py"
+}
+
+remove_curl_mutation_guard() {
+  local copy="$1"
+  perl -0pi -e 's/if WORKER_STAGE:\n        esci\("curl vietato ai worker;/if False:\n        esci("curl vietato ai worker;/' "$copy/hooks/guard_run.py"
+}
+
 allow_stop_on_red() {
   local copy="$1"
   perl -0pi -e 's/\*\*Il rosso non è mai una condizione di stop del run\.\*\*/Un gate rosso ferma il run./' "$copy/skills/orchestratore/SKILL.md"
@@ -231,9 +256,9 @@ remove_per_delivery_verification() {
   perl -0pi -e 's/\*\*Verifica obbligatoria a ogni consegna, non solo a fine milestone\.\*\*/La verifica avviene solo a fine milestone./' "$copy/skills/orchestratore/SKILL.md"
 }
 
-remove_local_suite_fallback() {
+add_local_suite_fallback() {
   local copy="$1"
-  perl -0pi -e 's/\*\*fallback suite locale\*\*/nessun merge/' "$copy/skills/orchestratore/references/lane.md"
+  perl -0pi -e 's/La suite locale del verificatore resta obbligatoria nel gate verde,/\*\*fallback suite locale\*\*: se la CI required non esiste, la suite locale abilita il merge. La suite locale/' "$copy/skills/orchestratore/references/lane.md"
 }
 
 remove_green_gate_definition() {
@@ -268,7 +293,7 @@ remove_independence_proof() {
 
 remove_contract_first() {
   local copy="$1"
-  perl -0pi -e 's/lane \*\*contract-first\*\*, non parallelo/parallelo comunque/' "$copy/skills/orchestratore/SKILL.md"
+  perl -0pi -e 's/glob che si intersecano = lane o cluster \*\*contract-first\*\*,\nnon parallelo/glob che si intersecano = parallelo comunque/' "$copy/skills/orchestratore/SKILL.md"
 }
 
 allow_brain_to_code() {
@@ -338,7 +363,7 @@ remove_explicit_rollover() {
 
 expand_controller_builders() {
   local copy="$1"
-  perl -0pi -e 's/builder: Codex, massimo 2/builder: Codex, massimo 4/' "$copy/skills/orchestratore/references/controller.md"
+  perl -0pi -e 's/builder: Codex di default, massimo 5 in `milestone` o 15 in `bugfix`/builder: Codex di default, massimo 6 in `milestone` o 16 in `bugfix`/' "$copy/skills/orchestratore/references/controller.md"
 }
 
 restore_unbounded_verification() {
@@ -396,9 +421,46 @@ remove_bridge_dry_run() {
   perl -0pi -e 's/--dry-run/--prova/g' "$copy/bin/spawn-cx.sh"
 }
 
+remove_content_snapshot() {
+  local copy="$1"
+  perl -0pi -e 's/worktree-snapshot\.py/git-status-snapshot.py/g' "$copy/bin/bridge-common.sh"
+}
+
+remove_exact_hook_attestation() {
+  local copy="$1"
+  perl -0pi -e 's/verify-hook-install\.py/verify-enabled-only.py/g' "$copy/bin/bridge-common.sh"
+}
+
+remove_manifest_executable_attestation() {
+  local copy="$1"
+  perl -0pi -e 's/\| referenced/| set()/g' "$copy/bin/verify-hook-install.py"
+}
+
+weaken_clean_preflight() {
+  local copy="$1"
+  perl -0pi -e 's/dirty = staged \| worktree_changes\(cwd, entries\) \| untracked_and_ignored\(cwd\)/dirty = staged/' "$copy/bin/validate-ownership.py"
+}
+
+weaken_post_state_union() {
+  local copy="$1"
+  perl -0pi -e 's/    changed\.update\(untracked_and_ignored\(cwd\)\)\n//' "$copy/bin/validate-ownership.py"
+}
+
+remove_canonical_allowlist() {
+  local copy="$1"
+  perl -0pi -e 's/canonical_path_glob\(item\)/item/' "$copy/bin/validate-ownership.py"
+}
+
+remove_hidden_index_check() {
+  local copy="$1"
+  perl -0pi -e 's/    reject_hidden_flags\(cwd\)/    pass  # mutation: hidden flags accepted/' "$copy/bin/validate-ownership.py"
+}
+
 disable_run_guard() {
   local copy="$1"
-  perl -0pi -e 's/\[ -f "\$CWD\/\.orchestratore\/brain\.lock" \] \|\| exit 0/true/' "$copy/hooks/guard-run.sh"
+  sed -i.bak '/^PAYLOAD=/c\
+exit 0 # mutation: guard disabled' "$copy/hooks/guard-run.sh"
+  rm -f "$copy/hooks/guard-run.sh.bak"
 }
 
 remove_guard_hook_registration() {
@@ -469,11 +531,6 @@ guard_abbreviazioni_push_esatte() {
 guard_abbreviazione_clean_esatta() {
   local copy="$1"
   perl -0pi -e 's/        if any\(a\.startswith\("--for"\) or flag_corto_con\(a, "f"\) for a in args\):/        if any(a == "--force" for a in args):/' "$copy/hooks/guard_run.py"
-}
-
-guard_admin_senza_valore() {
-  local copy="$1"
-  perl -0pi -e 's/        if a\.split\("=", 1\)\[0\] == "--admin":/        if a == "--admin":/' "$copy/hooks/guard_run.py"
 }
 
 guard_apici_singoli_non_rispettati() {
@@ -548,7 +605,7 @@ guard_gh_non_analizzato() {
 
 guard_avviso_senza_python_muto() {
   local copy="$1"
-  perl -0pi -e 's/NON e attiva/attiva/' "$copy/hooks/guard-run.sh"
+  perl -0pi -e 's/NON e attivo/attivo/' "$copy/hooks/guard-run.sh"
 }
 
 expect_rejected "missing peso_precedente schema" remove_peso_precedente
@@ -579,7 +636,7 @@ expect_rejected "A1 skill and permission questions restored" restore_skill_permi
 expect_rejected "A2 stop on red allowed" allow_stop_on_red
 expect_rejected "A2 retry budget removed" remove_retry_budget
 expect_rejected "A3 per-delivery verification removed" remove_per_delivery_verification
-expect_rejected "A4 local suite fallback removed" remove_local_suite_fallback
+expect_rejected "A4 insecure local suite fallback added" add_local_suite_fallback
 expect_rejected "A4 green gate definition removed" remove_green_gate_definition
 expect_rejected "A5 doc alignment on close removed" remove_doc_alignment_on_close
 expect_rejected "A5 stop after one milestone" stop_after_one_milestone
@@ -613,11 +670,23 @@ expect_rejected "C1 worker delegation allowed" allow_worker_delegation
 expect_rejected "C2 bridge sandbox weakened" weaken_bridge_sandbox
 expect_rejected "C2 bridge model validation removed" remove_bridge_model_validation
 expect_rejected "C2 bridge allows Luna low" weaken_bridge_cost_floor
+expect_rejected "C2 bridge CC allows low" allow_cc_low
 expect_rejected "C2 bridge dry-run removed" remove_bridge_dry_run
+expect_rejected "C2 content snapshot removed" remove_content_snapshot
+expect_rejected "C2 exact hook attestation removed" remove_exact_hook_attestation
+expect_rejected "C2 manifest executable attestation removed" remove_manifest_executable_attestation
+expect_rejected "C2 clean preflight weakened" weaken_clean_preflight
+expect_rejected "C2 post-state union weakened" weaken_post_state_union
+expect_rejected "C2 canonical allowlist removed" remove_canonical_allowlist
+expect_rejected "C2 hidden index preflight removed" remove_hidden_index_check
 expect_rejected "D1 status command made writable" make_status_command_writable
 expect_rejected "D1 start command asks defaults" make_start_ask_defaults
-expect_rejected "D2 run guard disabled" disable_run_guard
+expect_rejected_exec "D2 run guard disabled" disable_run_guard
 expect_rejected "D2 guard hook unregistered" remove_guard_hook_registration
+expect_rejected "D2 write guard registration weakened" remove_write_guard_registration
+expect_rejected "D2 worker push guard weakened" weaken_worker_push_guard
+expect_rejected_exec "D2 remote mutation guard weakened" remove_remote_mutation_guard
+expect_rejected_exec "D2 curl mutation guard weakened" remove_curl_mutation_guard
 expect_rejected_exec "D2 heredoc trattato come codice" guard_heredoc_non_piu_dato
 expect_rejected_exec "D2 a capo non separa i comandi" guard_a_capo_non_separa
 expect_rejected_exec "D2 wrapper non piu saltati" guard_wrapper_non_saltati
@@ -640,7 +709,6 @@ expect_rejected_exec "D2 redirezioni non tolte dai token" guard_redirezioni_non_
 expect_rejected_exec "D2 bundle di opzioni corte di shell ignorato" guard_bundle_shell_ignorato
 expect_rejected_exec "D2 abbreviazioni dei flag di push non riconosciute" guard_abbreviazioni_push_esatte
 expect_rejected_exec "D2 abbreviazione di --force per clean non riconosciuta" guard_abbreviazione_clean_esatta
-expect_rejected_exec "D2 --admin con valore attaccato non riconosciuto" guard_admin_senza_valore
 expect_rejected_exec "D2 apici singoli non rispettati nelle sostituzioni" guard_apici_singoli_non_rispettati
 expect_rejected_exec "D2 continuazione di riga unita con uno spazio" guard_continuazione_con_spazio
 expect_rejected_exec "D2 here-string scambiata per documento inline" guard_herestring_come_heredoc

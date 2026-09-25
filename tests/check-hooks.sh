@@ -6,6 +6,7 @@ set -uo pipefail
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)"
 ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd -P)"
 GUARD="$ROOT/hooks/guard-run.sh"
+WRITE_GUARD="$ROOT/hooks/guard-write.py"
 SESS="$ROOT/hooks/session-run-state.sh"
 HOOKS_JSON="$ROOT/hooks/hooks.json"
 
@@ -47,9 +48,11 @@ expect_guard() { # expect_guard <atteso> <cwd> <comando> <label>
 
 [ -x "$GUARD" ] && ok "guard-run.sh eseguibile" || ko "guard-run.sh eseguibile"
 [ -x "$SESS" ] && ok "session-run-state.sh eseguibile" || ko "session-run-state.sh eseguibile"
+[ -x "$WRITE_GUARD" ] && ok "guard-write.py eseguibile" || ko "guard-write.py eseguibile"
 python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert 'PreToolUse' in d['hooks'] and 'SessionStart' in d['hooks']" "$HOOKS_JSON" \
   && ok "hooks.json dichiara PreToolUse e SessionStart" || ko "hooks.json dichiara PreToolUse e SessionStart"
 grep -q 'CLAUDE_PLUGIN_ROOT' "$HOOKS_JSON" && ok "hooks.json usa CLAUDE_PLUGIN_ROOT" || ko "hooks.json usa CLAUDE_PLUGIN_ROOT"
+grep -q 'Write|Edit|NotebookEdit|apply_patch' "$HOOKS_JSON" && ok "hooks.json registra il guardrail sui tool di scrittura" || ko "hooks.json registra il guardrail sui tool di scrittura"
 
 # Con run attivo: i comandi vietati dalla skill vengono bloccati (exit 2)
 expect_guard 2 "$CON_RUN" 'git push --force origin main' "blocca il force-push"
@@ -138,6 +141,47 @@ expect_guard 0 "$CON_RUN" 'git clean -n' "lascia passare il clean in sola simula
 expect_guard 0 "$CON_RUN" 'rm -r build' "lascia passare una rimozione ricorsiva non forzata"
 expect_guard 0 "$CON_RUN" 'git push origin HEAD:refs/heads/main' "lascia passare una refspec normale"
 expect_guard 0 "$CON_RUN" 'gh pr merge 3 --squash' "lascia passare il merge al gate"
+
+# Nei processi worker il controller conserva push e merge fuori dal bridge.
+BODY_PUSH="$(payload "$CON_RUN" 'git push origin feat/a')"
+printf '%s' "$BODY_PUSH" | env ORCHESTRATORE_STAGE=build "$GUARD" >/dev/null 2>&1
+[ "${PIPESTATUS[1]}" = 2 ] && ok "worker non puo fare push" || ko "worker non puo fare push"
+BODY_MERGE="$(payload "$CON_RUN" 'gh pr merge 3 --squash')"
+printf '%s' "$BODY_MERGE" | env ORCHESTRATORE_STAGE=finalize "$GUARD" >/dev/null 2>&1
+[ "${PIPESTATUS[1]}" = 2 ] && ok "worker blocca ogni gh, incluso merge" || ko "worker blocca ogni gh, incluso merge"
+BODY_MERGE_GLOBAL="$(payload "$CON_RUN" 'gh --repo o/r pr merge 3 --squash')"
+printf '%s' "$BODY_MERGE_GLOBAL" | env ORCHESTRATORE_STAGE=build "$GUARD" >/dev/null 2>&1
+[ "${PIPESTATUS[1]}" = 2 ] && ok "worker non aggira il blocco merge con opzioni globali gh" || ko "worker non aggira il blocco merge con opzioni globali gh"
+
+# I worker non parlano direttamente con GitHub o endpoint remoti: il controller e'
+# l'unico owner di query, PR e merge. Pochi casi rappresentativi difendono il confine.
+for REMOTE_CMD in \
+  'gh pr view 3' \
+  'gh api --method GET repos/o/r/pulls/3' \
+  'gh issue create --title x --body y' \
+  'curl -fsS https://example.invalid/status' \
+  'curl --data x=1 https://example.invalid/hook'
+do
+  BODY_REMOTE="$(payload "$CON_RUN" "$REMOTE_CMD")"
+  printf '%s' "$BODY_REMOTE" | env ORCHESTRATORE_STAGE=review "$GUARD" >/dev/null 2>&1
+  [ "${PIPESTATUS[1]}" = 2 ] && ok "worker blocca comando remoto: $REMOTE_CMD" || ko "worker blocca comando remoto: $REMOTE_CMD"
+done
+BODY_BUILD_CURL="$(payload "$CON_RUN" 'curl -I https://example.invalid/status')"
+printf '%s' "$BODY_BUILD_CURL" | env ORCHESTRATORE_STAGE=build "$GUARD" >/dev/null 2>&1
+[ "${PIPESTATUS[1]}" = 2 ] && ok "build blocca curl come ogni worker" || ko "build blocca curl come ogni worker"
+
+# Tool Write/Edit/NotebookEdit: review sempre read-only; build confinato a worktree e allowlist.
+WRITE_OK="$(python3 -c 'import json; print(json.dumps({"tool_name":"Write","tool_input":{"file_path":"src/ok.py"}}))')"
+WRITE_NO="$(python3 -c 'import json; print(json.dumps({"tool_name":"Write","tool_input":{"file_path":"secrets.txt"}}))')"
+printf '%s' "$WRITE_OK" | env ORCHESTRATORE_STAGE=review ORCHESTRATORE_TASK_CWD="$CON_RUN" ORCHESTRATORE_ALLOWLIST_JSON='["src/**"]' "$WRITE_GUARD" >/dev/null 2>&1
+[ "${PIPESTATUS[1]}" = 2 ] && ok "review blocca Write" || ko "review blocca Write"
+NOTEBOOK_NO="$(python3 -c 'import json; print(json.dumps({"tool_name":"NotebookEdit","tool_input":{"notebook_path":"notes.ipynb"}}))')"
+printf '%s' "$NOTEBOOK_NO" | env ORCHESTRATORE_STAGE=strategy ORCHESTRATORE_TASK_CWD="$CON_RUN" ORCHESTRATORE_ALLOWLIST_JSON='["**"]' "$WRITE_GUARD" >/dev/null 2>&1
+[ "${PIPESTATUS[1]}" = 2 ] && ok "strategy blocca NotebookEdit" || ko "strategy blocca NotebookEdit"
+printf '%s' "$WRITE_OK" | env ORCHESTRATORE_STAGE=build ORCHESTRATORE_TASK_CWD="$CON_RUN" ORCHESTRATORE_ALLOWLIST_JSON='["src/**"]' "$WRITE_GUARD" >/dev/null 2>&1
+[ "${PIPESTATUS[1]}" = 0 ] && ok "build consente Write in ownership" || ko "build consente Write in ownership"
+printf '%s' "$WRITE_NO" | env ORCHESTRATORE_STAGE=build ORCHESTRATORE_TASK_CWD="$CON_RUN" ORCHESTRATORE_ALLOWLIST_JSON='["src/**"]' "$WRITE_GUARD" >/dev/null 2>&1
+[ "${PIPESTATUS[1]}" = 2 ] && ok "build blocca Write fuori ownership" || ko "build blocca Write fuori ownership"
 
 # Quinto giro di verifica: bypass non deliberati che passavano.
 expect_guard 2 "$CON_RUN" 'echo build | xargs -0 rm -rf' 'blocca la cancellazione passata a xargs con flag'
@@ -302,13 +346,17 @@ expect_guard 0 "$CON_RUN" 'git push origin '\''feat/#42'\''' 'lascia passare un 
 expect_guard 0 "$SENZA_RUN" 'git push --force origin main' "fuori da un run non blocca nulla"
 expect_guard 0 "$SENZA_RUN" 'git reset --hard HEAD~1' "fuori da un run non blocca il reset"
 
+# Il root del run non coincide necessariamente col cwd del comando.
+mkdir -p "$CON_RUN/src/deep"
+expect_guard 2 "$CON_RUN/src/deep" 'git push --force origin main' "blocca dal cwd annidato risalendo al root del run"
+
 # Payload malformato: il lavoro normale passa, ma il distruttivo non si infila
 # approfittando di un parser che non ha capito niente.
 printf 'non json' | "$GUARD" >/dev/null 2>&1
 [ $? = 0 ] && ok "payload malformato non blocca il lavoro normale" || ko "payload malformato non blocca il lavoro normale"
 
-# Senza python3 non c'e' analisi. La guardia non protegge, e deve dirlo: una guardia che
-# tace mentre non fa niente e' peggio di una assente, perche' fa credere di esserci.
+# Senza python3 non c'e' feedback anticipato e il guardrail deve dichiararlo; non viene
+# presentato come sandbox o barriera contro codice worker ostile.
 SENZA_PY="$TMP/bin-vuoto"
 mkdir -p "$SENZA_PY"
 for c in sh bash cat printf grep sed dirname pwd; do
@@ -322,7 +370,7 @@ ERR_PY="$TMP/senza-py.err"
 # che nella sessione reale e' proprio quella del progetto. Il test la riproduce.
 ( cd "$CON_RUN" && printf '%s' "$BODY_FORZA" | env PATH="$SENZA_PY" "$GUARD" 2>"$ERR_PY" >/dev/null; exit "${PIPESTATUS[1]}" )
 [ $? = 0 ] && ok "senza python3 la guardia non blocca" || ko "senza python3 la guardia non blocca"
-grep -q 'NON e attiva' "$ERR_PY" \
+grep -q 'NON e attivo' "$ERR_PY" \
   && ok "senza python3 la guardia dichiara di non essere attiva" \
   || ko "senza python3 la guardia dichiara di non essere attiva"
 ( cd "$CON_RUN" && printf '%s' "$BODY_SANO" | env PATH="$SENZA_PY" "$GUARD" >/dev/null 2>&1; exit "${PIPESTATUS[1]}" )
@@ -340,6 +388,11 @@ printf 'stato: attivo\ncervello: cc-fable\n' > "$CON_RUN/.orchestratore/RUN.md"
 OUT_CON="$( cd "$CON_RUN" && "$SESS" )"
 case "$OUT_CON" in *"stato: attivo"*) ok "session hook riporta lo stato del run" ;; *) ko "session hook riporta lo stato del run" ;; esac
 case "$OUT_CON" in *"brain.lock"*) ok "session hook segnala il lock" ;; *) ko "session hook segnala il lock" ;; esac
+BODY_BRIDGE="$(payload "$SENZA_RUN" 'git push --force origin main')"
+printf '%s' "$BODY_BRIDGE" | env ORCHESTRATORE_PROJECT_ROOT="$CON_RUN" "$GUARD" >/dev/null 2>&1
+[ "${PIPESTATUS[1]}" = 2 ] && ok "bridge root esplicito attiva il guard fuori dal cwd di controllo" || ko "bridge root esplicito attiva il guard fuori dal cwd di controllo"
+OUT_NESTED="$(cd "$CON_RUN/src/deep" && "$SESS")"
+case "$OUT_NESTED" in *"stato: attivo"*) ok "session hook trova RUN dal cwd annidato" ;; *) ko "session hook trova RUN dal cwd annidato" ;; esac
 
 if [ "$failures" -gt 0 ]; then printf 'ROSSO: %d controlli hook falliti\n' "$failures"; exit 1; fi
 printf 'VERDE: hook conformi\n'

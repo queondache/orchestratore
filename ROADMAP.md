@@ -21,6 +21,7 @@ Ultimo allineamento: 21/09/2026, versione 0.5.0; PR #3 mergiata con merge SHA
 | M11 | Controller persistente SQLite e CLI congelata | **FATTO** | `controller/**`, `bin/orchestratore-controller`, `tests/check-controller.sh`; 14 test OK; review Claude Sonnet su fingerprint `bd8f3b22` |
 | M12 | Contratto plugin, ingressi e contesto persistente | **FATTO** | skill/reference/template/test aggiornati; struttura e regressioni verdi; mutation suite verde; review Terra su `e42dba2d` |
 | M13 | Integrazione e release 0.5.0 | **FATTO** | PR #3 mergiata con merge SHA `482ca674d05114d41e83db0ee18984c176c13495`; gate finali locali verdi e review indipendente OK |
+| M14 | Profili di parallelismo 5 milestone / 15 bugfix e pool review proporzionato | **FATTO** | Dispatch concorrente 5/15, review 2/5, ownership fail-closed e admission atomica; 33 test controller, regressioni e mutation suite verdi; review indipendente finale OK |
 
 M4-M7 sono state consegnate nella stessa PR #1, verificata in modo indipendente da Fable
 sull'hash che va in `main`.
@@ -36,6 +37,11 @@ blocca la consegna.
 M9 resta fuori perimetro 0.5.0 e non bloccante: l'evidenza runtime del modello sarà affrontata
 in una milestone successiva.
 
+M14 rende esplicito il profilo prima del dispatch: `milestone` fino a 5 builder, `bugfix` fino
+a 15; owner esclusivo per file, conflitti contract-first o seriali, processi pesanti seriali.
+Reviewer e pre-merge restano fuori quota builder; il pool review è `ceil(builder della wave/3)`,
+con cap 2/5 e precedenza delle consegne sulle nuove assegnazioni.
+
 Definition of done di M8:
 
 - `RUN.md` reale con piano di parallelizzazione e prova di indipendenza sui file veri;
@@ -46,6 +52,7 @@ Definition of done di M8:
 
 ## Non in roadmap
 
-CI del repository: scelta di Andrea del 13/09/2026, vale il fallback suite locale del gate di
-merge (`references/lane.md`). Se un giorno il repo avrà required checks, il gate cambia forma
+CI del repository: scelta di Andrea aggiornata con il gate di sicurezza corrente: senza
+almeno un required CI check configurato non esiste auto-merge (`references/lane.md`). La
+suite locale resta prova obbligatoria ma non sostituisce la CI. Se il repo avrà required checks, il gate
 da solo senza modifiche alla skill.

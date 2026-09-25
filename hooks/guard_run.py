@@ -12,7 +12,8 @@ rispettando le virgolette, i documenti inline vengono trattati come dato e non c
 l'analisi guarda il programma e il suo sottocomando invece di cercare sottostringhe.
 
 MODELLO DI MINACCIA
-Chi sbaglia per fretta, non chi vuole aggirare di proposito. Copre le forme che un worker
+Questo e' un guardrail accidentale per chi sbaglia per fretta, non una sandbox contro chi
+vuole aggirarlo di proposito. Copre le forme che un worker
 scrive davvero, anche distratto: flag lunghi e corti anche combinati, abbreviazioni che git
 accetta, refspec forzate, wrapper come sudo, env, timeout e xargs, comandi annidati in una
 sostituzione o in `sh -c`, e comandi su piu' righe.
@@ -20,10 +21,11 @@ sostituzione o in `sh -c`, e comandi su piu' righe.
 Limiti noti e accettati: un comando costruito a runtime non e' leggibile. `$G push -f` con G
 assegnata altrove, un flag che arriva dallo stdin (`echo -f | xargs git push`), un alias
 definito in una sessione precedente. Per saperlo bisognerebbe eseguire il comando. Chi scrive
-queste forme sta aggirando la guardia di proposito: la barriera vera e' il permission mode
-del runtime, non questo file.
+queste forme sta aggirando il guardrail di proposito. Il gate di integrazione verifica lo
+stato consegnato, ma nessuno dei due isola codice worker ostile eseguito dallo stesso account.
 """
 import json
+import os
 import re
 import shlex
 import sys
@@ -73,13 +75,14 @@ ARGOMENTO_POSIZIONALE = {"timeout": 1, "flock": 1, "chroot": 1}
 # (`-o pipefail`, `-euo pipefail`, `-O globstar`): senza saltare il valore, il comando
 # dopo -c e' il token sbagliato, ed e' cosi' che `bash -o pipefail -c` passava.
 OPZIONE_SHELL_CON_VALORE_FINALE = "oO"
+WORKER_STAGE = os.environ.get("ORCHESTRATORE_STAGE", "")
 
 
 def esci(motivo):
     sys.stderr.write(
-        "orchestratore: comando vietato durante un run attivo (%s).\n" % motivo)
+        "orchestratore: guardrail accidentale ha rifiutato il comando (%s).\n" % motivo)
     sys.stderr.write(
-        "La skill lo esclude sempre: chiudi il checkpoint e chiedi ad Andrea.\n")
+        "Il controller resta l'autorita di integrazione: chiudi il checkpoint.\n")
     sys.exit(2)
 
 
@@ -314,6 +317,8 @@ def analizza_git(tok, i):
         return
     sub, args = tok[j], tok[j + 1:]
     if sub == "push":
+        if WORKER_STAGE:
+            esci("push vietato ai worker; integra il controller")
         analizza_push(args)
     elif sub == "reset":
         for a in args:
@@ -350,20 +355,24 @@ def analizza_find(args):
 
 
 def analizza_gh(args):
-    metodo = ""
+    if WORKER_STAGE:
+        esci("gh vietato ai worker; GitHub e responsabilita del controller")
+    if any(a.split("=", 1)[0] == "--admin" for a in args):
+        esci("merge che scavalca i check")
     for k, a in enumerate(args):
-        if a.split("=", 1)[0] == "--admin":
-            esci("merge che scavalca i check")
-        if a.startswith("-X") and len(a) > 2:
-            metodo = a[2:]
-        elif a == "-X" and k + 1 < len(args):
+        metodo = a[2:] if a.startswith("-X") and len(a) > 2 else ""
+        if a in {"-X", "--method"} and k + 1 < len(args):
             metodo = args[k + 1]
         elif a.startswith("--method="):
             metodo = a.split("=", 1)[1]
-        elif a == "--method" and k + 1 < len(args):
-            metodo = args[k + 1]
-    if metodo.upper() == "DELETE" and "api" in args:
-        esci("cancellazione via API GitHub")
+        if metodo.upper() == "DELETE" and "api" in args:
+            esci("cancellazione via API GitHub")
+
+
+def analizza_curl(args):
+    del args
+    if WORKER_STAGE:
+        esci("curl vietato ai worker; rete remota e responsabilita del controller")
 
 
 def trova_sostituzioni(testo):
@@ -448,6 +457,8 @@ def analizza_comando(cmd, profondita=0):
             analizza_find(segmento[i + 1:])
         elif prog == "gh":
             analizza_gh(segmento[i + 1:])
+        elif prog == "curl":
+            analizza_curl(segmento[i + 1:])
 
 
 def main():

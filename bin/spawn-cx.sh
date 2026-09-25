@@ -1,65 +1,39 @@
 #!/usr/bin/env bash
-# Bridge dell'orchestratore: lancia un worker Codex non interattivo.
-# Uso: bin/spawn-cx.sh [--dry-run] <modello> <effort> <cwd> <task-id>
-# Il bridge costruisce un prompt minimo dal task id; non legge i documenti.
-# --yolo e' l'alias di --dangerously-bypass-approvals-and-sandbox.
-
+# Bridge Codex: controller root separato dal worktree isolato del task.
+# Uso: spawn-cx.sh [--dry-run] <modello> <effort> <project-root> <task-id> <stage> <task-cwd> <allowlist-json>
 set -uo pipefail
+QUI="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck source=bridge-common.sh
+. "$QUI/bridge-common.sh"
 
 DRY_RUN=0
-if [ "${1:-}" = "--dry-run" ]; then DRY_RUN=1; shift; fi
-
-if [ "$#" -ne 4 ]; then
-  printf 'uso: %s [--dry-run] <modello> <effort> <cwd> <task-id>\n' "$(basename "$0")" >&2
-  exit 64
-fi
-
-MODEL="$1"; EFFORT="$2"; CWD="$3"; TASK_ID="$4"
-
-case "$MODEL" in
-  gpt-6-astra|gpt-5.6-sol|gpt-5.6-terra|gpt-5.6-luna) ;;
-  *) printf 'modello cx non ammesso: %s\n' "$MODEL" >&2; exit 65 ;;
-esac
-
+if [ "${1:-}" = --dry-run ]; then DRY_RUN=1; shift; fi
+[ "$#" -eq 7 ] || bridge_fail "uso: $(basename "$0") [--dry-run] <modello> <effort> <project-root> <task-id> <stage> <task-cwd> <allowlist-json>" 64
+MODEL="$1"; EFFORT="$2"; PROJECT_ROOT="$3"; TASK_ID="$4"; STAGE="$5"; TASK_CWD="$6"; ALLOWLIST_JSON="$7"
+case "$MODEL" in gpt-6-astra|gpt-5.6-sol|gpt-5.6-terra|gpt-5.6-luna) ;; *) bridge_fail "modello cx non ammesso: $MODEL" 65 ;; esac
 case "$MODEL:$EFFORT" in
-  gpt-5.6-luna:medium|gpt-5.6-luna:high|gpt-5.6-terra:medium|gpt-5.6-terra:high) ;;
-  gpt-5.6-sol:low|gpt-5.6-sol:medium|gpt-5.6-sol:high) ;;
-  gpt-6-astra:low|gpt-6-astra:medium|gpt-6-astra:high) ;;
-  *) printf 'combinazione modello/effort non ammessa: %s %s\n' "$MODEL" "$EFFORT" >&2; exit 65 ;;
+  gpt-5.6-luna:medium|gpt-5.6-luna:high|gpt-5.6-terra:medium|gpt-5.6-terra:high|gpt-5.6-sol:low|gpt-5.6-sol:medium|gpt-5.6-sol:high|gpt-6-astra:low|gpt-6-astra:medium|gpt-6-astra:high) ;;
+  *) bridge_fail "combinazione modello/effort non ammessa: $MODEL $EFFORT" 65 ;;
 esac
 
-[ -d "$CWD" ] || { printf 'cwd inesistente: %s\n' "$CWD" >&2; exit 66; }
-case "$TASK_ID" in
-  ''|*[!A-Za-z0-9._-]*|.*|-*) printf 'task-id non valido: %s\n' "$TASK_ID" >&2; exit 65 ;;
-esac
-RUN="$CWD/.orchestratore/RUN.md"
-if [ "$DRY_RUN" -eq 0 ] && [ ! -s "$RUN" ]; then
-  printf 'RUN.md assente o vuoto: %s\n' "$RUN" >&2
-  exit 66
-fi
-
-LOG_DIR="$CWD/.orchestratore/logs"
-LOG="$LOG_DIR/$TASK_ID.log"
-PROMPT_TEXT="Leggi SPEC.md, ROADMAP.md e .orchestratore/RUN.md. Esegui solo la sezione task $TASK_ID. Rispetta owner, perimetro e gate. Aggiorna la sezione task $TASK_ID con esito e checkpoint."
-
-set -- codex exec --yolo -m "$MODEL" -c "model_reasoning_effort=$EFFORT" -C "$CWD" -
-
+bridge_prepare
+bridge_prompt
+set -- codex exec --yolo --dangerously-bypass-hook-trust -m "$MODEL" -c "model_reasoning_effort=$EFFORT" -C "$TASK_CWD" -
 if [ "$DRY_RUN" -eq 1 ]; then
-  printf 'comando: %s\n' "$*"
-  printf 'task: %s\n' "$TASK_ID"
-  printf 'stdin: %s\n' "$PROMPT_TEXT"
-  printf 'log: %s\n' "$LOG"
+  printf 'comando:'; printf ' %q' "$@"; printf '\n'
+  printf 'task: %s\nstage: %s\nstdin: %s\nlog: %s\n' "$TASK_ID" "$STAGE" "$PROMPT_TEXT" "$LOG"
   exit 0
 fi
 
-command -v codex >/dev/null 2>&1 || { printf 'codex non installato\n' >&2; exit 69; }
+command -v codex >/dev/null 2>&1 || bridge_fail 'codex non installato' 69
+bridge_require_codex_guard
 mkdir -p "$LOG_DIR" || exit 73
-
-{
-  printf '=== %s | modello %s | effort %s | cwd %s\n' "$(date -u +%FT%TZ)" "$MODEL" "$EFFORT" "$CWD"
-} >> "$LOG"
-
+bridge_snapshot
+export ORCHESTRATORE_PROJECT_ROOT="$PROJECT_ROOT"
+export ORCHESTRATORE_TASK_CWD="$TASK_CWD" ORCHESTRATORE_STAGE="$STAGE" ORCHESTRATORE_ALLOWLIST_JSON="$ALLOWLIST_JSON"
+printf '=== %s | modello %s | effort %s | stage %s | cwd %s\n' "$(date -u +%FT%TZ)" "$MODEL" "$EFFORT" "$STAGE" "$TASK_CWD" >> "$LOG"
 printf '%s\n' "$PROMPT_TEXT" | "$@" 2>&1 | tee -a "$LOG"
 STATUS="${PIPESTATUS[1]}"
+bridge_validate_post
 printf '=== exit %s\n' "$STATUS" >> "$LOG"
 exit "$STATUS"

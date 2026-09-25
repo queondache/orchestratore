@@ -1,10 +1,14 @@
-# orchestratore 0.5.0
+# orchestratore 0.6.0
 
 Plugin dual-runtime (Claude Code + Codex) che orchestra worker su più milestone in parallelo e
 su più task dentro ogni milestone, con prova di indipendenza sui file reali, lane contract-first
 quando le milestone si toccano e integratore dedicato. Il controller locale usa SQLite WAL e
 lease autorevole; app Codex locale, Codex CLI e Claude CLI entrano nello stesso `run_id`.
-Il flusso standard è strategia Claude, massimo due builder Codex e review Claude separata.
+Il flusso standard è strategia Claude, builder Codex e review Claude separata. Il profilo
+`milestone` ammette fino a 5 builder simultanei; `bugfix` fino a 15, ma solo per bug
+riproducibili con ownership di file disgiunta. Reviewer e pre-merge sono fuori quota builder.
+La capacità review è `ceil(builder della wave/3)`, con cap 2/5, e le consegne hanno precedenza
+sulle nuove assegnazioni. I processi pesanti locali restano serializzati.
 Il routing è `cheapest-capable`: cervello cx Astra medium; dev Luna da medium, Terra da
 medium e Sol da low; Astra worker da low solo quando un trigger osservabile richiede escalation.
 Verifica indipendente a ogni consegna, non solo a fine milestone; un gate rosso non ferma il
@@ -12,8 +16,14 @@ run: feedback invariato deduplicato, due tentativi per approccio e massimo due a
 automatici prima di parcheggiare la lane e liberare lo slot. A milestone chiusa: merge, allineamento di
 ROADMAP/progress/decisioni e apertura immediata della lane successiva. Il verificatore esegue
 quattro passi con evidenza raw — hash, gate verde, oracolo (il test nuovo deve diventare rosso
-senza la modifica), perimetro — e il merge automatico vale solo per tier 1-2: tier 3 e aree
-sensibili restano PR in attesa.
+senza la modifica), perimetro. Il merge automatico è fail-closed: vale solo per tier 1-2,
+richiede una allowlist esplicita che copra ogni file del diff e almeno un check CI richiesto
+verde; tier 3, aree sensibili e path non classificati restano PR in attesa.
+
+I worker Codex e Claude operano in worktree distinti con ownership verificata. Durante un run
+non possono usare `gh`, `curl` o `git push`: il controller è l'unica autorità del protocollo
+per leggere PR/check e richiedere il merge. Questi controlli sono guardrail contro errori e
+gate d'integrazione, non una sandbox contro un worker locale ostile.
 
 La ripresa A-E richiede evidenza della fase precedente; E è completa solo con outcome PR,
 merge o attesa approvata e documenti allineati. Checkpoint e session rollover sono espliciti:
@@ -22,12 +32,12 @@ si persiste da 50 e si apre una nuova sessione da 70 senza affidarsi all'auto-co
 
 Spec: `docs/specs/2026-09-12-orchestratore-plugin-design.md`. Piani: `docs/plans/`.
 
-## Stato release 0.5.0
+## Stato release
 
-La release è stata integrata con PR #3, merge SHA
-`482ca674d05114d41e83db0ee18984c176c13495`. Claude Code è aggiornato da 0.4.0 a 0.5.0 e
-Codex è installato alla 0.5.0. È necessaria una nuova sessione per applicare la versione
-aggiornata.
+La release 0.6.0 è tracciata dalla PR
+[#5](https://github.com/queondache/orchestratore/pull/5) e identificata dal tag `v0.6.0`:
+prima della creazione del tag il contenuto resta in preparazione; dopo il tag, le installazioni
+esistenti richiedono update o reinstallazione perché usano snapshot/cache.
 
 ## Install
 
@@ -55,14 +65,20 @@ marketplace e l'update o la reinstallazione del plugin in ciascun runtime.
 ## Uso
 
 In un progetto con `SPEC.md` e `ROADMAP.md`: `/orchestratore:orchestra start` (CC) oppure
-«avvia il run» (cx). Sottocomandi: `start`, `status`, `peso`, `credito`, `stop`, `riprendi`;
+«avvia il run» (cx). In `bugfix`, ROADMAP è opzionale: indica una fonte congelata con ID,
+riproduzione e oracolo per ogni bug. Sottocomandi: `start`, `status`, `peso`, `credito`, `stop`, `riprendi`;
 `/orchestratore:orchestra-status` è il report di sola lettura.
 
 `SPEC.md` è la fonte dei requisiti, `ROADMAP.md` la fonte delle milestone e del loro stato,
-`.orchestratore/RUN.md` l'unica fonte operativa. All'avvio il RUN contiene al massimo due
-milestone aperte; viene aggiornato e ricompattato entro 300 righe/15 KB. Non vengono creati
+`.orchestratore/RUN.md` l'unica fonte operativa. All'avvio il RUN congela un profilo concreto:
+`milestone` per ROADMAP, feature, refactor o run misti; `bugfix` solo per un insieme di bug
+indipendenti con riproduzione/oracolo. La precedenza è prompt, config progetto, rilevamento;
+`auto` non entra mai nel RUN. Il RUN contiene massimo 5 milestone o 15 bug aperti e viene
+aggiornato e ricompattato entro 300 righe/15 KB. Non vengono creati
 `recon.md`, context pack o prompt-file permanenti; SQLite conserva soltanto stato macchina,
 lease, fasi, retry, checkpoint ed event-id.
+La policy di arresto predefinita segue il profilo: `milestone-budget: tutte` oppure
+`bug-budget: tutti` dalla fonte bug congelata.
 
 ## Struttura
 
