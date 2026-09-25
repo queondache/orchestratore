@@ -26,17 +26,28 @@ Tool `Agent`. Regole:
 
 ## Worker cx via bridge
 
-`bin/spawn-cx.sh [--dry-run] <modello> <effort> <cwd> <task-id>`, che esegue
-`codex exec --yolo -m <modello> -c model_reasoning_effort=<effort> -C <cwd> -` (`--yolo` è
-l'alias di `--dangerously-bypass-approvals-and-sandbox`) con il prompt su stdin, log in
-`<cwd>/.orchestratore/logs/<task-id>.log`, exit code restituito. Rifiuta prima di spendere
-credito: modello fuori routing `65`, effort non ammesso `65`, cwd o RUN mancanti `66`, task-id non valido `65`.
-Il bridge genera lo stdin minimo dal `task-id`: indica di leggere `SPEC.md`, `ROADMAP.md` e
-`.orchestratore/RUN.md`, eseguire solo la sezione task corrispondente e aggiornare soltanto
-quella sezione con esito e checkpoint. Non accetta né crea prompt-file permanenti.
+`bin/spawn-cx.sh [--dry-run] <modello> <effort> <project-root> <task-id> <stage> <task-cwd> <allowlist-json>`,
+che esegue `codex exec --yolo --dangerously-bypass-hook-trust -m <modello>
+-c model_reasoning_effort=<effort> -C <task-cwd> -` (`--yolo` è l'alias di
+`--dangerously-bypass-approvals-and-sandbox`) con prompt su stdin, log nel control plane
+`<project-root>/.orchestratore/logs/<task-id>.<stage>.log` ed exit code restituito. Prima di
+spendere credito rifiuta modello/effort/task/stage non validi (`65`), root, worktree isolato o
+RUN non validi (`66`) e plugin/hook guard non attivo (`69`). A fine processo rifiuta la
+consegna se RUN o checkout di controllo sono cambiati; gli stage di sola lettura devono
+lasciare immutato anche HEAD e task worktree; il build è accettato solo se tutti i path
+cambiati dal base SHA corrispondono ai glob dell'allowlist congelata. Questa verifica finale rileva una violazione ma non
+annulla il danno; l'hook abilitato riduce gli errori operativi, perciò il bridge non parte senza,
+ma non è una sandbox o una barriera generale di rete/filesystem contro un worker ostile.
+Il prompt è specifico per `strategy`, `build`, `review` o `finalize`; RUN è sempre sola
+lettura e solo il controller ne serializza gli aggiornamenti. Il bridge non accetta né crea
+prompt-file permanenti.
 La validazione è sulla coppia modello/effort: Luna e Terra rifiutano `low`; Sol accetta da
 `low`; Astra accetta da `low`, ma il contratto deve registrarne il trigger di escalation.
-`--dry-run` stampa la riga di comando senza eseguire: usalo per provare il cablaggio.
+`--dry-run` stampa la riga di comando senza eseguire: usalo per provare il cablaggio. I
+Gli hook rifiutano `gh`, `curl` e push nei worker; il controller resta l'unica autorità del
+protocollo per PR, check e merge. I worker cx `--yolo` e CC `bypassPermissions` sono codice
+locale fidato e potrebbero tecnicamente usare altri client: vale il modello di fiducia di
+SKILL.md §8.
 Lancialo con `Bash` in background (`run_in_background: true`) e leggi il log al
 checkpoint. Modelli cx: `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`.
 Il bridge non decide modello, effort, ownership o gate: li scegli tu nel contratto del task.
@@ -49,8 +60,9 @@ registro quesiti e sblocca solo i task che risolve davvero.
 
 ## Git e PR
 
-`gh pr create`, `gh pr checks`, `gh pr view --json state,mergedAt`. Nel run non presidiato,
-commit/push/PR normali sono automatici e il merge segue esclusivamente il gate di lane.md.
+Il controller esegue `gh pr create`, `gh pr checks` e `gh pr view`; i worker non eseguono
+direttamente questi comandi. Nel run non presidiato, commit/push/PR normali sono automatici
+attraverso il protocollo e il merge segue esclusivamente il gate di lane.md.
 Output raw nel report, mai riassunto.
 
 ## Contesto

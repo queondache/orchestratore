@@ -108,13 +108,15 @@ fondere i branch dei task è un task con contratto dato a un integratore, non la
 Campi del contratto: sezione `Registro task` di `templates/RUN.md`, compilata in `RUN.md`
 **prima** di lanciare il worker — risultato osservabile, glob scrivibili con un solo owner, branch
 del task, tier/runtime/modello/effort, skill con path, gate verde, verificatore assegnato,
-criterio di completamento, condizioni di stop, checkpoint, più `.orchestratore/RUN.md` per path
+criterio di completamento, condizioni di stop, checkpoint, worktree isolato, più
+`.orchestratore/RUN.md` per path
 così il worker non riesplora il repo. Il worker riceve inoltre la sezione del task nel RUN,
 non un prompt-file permanente o un context pack duplicato.
 Come lanciare: [adapter-cc](references/adapter-cc.md) se il cervello è CC,
 [adapter-cx](references/adapter-cx.md) se è cx. I worker non delegano. Il cervello gestisce
-le sezioni globali, il registro quesiti e l'handoff; ogni worker può aggiornare esclusivamente
-la propria sezione task in `RUN.md`. Passa sempre cwd e boundary del progetto.
+le sezioni globali, il registro quesiti e l'handoff. Il worker non modifica mai `RUN.md`:
+restituisce esito e checkpoint al controller, che valida assignment/generation e aggiorna
+il documento in serie. Passa sempre project root, task worktree e boundary del progetto.
 ## 4. Lane: dalla milestone all'integrazione automatica
 Protocollo in [lane](references/lane.md). Ogni lane segue la skill `milestone` senza la Fase 1:
 il perimetro lo produci tu, senza approvazione. Sequenza: perimetro → worker implementa →
@@ -123,8 +125,9 @@ pre-merge** con un terzo modello che risponde `suggerisco merge: sì | no` → a
 di lane.md → chiusura. Domande del worker: nel registro quesiti, mai ad Andrea.
 Protocollo del verificatore — hash, gate verde, **oracolo** (senza la modifica il test nuovo deve
 diventare rosso), perimetro — e **classe di rischio** del merge in
-[verifica](references/verifica.md): tier 1-2 auto-merge, tier 3 o area sensibile PR in attesa di
-Andrea, regola fissa calcolata sul diff reale senza discrezionalità.
+[verifica](references/verifica.md): tier 1-2 auto-merge soltanto se ogni path del diff e coperto
+dalla `--auto-merge-glob` congelata; senza allowlist, con path non classificati, tier 3 o area
+sensibile, PR in attesa di Andrea. Regola fissa calcolata sul diff reale senza discrezionalità.
 **Verifica obbligatoria a ogni consegna, non solo a fine milestone.** Ogni task che consegna
 codice passa dal verificatore prima che il suo stato avanzi, e il cervello scrive in `RUN.md`
 `verifica T-<id>: <modello/runtime> su <hash> → OK | OK CON RISERVE | KO` più
@@ -197,6 +200,13 @@ del piano meno completate; fissa il totale prima di chiudere la prima milestone.
 esplicito al 70%, mai auto-compact presunto): [controller](references/controller.md) e
 [project-adapter](references/project-adapter.md). Lo stato serializzato non prova vita o fine.
 ## 8. Confini
+- **Modello di fiducia**: i worker Codex `--yolo` e Claude `bypassPermissions` sono codice
+  locale fidato, non processi ostili. Hook su `gh`, `curl` e `git push`, worktree e gate di
+  ownership sono guardrail contro errori e condizioni di accettazione dell'integrazione;
+  non sono una sandbox né una barriera generale contro egress di rete o accesso al filesystem.
+  Il controller è l'unica autorità **del protocollo Orchestratore** per PR, check e merge,
+  ma un worker ostile potrebbe tecnicamente usare altri client o primitive: questo scenario
+  richiede isolamento esterno al plugin.
 - Nel run non presidiato commit, push, PR e auto-merge sono autorizzati solo al gate di §4 e per
   le sole milestone tier 1-2. Restano vietati force-push, reset e cancellazioni distruttive,
   modifiche distruttive o massive ai dati di produzione, e ogni acquisto, upgrade o

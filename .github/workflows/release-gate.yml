@@ -1,0 +1,40 @@
+name: Release gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-gate:
+    name: release-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # check-structure owns the executable bridge and hook checks.  The
+      # regression gate skips those two duplicates but keeps every invariant.
+      - name: Structure, bridge, and hooks
+        run: ./tests/check-structure.sh
+
+      - name: Regression invariants
+        env:
+          ORCHESTRATORE_SKIP_EXEC: "1"
+        run: ./tests/check-regressions.sh
+
+      - name: Controller
+        run: ./tests/check-controller.sh
+
+      - name: Mutation candidate gate
+        if: github.ref == 'refs/heads/main' || github.event.pull_request.draft == false
+        run: ./tests/check-regressions-mutations.sh

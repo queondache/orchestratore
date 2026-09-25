@@ -75,7 +75,7 @@ does_not_match_in_files() {
 
 json_version_is() {
   local file="$1"
-  [[ "$(jq -r '.version' "$file")" == "0.5.0" ]]
+  [[ "$(jq -r '.version' "$file")" == "0.6.0" ]]
 }
 
 catalog_entry_count() {
@@ -143,16 +143,16 @@ fi
 
 cc_version="$(jq -r '.version' "$CC_MANIFEST")"
 cx_version="$(jq -r '.version' "$CX_MANIFEST")"
-if [[ "$cc_version" == "0.5.0" && "$cx_version" == "0.5.0" && "$cc_version" == "$cx_version" ]]; then
-  ok "manifest CC e cx allineati alla versione 0.5.0"
+if [[ "$cc_version" == "0.6.0" && "$cx_version" == "0.6.0" && "$cc_version" == "$cx_version" ]]; then
+  ok "manifest CC e cx allineati alla versione 0.6.0"
 else
-  ko "manifest CC e cx allineati alla versione 0.5.0"
+  ko "manifest CC e cx allineati alla versione 0.6.0"
 fi
 
-check "manifest CC versione 0.5.0" json_version_is "$CC_MANIFEST"
-check "manifest cx versione 0.5.0" json_version_is "$CX_MANIFEST"
-check "marketplace CC versione 0.5.0" json_version_is "$CC_MARKETPLACE"
-check "marketplace agenti versione 0.5.0" json_version_is "$AGENT_MARKETPLACE"
+check "manifest CC versione 0.6.0" json_version_is "$CC_MANIFEST"
+check "manifest cx versione 0.6.0" json_version_is "$CX_MANIFEST"
+check "marketplace CC versione 0.6.0" json_version_is "$CC_MARKETPLACE"
+check "marketplace agenti versione 0.6.0" json_version_is "$AGENT_MARKETPLACE"
 
 check "README documenta snapshot/cache" contains_fixed "snapshot/cache" "$README"
 check "README richiede bump di versione" contains_fixed "bump di versione" "$README"
@@ -182,8 +182,8 @@ check "Y2 limita Claude a bypassPermissions" contains_in_file '--permission-mode
 check "Y2 consente Git normale automatico" contains_in_file 'commit, push e PR normali automatici' "$SKILL"
 check "Y2 auto-merge richiede hash verificato" contains_in_file 'hash esatto revisionato' "$ROOT/skills/orchestratore/references/lane.md"
 check "Y2 auto-merge richiede verifier finale" contains_in_file 'verificatore indipendente finale OK' "$ROOT/skills/orchestratore/references/lane.md"
-check "Y2 auto-merge richiede CI required" matches_in_file 'almeno un required CI check[\s\S]*?tutti i required check.*success' "$ROOT/skills/orchestratore/references/lane.md"
-check "Y4 blocca check CI assenti pending falliti o cancellati" contains_in_file 'assenti, pending, falliti o cancellati' "$ROOT/skills/orchestratore/references/lane.md"
+check "Y2 auto-merge richiede CI required" matches_in_file 'almeno un\s+\*\*required CI check\*\*[\s\S]*?tutti i required checks.*success' "$ROOT/skills/orchestratore/references/lane.md"
+check "Y4 blocca check CI assenti pending falliti o cancellati" matches_in_file 'Checks richiesti assenti,.*pending, falliti o\s+cancellati' "$ROOT/skills/orchestratore/references/lane.md"
 check "Y2 limita plugin Codex già connessi" contains_in_file 'app già collegate come plugin Codex' "$ROOT/skills/orchestratore/references/project-adapter.md"
 check "Y2 consente side effect esterni richiesti non distruttivi" contains_in_file 'side effect esterni non distruttivi direttamente richiesti' "$SKILL"
 check "Y2 limita side effect al perimetro congelato" matches_in_file 'perimetro\s+congelato del task' "$ROOT/skills/orchestratore/references/project-adapter.md"
@@ -245,13 +245,13 @@ check "A3 lane ripete la verifica per consegna" contains_in_file '## Verifica a 
 check "A3 template registra la verifica parametrica" contains_in_file 'verifica T-<id>:' "$RUN_TPL"
 check "A3 agent mancante non salta la verifica" matches_in_file 'Mancanza di un agent non è mai un motivo\s+per saltare la verifica' "$ADAPTER_CC"
 
-# A4 — gate verde definito e fallback di merge senza CI
+# A4 — gate verde definito, ma nessun fallback di auto-merge senza required CI
 check "A4 definisce il gate verde" contains_in_file '## Gate verde: definito una volta, scritto in `RUN.md`' "$LANE"
 check "A4 gate verde nel template" contains_in_file 'Gate verde: build=' "$RUN_TPL"
 check "A4 gate verde nel project adapter" contains_in_file 'Gate verde: build=' "$PROJECT_ADAPTER"
-check "A4 fallback suite locale senza required checks" contains_in_file 'fallback suite locale' "$LANE"
-check "A4 fallback eseguito dal verificatore" matches_in_file 'Il\s+verificatore — mai il builder — esegue' "$LANE"
-check "A4 fallback senza output raw non vale" contains_in_file 'Un fallback dichiarato senza output raw non vale' "$LANE"
+check "A4 required CI assente blocca auto-merge" matches_in_file 'required CI check.*Checks richiesti assenti, non configurati.*bloccano sempre l.auto-merge' "$LANE"
+check "A4 suite locale non sostituisce CI" contains_in_file 'non sostituisce mai la CI richiesta' "$LANE"
+check "A4 vieta fallback suite locale" does_not_contain '**fallback suite locale**' "$LANE"
 
 # A5 — chiusura milestone, doc allineati, lane successiva
 check "A5 chiusura aggiorna i doc" contains_in_file 'la milestone diventa **chiusa**' "$LANE"
@@ -356,14 +356,14 @@ check "B9 template dichiara limite 300 righe" contains_in_file '300 righe' "$RUN
 check "B9 template contiene unita attive con tetti" contains_in_file '## Unità attive (massimo 5 milestone o 15 bug)' "$RUN_TPL"
 check "B9 chiusura aggiorna ROADMAP prima" matches_in_file 'ROADMAP\.md.*prima.*RUN' "$LANE"
 check "B9 worker legge sezione task RUN" contains_in_file 'sezione del task in `RUN.md`' "$ROOT/agents/worker-impl.md"
-check "B9 session hook rileva RUN" contains_in_file 'RUN=".orchestratore/RUN.md"' "$ROOT/hooks/session-run-state.sh"
-check "B9 ownership globale e task esplicita" contains_in_file 'ogni worker può aggiornare esclusivamente' "$SKILL"
-check "B9 adapter cx firma task-id" contains_in_file 'spawn-cx.sh [--dry-run] <modello> <effort> <cwd> <task-id>' "$ROOT/skills/orchestratore/references/adapter-cc.md"
-check "B9 adapter cc firma task-id" contains_in_file 'spawn-cc.sh [--dry-run] <modello> <cwd> <task-id>' "$ROOT/skills/orchestratore/references/adapter-cx.md"
-check "B9 adapter cx genera stdin minimo" contains_in_file 'Il bridge genera lo stdin minimo dal `task-id`' "$ROOT/skills/orchestratore/references/adapter-cc.md"
-check "B9 adapter cc genera stdin minimo" contains_in_file 'Il bridge genera lo stdin minimo dal `task-id`' "$ROOT/skills/orchestratore/references/adapter-cx.md"
-check "B9 adapter cx non accetta prompt-file" contains_in_file 'Non accetta né crea prompt-file permanenti' "$ROOT/skills/orchestratore/references/adapter-cc.md"
-check "B9 adapter cc non accetta prompt-file" contains_in_file 'Non accetta né crea prompt-file permanenti' "$ROOT/skills/orchestratore/references/adapter-cx.md"
+check "B9 session hook risolve il project root" contains_in_file 'ROOT/.orchestratore/RUN.md' "$ROOT/hooks/session-run-state.sh"
+check "B9 RUN ha writer seriale" contains_in_file 'controller, che valida assignment/generation e aggiorna' "$SKILL"
+check "B9 adapter cx firma stage worktree e allowlist" contains_in_file 'spawn-cx.sh [--dry-run] <modello> <effort> <project-root> <task-id> <stage> <task-cwd> <allowlist-json>' "$ROOT/skills/orchestratore/references/adapter-cc.md"
+check "B9 adapter cc firma effort stage worktree e allowlist" contains_in_file 'spawn-cc.sh [--dry-run] <modello> <effort> <project-root> <task-id> <stage> <task-cwd> <allowlist-json>' "$ROOT/skills/orchestratore/references/adapter-cx.md"
+check "B9 adapter cx genera prompt stage-specific" contains_in_file 'specifico per `strategy`, `build`, `review` o `finalize`' "$ROOT/skills/orchestratore/references/adapter-cc.md"
+check "B9 adapter cc genera prompt stage-specific" contains_in_file 'specifico per `strategy`, `build`, `review` o `finalize`' "$ROOT/skills/orchestratore/references/adapter-cx.md"
+check "B9 adapter cx non accetta prompt-file" matches_in_file 'non accetta né crea\s+prompt-file permanenti' "$ROOT/skills/orchestratore/references/adapter-cc.md"
+check "B9 adapter cc non accetta prompt-file" matches_in_file 'non accetta né crea\s+prompt-file permanenti' "$ROOT/skills/orchestratore/references/adapter-cx.md"
 check "B9 template non duplica verifica T-001" bash -c "[ \$(grep -c 'verifica T-001:' '$RUN_TPL') -eq 0 ]"
 check "B9 template ha una sola sezione assunzioni" bash -c "[ \$(grep -c '^## Assunzioni' '$RUN_TPL') -eq 1 ]"
 check "B9 template mantiene tabella assunzioni" matches_in_file '## Assunzioni[\s\S]*?\| ID \| Assunzione \| Reversibile \| Punto di applicazione \| Stato \|' "$RUN_TPL"
@@ -424,16 +424,30 @@ check "C2 cx vieta Luna low" does_not_contain 'gpt-5.6-luna:low' "$BIN/spawn-cx.
 check "C2 cx vieta Terra low" does_not_contain 'gpt-5.6-terra:low' "$BIN/spawn-cx.sh"
 check "C2 cc usa bypassPermissions" contains_in_file '--permission-mode bypassPermissions' "$BIN/spawn-cc.sh"
 check "C2 cc valida i modelli CC" contains_in_file 'opus|sonnet|haiku' "$BIN/spawn-cc.sh"
+check "C2 cc passa e valida effort medium" matches_in_file 'case "\$EFFORT" in medium[\s\S]*?--effort "\$EFFORT"' "$BIN/spawn-cc.sh"
 check "C2 bridge espongono dry-run" matches_in_file '\-\-dry-run' "$BIN/spawn-cx.sh"
-check "C2 bridge scrivono il log per task" contains_in_file '.orchestratore/logs' "$BIN/spawn-cx.sh"
+check "C2 bridge scrivono il log per task" contains_in_file '.orchestratore/logs' "$BIN/bridge-common.sh"
 check "C2 bridge propagano l exit code" contains_in_file 'exit "$STATUS"' "$BIN/spawn-cc.sh"
+check "C2 cx esige hook guard attivo" contains_in_file 'bridge_require_codex_guard' "$BIN/spawn-cx.sh"
+check "C2 cc esige hook guard attivo" contains_in_file 'bridge_require_claude_guard' "$BIN/spawn-cc.sh"
+check "C2 cx bypassa solo il trust dell hook verificato" contains_in_file '--dangerously-bypass-hook-trust' "$BIN/spawn-cx.sh"
+check "C2 bridge vietano RUN concorrente" contains_in_file "RUN.md e' sola lettura" "$BIN/bridge-common.sh"
+check "C2 build valida ownership sui path" contains_in_file 'validate-ownership.py' "$BIN/bridge-common.sh"
+check "C2 snapshot confronta contenuto reale" contains_in_file 'worktree-snapshot.py' "$BIN/bridge-common.sh"
+check "C2 preflight esige worktree completamente pulito" matches_in_file 'dirty = staged \| worktree_changes\(cwd, entries\) \| untracked_and_ignored\(cwd\)[\s\S]*?if dirty:' "$BIN/validate-ownership.py"
+check "C2 preflight rifiuta index flags nascosti" contains_in_file 'reject_hidden_flags(cwd)' "$BIN/validate-ownership.py"
+check "C2 postflight unisce commit index worktree e file nuovi" matches_in_file 'changed = set\(git_z\(cwd, "diff-tree"[\s\S]*?changed\.update\(git_z\(cwd, "diff-index"[\s\S]*?changed\.update\(worktree_changes\(cwd, entries\)\)[\s\S]*?changed\.update\(untracked_and_ignored\(cwd\)\)' "$BIN/validate-ownership.py"
+check "C2 allowlist usa policy canonica condivisa" matches_in_file 'canonical_path_glob\(item\)[\s\S]*?path_matches_glob\(path, pattern\)' "$BIN/validate-ownership.py"
+check "C2 preflight attesta hook Codex esatto" matches_in_file 'verify-hook-install\.py" codex' "$BIN/bridge-common.sh"
+check "C2 preflight attesta hook Claude esatto" matches_in_file 'verify-hook-install\.py" claude' "$BIN/bridge-common.sh"
+check "C2 attestazione deriva executable dal manifest" contains_in_file 'set(CORE_FILES) | referenced' "$BIN/verify-hook-install.py"
 check "C2 gate eseguibile del bridge presente" test -x "$ROOT/tests/check-bridge.sh"
 if [ "${ORCHESTRATORE_SKIP_EXEC:-0}" = "1" ]; then
   ok "C2 gate eseguibile del bridge verde (saltato: gia coperto dagli invarianti di testo)"
 else
   check "C2 gate eseguibile del bridge verde" bash "$ROOT/tests/check-bridge.sh"
 fi
-check "C2 adapter documenta i codici di rifiuto" contains_in_file 'modello fuori routing `65`' "$ADAPTER_CC"
+check "C2 adapter documenta i codici di rifiuto" contains_in_file 'plugin/hook guard non attivo (`69`)' "$ADAPTER_CC"
 
 COMMANDS="$ROOT/commands"
 HOOKS="$ROOT/hooks"
@@ -448,13 +462,14 @@ check "D1 status non stima" contains_in_file 'non stimare' "$COMMANDS/orchestra-
 
 # D2 — hook: il divieto assoluto diventa eseguibile
 check "D2 hooks.json registra PreToolUse su Bash" matches_in_file '"PreToolUse"[\s\S]*?"matcher": "Bash"' "$HOOKS/hooks.json"
+check "D2 hooks proteggono Write Edit e NotebookEdit" contains_in_file 'Write|Edit|NotebookEdit|apply_patch' "$HOOKS/hooks.json"
 check "D2 hooks.json registra SessionStart" contains_in_file '"SessionStart"' "$HOOKS/hooks.json"
 check "D2 hooks.json usa CLAUDE_PLUGIN_ROOT" contains_in_file 'CLAUDE_PLUGIN_ROOT' "$HOOKS/hooks.json"
 check "D2 guard attivo solo con un run vivo" contains_in_file '.orchestratore/brain.lock" ] || exit 0' "$HOOKS/guard-run.sh"
 check "D2 guard blocca con exit 2" contains_in_file 'exit 2' "$HOOKS/guard-run.sh"
 check "D2 analizzatore della guardia presente" test -s "$HOOKS/guard_run.py"
 check "D2 guard delega l analisi all analizzatore" contains_in_file 'guard_run.py' "$HOOKS/guard-run.sh"
-check "D2 guard senza python3 dichiara di non proteggere" contains_in_file 'NON e attiva' "$HOOKS/guard-run.sh"
+check "D2 guard senza python3 dichiara di non essere attivo" contains_in_file 'NON e attivo' "$HOOKS/guard-run.sh"
 check "D2 analizzatore copre il reset distruttivo" matches_in_file 'reset --hard' "$HOOKS/guard_run.py"
 check "D2 analizzatore copre il merge amministrativo" contains_in_file '--admin' "$HOOKS/guard_run.py"
 check "D2 analizzatore dichiara il modello di minaccia" contains_in_file 'MODELLO DI MINACCIA' "$HOOKS/guard_run.py"
@@ -462,6 +477,9 @@ check "D2 analizzatore elenca i limiti accettati" contains_in_file 'Limiti noti 
 check "D2 analizzatore tokenizza rispettando le virgolette" contains_in_file 'shlex.shlex' "$HOOKS/guard_run.py"
 check "D2 analizzatore tratta i documenti inline come dato" contains_in_file 'togli_documenti_inline' "$HOOKS/guard_run.py"
 check "D2 analizzatore guarda il sottocomando di git" contains_in_file 'analizza_git' "$HOOKS/guard_run.py"
+check "D2 worker blocca ogni push" contains_in_file 'push vietato ai worker' "$HOOKS/guard_run.py"
+check "D2 worker vieta ogni comando gh" contains_in_file 'gh vietato ai worker' "$HOOKS/guard_run.py"
+check "D2 worker vieta ogni comando curl" contains_in_file 'curl vietato ai worker' "$HOOKS/guard_run.py"
 check "D2 analizzatore salta i wrapper prima del programma" contains_in_file 'salta_prefissi' "$HOOKS/guard_run.py"
 check "D2 session hook non modifica niente" contains_in_file 'Non modifica niente' "$HOOKS/session-run-state.sh"
 check "D2 gate eseguibile degli hook presente" test -x "$ROOT/tests/check-hooks.sh"

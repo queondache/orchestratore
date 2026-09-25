@@ -1,7 +1,7 @@
 {
   "name": "orchestratore",
-  "version": "0.5.0",
-  "description": "Orchestratore multi-agente dual-runtime per Codex e Claude Code.",
+  "version": "0.6.0",
+  "description": "Orchestratore multi-agente dual-runtime con controller durevole, worktree isolati, review indipendente e auto-merge fail-closed su allowlist e CI richiesta.",
   "author": { "name": "Andrea Pesce", "url": "https://github.com/queondache" },
   "homepage": "https://github.com/queondache/orchestratore",
   "repository": "https://github.com/queondache/orchestratore",
@@ -11,7 +11,7 @@
   "interface": {
     "displayName": "Orchestratore",
     "shortDescription": "Cervello multi-agente per milestone parallele",
-    "longDescription": "Coordina worker su Codex e Claude Code: contratto di autonomia, routing per tier, verifica con modello diverso dal builder, gate pre-merge, registro quesiti, celebrazione milestone.",
+    "longDescription": "Coordina worker Codex e Claude Code tramite un controller durevole: assignment isolati in worktree, routing economico, review indipendente e merge solo con allowlist esplicita, rischio basso e CI richiesta verde.",
     "developerName": "Andrea Pesce",
     "category": "Development",
     "capabilities": ["Instructions"],

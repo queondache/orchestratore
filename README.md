@@ -1,4 +1,4 @@
-# orchestratore 0.5.0
+# orchestratore — candidato v0.6.0
 
 Plugin dual-runtime (Claude Code + Codex) che orchestra worker su più milestone in parallelo e
 su più task dentro ogni milestone, con prova di indipendenza sui file reali, lane contract-first
@@ -16,8 +16,14 @@ run: feedback invariato deduplicato, due tentativi per approccio e massimo due a
 automatici prima di parcheggiare la lane e liberare lo slot. A milestone chiusa: merge, allineamento di
 ROADMAP/progress/decisioni e apertura immediata della lane successiva. Il verificatore esegue
 quattro passi con evidenza raw — hash, gate verde, oracolo (il test nuovo deve diventare rosso
-senza la modifica), perimetro — e il merge automatico vale solo per tier 1-2: tier 3 e aree
-sensibili restano PR in attesa.
+senza la modifica), perimetro. Il merge automatico è fail-closed: vale solo per tier 1-2,
+richiede una allowlist esplicita che copra ogni file del diff e almeno un check CI richiesto
+verde; tier 3, aree sensibili e path non classificati restano PR in attesa.
+
+I worker Codex e Claude operano in worktree distinti con ownership verificata. Durante un run
+non possono usare `gh`, `curl` o `git push`: il controller è l'unica autorità del protocollo
+per leggere PR/check e richiedere il merge. Questi controlli sono guardrail contro errori e
+gate d'integrazione, non una sandbox contro un worker locale ostile.
 
 La ripresa A-E richiede evidenza della fase precedente; E è completa solo con outcome PR,
 merge o attesa approvata e documenti allineati. Checkpoint e session rollover sono espliciti:
@@ -26,12 +32,11 @@ si persiste da 50 e si apre una nuova sessione da 70 senza affidarsi all'auto-co
 
 Spec: `docs/specs/2026-09-12-orchestratore-plugin-design.md`. Piani: `docs/plans/`.
 
-## Stato release 0.5.0
+## Stato release
 
-La release è stata integrata con PR #3, merge SHA
-`482ca674d05114d41e83db0ee18984c176c13495`. Claude Code è aggiornato da 0.4.0 a 0.5.0 e
-Codex è installato alla 0.5.0. È necessaria una nuova sessione per applicare la versione
-aggiornata.
+**Candidato v0.6.0**: metadati e gate locali sono in preparazione per la release di
+produzione. Non esistono ancora PR o SHA finali della v0.6.0; finché il candidato non viene
+pubblicato e installato, le sessioni correnti continuano a usare la propria versione in cache.
 
 ## Install
 

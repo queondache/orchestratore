@@ -29,17 +29,22 @@ Se non puoi ottenerlo senza input, non delegare quella lane e usa un path già `
 
 ## Worker CC via bridge
 
-`bin/spawn-cc.sh [--dry-run] <modello> <cwd> <task-id>`, che esegue
-`claude -p --model <modello> --permission-mode bypassPermissions --output-format json
---add-dir <cwd>` con il prompt su stdin, log in `<cwd>/.orchestratore/logs/<task-id>.log`.
-Stessi codici di rifiuto del bridge cx (`65` modello/task-id, `66` cwd o RUN). Con `verifica cc`
+`bin/spawn-cc.sh [--dry-run] <modello> <effort> <project-root> <task-id> <stage> <task-cwd> <allowlist-json>`, che esegue
+`claude -p --model <modello> --effort <effort> --permission-mode bypassPermissions --output-format json
+--add-dir <project-root>` dal worktree isolato, con prompt su stdin e log nel control plane
+`<project-root>/.orchestratore/logs/<task-id>.<stage>.log`. Il bridge rifiuta checkout non
+isolati, worktree di un altro repository e plugin/hook guard non attivo; verifica inoltre a
+fine processo che RUN e checkout di controllo siano immutati. Stessi codici di rifiuto del
+bridge cx (`65` modello/effort/task-id/stage/allowlist, `66` path, worktree o RUN, `69` runtime/guard).
+Il build è accettato solo se ogni path cambiato dal base SHA appartiene ai glob congelati;
+strategy/review/finalize richiedono worktree pulito e immutato. Con `verifica cc`
 il verificatore segue il tier di `routing.md`: Haiku per meccanico/basic, Sonnet per
 importante, Opus solo su trigger o in solo-CC importante. La sezione task del verificatore
 nel RUN rimanda a `agents/verificatore.md` e contiene solo perimetro, branch, hash, gate
 verde e aree ammesse.
-Il bridge genera lo stdin minimo dal `task-id`: indica di leggere `SPEC.md`, `ROADMAP.md` e
-`.orchestratore/RUN.md`, eseguire solo la sezione task corrispondente e aggiornare soltanto
-quella sezione con esito e checkpoint. Non accetta né crea prompt-file permanenti.
+Il bridge genera lo stdin minimo e specifico per `strategy`, `build`, `review` o `finalize`.
+Il worker legge RUN dal project root in sola lettura e restituisce esito e checkpoint al
+controller: non scrive mai RUN e non accetta né crea prompt-file permanenti.
 
 ## Domande interattive
 
@@ -48,8 +53,10 @@ e la raccomandata per prima. Riprendi solo dopo la risposta; registrala nel regi
 
 ## Git, PR, lock, contesto
 
-Come adapter-cc: `gh` per PR e checks, commit/push/PR automatici nel run non presidiato e
-auto-merge solo al gate di lane.md; `brain.lock` con `runtime=cx`, `heavy.lock` prima dei processi pesanti. cx espone la percentuale di contesto
+Come adapter-cc: gli hook rifiutano `gh`, `curl` e push nei worker; il controller è l'unica
+autorità del protocollo per PR, check e merge e integra solo al gate di lane.md. È un
+guardrail anti-errore, non una sandbox o una barriera egress/filesystem contro codice ostile:
+vale il modello di fiducia di SKILL.md §8. `brain.lock` con `runtime=cx`, `heavy.lock` prima dei processi pesanti. cx espone la percentuale di contesto
 nella sessione: rispetta target 50% e tetto 70%; al 50% non aprire task nuovi, persisti e
 compatta al primo checkpoint sicuro.
 

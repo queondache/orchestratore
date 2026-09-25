@@ -79,12 +79,19 @@ Dopo ogni merge su main il piano si ricalcola: i glob cambiano.
 
 - `m/<slug>` è il **branch di integrazione** della milestone, creato dal cervello da `main`.
 - Ogni task figlio ha branch `m/<slug>/t<NN>` e worktree proprio, con glob scrivibili
-  disgiunti dagli altri task della stessa lane. Un file, un task.
+  disgiunti dagli altri task della stessa lane. Il controller registra il path canonico
+  del worktree nel task e lo passa al bridge come `task-cwd`; il checkout del progetto è
+  solo control plane. Il bridge verifica che sia un root distinto con lo stesso Git common
+  dir del progetto, anche quando il worktree è fratello del checkout; il controller ne
+  garantisce l'unicità fra task attivi. Un file, un task.
 - I task che toccano l'interfaccia interna condivisa della milestone vanno **prima**, da
   soli: è la §3 a scala ridotta.
 - Non spezzare per principio: un task sotto la mezz'ora di lavoro o con un solo file non si
   divide, il coordinamento costa più dell'esecuzione.
 - Ogni task consegna con verifica propria (SKILL.md §4) prima di entrare nell'integrazione.
+- Nessun worker scrive `RUN.md`: lo legge dal project root e restituisce un report
+  strutturato. Il controller applica gli aggiornamenti al RUN in serie dopo aver validato
+  assignment, generation ed esito, evitando scritture concorrenti e report tardivi.
 
 ## 5. Integratore: mai il cervello
 

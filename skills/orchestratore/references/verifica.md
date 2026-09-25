@@ -46,12 +46,19 @@ pre-merge la ricalcola sui file effettivamente toccati prima di rispondere.
 
 | Classe | Cosa | Esito |
 |---|---|---|
-| Tier 1-2 | test, doc, tooling, refactor interno, UI senza dati sensibili, contenuti | **auto-merge** al gate di lane.md |
+| Tier 1-2 | test, doc, tooling, refactor interno, UI senza dati sensibili, contenuti, con ogni path coperto dall'allowlist congelata del task | **auto-merge** al gate di lane.md |
 | Tier 3 o area sensibile | schema e migrazioni, auth e sessioni, pagamenti, multi-tenancy, PII e dati sanitari, segreti e chiavi, permessi, cancellazione di dati | **PR in attesa di Andrea** |
 
 Aree sensibili di default, sovrascrivibili in `.orchestratore/config.toml` sotto `[rischio]`
 con `aree_sensibili = [...]`: percorsi di schema e migrazioni, moduli di auth e sessione,
 pagamenti, gestione di utenti e ruoli, file di configurazione con segreti.
+
+L'auto-merge e fail-closed sui percorsi: quando crea il task il controller congela ogni
+`--auto-merge-glob` in `auto_merge_paths_json`. Al gate, **tutti** i file del diff devono essere
+coperti da questa allowlist esplicita e nessuno puo ricadere nelle aree sensibili configurate o
+built-in. Un task senza allowlist, o con anche un solo path non coperto registrato in
+`unclassified_paths`, diventa tier 3/manuale. Le aree built-in sono solo difesa aggiuntiva e non
+sostituiscono l'allowlist.
 
 Una PR in attesa resta in stato `pronta`, con verdetto e gate nel corpo, e la milestone conta
 come 🟡 **bloccata da Andrea** nei contatori, non come mancante. Il cervello non promuove mai

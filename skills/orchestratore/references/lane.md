@@ -87,23 +87,20 @@ rischi residui: <elenco | nessuno>
 ## Merge e chiusura
 
 Prima del gate, la **classe di rischio** calcolata sul diff reale ([verifica](verifica.md)):
-tier 1-2 → auto-merge; tier 3 o area sensibile → PR in attesa di Andrea, stato `pronta`,
+tier 1-2 e tutti i path coperti dalla `--auto-merge-glob` congelata → auto-merge; allowlist
+assente/incompleta, tier 3 o area sensibile → PR in attesa di Andrea, stato `pronta`,
 milestone contata come 🟡 bloccata da Andrea. La regola è fissa: nessuna promozione e nessun
 declassamento discrezionale.
 
 Per le sole milestone tier 1-2, auto-merge consentito solo se: hash esatto revisionato;
-verificatore indipendente finale OK su quell'hash; `suggerisco merge: sì`; e il gate di
-qualità eseguita, in una delle due forme.
-
-- Repo **con** required checks (`gh pr checks`, o
-  `gh api repos/<owner>/<repo>/branches/<base>/protection` che espone
-  `required_status_checks`): almeno un required CI check, tutti i required check
-  success. Checks assenti, pending, falliti o cancellati bloccano sempre il merge.
-- Repo **senza** required checks configurati: vale il **fallback suite locale**. Il
-  verificatore — mai il builder — esegue sull'hash esatto della PR i comandi del
-  `Gate verde` di `RUN.md`: build, test e lint tutti a exit 0, comandi e output raw nel
-  report e in `RUN.md`. Suite assente, non eseguibile o parziale = merge bloccato e domanda
-  ad Andrea. Un fallback dichiarato senza output raw non vale.
+verificatore indipendente finale OK su quell'hash; `suggerisco merge: sì`; almeno un
+**required CI check** configurato sul branch base; e tutti i required checks conclusi con
+`success` sullo stesso SHA. Verificali con `gh pr checks` e con la protezione del branch
+(`gh api repos/<owner>/<repo>/branches/<base>/protection`, campo
+`required_status_checks`). Checks richiesti assenti, non configurati, pending, falliti o
+cancellati bloccano sempre l'auto-merge e lasciano la PR aperta in stato `pronta` con
+l'evidenza registrata. La suite locale del verificatore resta obbligatoria nel gate verde,
+ma non sostituisce mai la CI richiesta e non abilita un fallback di merge.
 
 Con il gate passato esegui
 `gh pr merge <n> --squash`, verifica con

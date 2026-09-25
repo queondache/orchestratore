@@ -52,6 +52,7 @@ Definition of done di M8:
 
 ## Non in roadmap
 
-CI del repository: scelta di Andrea del 13/09/2026, vale il fallback suite locale del gate di
-merge (`references/lane.md`). Se un giorno il repo avrà required checks, il gate cambia forma
+CI del repository: scelta di Andrea aggiornata con il gate di sicurezza corrente: senza
+almeno un required CI check configurato non esiste auto-merge (`references/lane.md`). La
+suite locale resta prova obbligatoria ma non sostituisce la CI. Se il repo avrà required checks, il gate
 da solo senza modifiche alla skill.
