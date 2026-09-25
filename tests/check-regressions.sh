@@ -102,9 +102,8 @@ expected_skill="$ROOT/skills/orchestratore/SKILL.md"
 catalog_skill="$(catalog_field path)"
 
 # Il catalogo e' una cache locale di Codex: punta al checkout dove e' stato generato.
-# Il gate deve restare forte sul checkout canonico e non mentire su worktree, clone o copie:
-# per questo pretende sempre un path assoluto con il suffisso giusto, e in piu' che il file
-# indicato esista davvero — o, se siamo altrove, che esista il suo equivalente qui.
+# Il path resta un hint assoluto con suffisso vincolato; quando quella cache non esiste
+# (clone CI o altra macchina), il file autoritativo e' quello del repository sotto test.
 catalog_path_ben_formato() {
   [[ "$catalog_skill" = /* ]] || return 1
   [[ "$catalog_skill" == */skills/orchestratore/SKILL.md ]]
@@ -114,13 +113,6 @@ catalog_path_risolvibile() {
 }
 check "catalogo usa un path assoluto a skills/orchestratore/SKILL.md" catalog_path_ben_formato
 check "catalogo punta a un SKILL.md risolvibile" catalog_path_risolvibile
-if [[ "$catalog_skill" == "$expected_skill" ]]; then
-  ok "path orchestratore allineato a questo checkout"
-elif [[ -f "$catalog_skill" ]]; then
-  ok "path orchestratore allineato al checkout canonico (qui siamo in una copia)"
-else
-  ko "path orchestratore non risolvibile ne qui ne nel checkout canonico"
-fi
 
 if [[ "$(catalog_field pluginId)" == "orchestratore@orchestratore" ]]; then
   ok "pluginId orchestratore corretto"
