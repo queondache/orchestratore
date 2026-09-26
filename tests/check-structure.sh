@@ -59,7 +59,7 @@ check "session hook silent when the run is done" bash -c "cd '$TMP' && [ -z \"\$
 
 # Scripts
 check "codex-task.sh parses" bash -n "$ROOT/bin/codex-task.sh"
-check "merge-gate.py compiles" python3 -m py_compile "$ROOT/bin/merge-gate.py"
+check "merge-gate.py parses" python3 -c "import ast; ast.parse(open('$ROOT/bin/merge-gate.py').read())"
 check "scripts are executable" bash -c "test -x '$ROOT/bin/codex-task.sh' && test -x '$ROOT/bin/merge-gate.py' && test -x '$ROOT/hooks/session-state.sh'"
 
 # Templates
@@ -71,10 +71,14 @@ except ModuleNotFoundError:
     sys.exit(0)
 tomllib.load(open('$ROOT/templates/config.toml','rb'))"
 
-# Hygiene: shipped files are portable and in English
-check "no absolute user paths or personal names in shipped files" bash -c "! grep -rnE '/Users/|/home/[a-z]|andreapesce|~/Dev|\\bAndrea\\b' ${SHIPPED[*]}"
-check "no Italian leftovers in shipped files" bash -c "! grep -rniE '\\b(della|degli|perché|quando|milestone meno|cervello|verificatore)\\b' ${SHIPPED[*]}"
-check "no TODO/TBD in shipped files" bash -c "! grep -rnE 'TODO|TBD' ${SHIPPED[*]}"
+# Hygiene: shipped files are portable and in English. Perl, not grep: \b must mean the
+# same on macOS and Linux. Only git-tracked text files count, never build artefacts.
+shipped_grep() { # shipped_grep <perl-regex>: prints matches, succeeds if there are none
+  (cd "$ROOT" && git ls-files -z skills agents commands hooks bin templates | xargs -0 perl -ne "print \"\$ARGV:\$.: \$_\" if m{$1}; close ARGV if eof" | grep . && return 1 || return 0)
+}
+check "no absolute user paths or personal names in shipped files" shipped_grep '/Users/|/home/[a-z]|andreapesce|~/Dev|\bAndrea\b'
+check "no Italian leftovers in shipped files" shipped_grep '(?i)\b(della|degli|perché|quando|milestone meno|cervello|verificatore)\b'
+check "no TODO/TBD in shipped files" shipped_grep '\bTODO\b|\bTBD\b'
 check "0.6 controller is gone" bash -c "! test -e '$ROOT/controller' && ! test -e '$ROOT/bin/orchestratore-controller'"
 
 echo
