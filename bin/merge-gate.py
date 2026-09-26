@@ -109,7 +109,10 @@ def _read_merge_section(text: str) -> Dict[str, Any]:
         line = lines[i].strip()
         i += 1
         if line.startswith("["):
-            in_merge = line.split("#")[0].strip() == "[merge]"
+            header = line.split("#")[0].strip()
+            in_merge = header == "[merge]"
+            if not in_merge and "merge" in header:
+                raise GateError("unsupported table header %r (use [merge] or Python 3.11+)" % header)
             continue
         if not in_merge or not line or line.startswith("#"):
             continue
@@ -251,8 +254,11 @@ def evaluate(args: argparse.Namespace) -> Dict[str, Any]:
             reasons.append("base branch has no required checks "
                            "(pass --no-required-checks-ok only after the full local gate ran on this sha)")
     else:
-        _, out, _ = gh(["pr", "checks", str(args.pr), "--required", "--json", "name,bucket"],
-                       args.repo, allow_fail=True)
+        code, out, _ = gh(["pr", "checks", str(args.pr), "--required", "--json", "name,bucket"],
+                          args.repo, allow_fail=True)
+        if code != 0:
+            # gh exits non-zero for failing or pending checks: never override it with JSON.
+            reasons.append("gh pr checks exited %d" % code)
         try:
             runs = [(c["name"], c["bucket"]) for c in json.loads(out or "[]")]
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
@@ -289,8 +295,12 @@ def main(argv: List[str] | None = None) -> int:
             # With a merge queue, gh only enqueues: report merged only when GitHub says so.
             state = json.loads(gh(["pr", "view", str(args.pr), "--json", "state"],
                                   args.repo)[1]).get("state")
-            result["merged"] = state == "MERGED"
-            result["queued"] = not result["merged"]
+            if state == "MERGED":
+                result["merged"] = True
+            elif state == "OPEN":
+                result["queued"] = True  # accepted by a merge queue, not merged yet
+            else:
+                raise GateError("PR is %s after the merge request" % state)
     except (GateError, json.JSONDecodeError) as exc:
         print(json.dumps({"merge": False, "merged": False, "queued": False, "error": str(exc),
                           "reasons": [str(exc)]}, indent=2))

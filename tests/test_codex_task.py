@@ -129,6 +129,18 @@ class CodexTaskTest(unittest.TestCase):
         self.assertFalse(self.args_file.exists())
         self.assertIn("user-notes.txt", git(self.repo, "status", "--porcelain"))
 
+    def test_resume_accepts_task_owned_changes(self) -> None:
+        (self.repo / "partial.txt").write_text("from a failed build\n")
+        proc = self.run_task("--resume", "build", str(self.repo), str(self.brief), action="write")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(git(self.repo, "status", "--porcelain"), "")
+        self.assertIn("partial.txt", git(self.repo, "show", "--name-only", "--format=", "HEAD"))
+
+    def test_options_after_mode_are_accepted(self) -> None:
+        proc = self.run_task("verify", "--model", "m-2", str(self.repo), str(self.brief))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("m-2", self.args_file.read_text().splitlines())
+
     def test_rejects_non_git_directory_and_bad_mode(self) -> None:
         self.assertEqual(self.run_task("build", self.tmp.name, str(self.brief)).returncode, 64)
         self.assertEqual(self.run_task("deploy", str(self.repo), str(self.brief)).returncode, 64)

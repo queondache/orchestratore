@@ -15,9 +15,9 @@ printf 'orchestratore run in this repository: status %s, updated %s\n' \
   "${STATUS:-unknown}" "$(field updated)"
 NEXT="$(field next)"
 [ -n "$NEXT" ] && printf 'next: %s\n' "$NEXT"
-if [ -f "$ROOT/.orchestratore/coordinator.lock" ]; then
-  printf 'coordinator.lock: %s (another coordinator may be running; check before starting)\n' \
-    "$(cat "$ROOT/.orchestratore/coordinator.lock")"
+if [ -f "$ROOT/.orchestratore/coordinator.lock/owner" ]; then
+  printf 'coordinator lock: %s (another coordinator may be running; check before starting)\n' \
+    "$(tr '\n' ' ' < "$ROOT/.orchestratore/coordinator.lock/owner")"
 fi
 printf 'To continue: /orchestratore:orchestra resume\n'
 exit 0

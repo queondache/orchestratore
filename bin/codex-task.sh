@@ -2,7 +2,8 @@
 # Run one Orchestratore brief through Codex inside an isolated git worktree.
 #
 # Usage:
-#   bash codex-task.sh [--dry-run] [--model M] [--effort E] [--sandbox S] <build|verify> <worktree> <brief.md>
+#   bash codex-task.sh [--dry-run] [--resume] [--model M] [--effort E] [--sandbox S] <build|verify> <worktree> <brief.md>
+#   (options may appear anywhere)
 #
 #   build   Codex edits the worktree; the script then commits every change on the
 #           worktree's branch and prints `hash=<sha>`. The coordinator verifies that hash.
@@ -16,23 +17,24 @@
 # Exit: Codex's exit code, 3 on a verify violation, 64 on bad usage, 65 on a dirty worktree.
 set -uo pipefail
 
-usage() { echo "usage: codex-task.sh [--dry-run] [--model M] [--effort E] [--sandbox S] <build|verify> <worktree> <brief.md>" >&2; exit 64; }
+usage() { echo "usage: codex-task.sh [--dry-run] [--resume] [--model M] [--effort E] [--sandbox S] <build|verify> <worktree> <brief.md>" >&2; exit 64; }
 
-DRY_RUN=0 MODEL="" EFFORT="" SANDBOX="workspace-write"
+DRY_RUN=0 RESUME=0 MODEL="" EFFORT="" SANDBOX="workspace-write"
+POSITIONAL=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY_RUN=1 ;;
+    --resume) RESUME=1 ;;
     --model) MODEL="${2:-}"; shift ;;
     --effort) EFFORT="${2:-}"; shift ;;
     --sandbox) SANDBOX="${2:-}"; shift ;;
-    --) shift; break ;;
     -*) usage ;;
-    *) break ;;
+    *) POSITIONAL+=("$1") ;;
   esac
   shift
 done
-[ $# -eq 3 ] || usage
-MODE="$1" WORKTREE="$2" BRIEF="$3"
+[ "${#POSITIONAL[@]}" -eq 3 ] || usage
+MODE="${POSITIONAL[0]}" WORKTREE="${POSITIONAL[1]}" BRIEF="${POSITIONAL[2]}"
 case "$MODE" in build|verify) ;; *) usage ;; esac
 case "$SANDBOX" in read-only|workspace-write|danger-full-access) ;; *) usage ;; esac
 [ -f "$BRIEF" ] || { echo "brief not found: $BRIEF" >&2; exit 64; }
@@ -62,7 +64,11 @@ command -v codex >/dev/null 2>&1 || { echo "codex is not installed" >&2; exit 69
 HEAD_BEFORE="$(git -C "$WORKTREE" rev-parse HEAD)" || { echo "cannot read HEAD in $WORKTREE" >&2; exit 1; }
 DIRTY="$(git -C "$WORKTREE" status --porcelain)" || { echo "git status failed in $WORKTREE" >&2; exit 1; }
 # Build commits everything it finds, so it must start clean: never sweep in someone else's work.
-[ -z "$DIRTY" ] || { printf 'worktree is not clean, refusing to run:\n%s\n' "$DIRTY" >&2; exit 65; }
+# --resume (build only) continues a failed run whose leftover changes belong to this unit.
+if [ -n "$DIRTY" ] && ! { [ "$RESUME" -eq 1 ] && [ "$MODE" = build ]; }; then
+  printf 'worktree is not clean, refusing to run (use --resume for this unit'"'"'s own leftovers):\n%s\n' "$DIRTY" >&2
+  exit 65
+fi
 printf '=== %s %s %s\n' "$(date -u +%FT%TZ)" "$MODE" "$*" >> "$LOG"
 "$@" < "$BRIEF" >> "$LOG" 2>&1
 STATUS=$?

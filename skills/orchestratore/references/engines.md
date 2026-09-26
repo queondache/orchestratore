@@ -77,9 +77,13 @@ spawn_agent(task_name="<ID>", fork_turns="none", model=<codex_builder>,
 ```
 
 `fork_turns="none"` is required for the model and effort overrides to apply and keeps the
-sub-agent's context clean; this skill is the instruction that authorises the override. Wait
-with `wait_agent` and handle whichever agent reports first; send a correction with
-`followup_task(target=<ID>, message=<findings>)`. Verifiers are spawned the same way with
+sub-agent's context clean; this skill is the instruction that authorises the override. Since
+the sub-agent does not inherit your context, put the repository rules it must follow in the
+brief (`do not touch`, `read first`). Issue the `spawn_agent` calls back to back, then wait
+with `wait_agent` (timeout of 15 minutes or less, for the lock heartbeat) and handle
+whichever agent reports first; send a correction with
+`followup_task(target=<ID>, message=<findings>)`. A model change needs a new sub-agent:
+`followup_task` keeps the old model. Verifiers are spawned the same way with
 `<plugin>/agents/verifier.md` and `model=<codex_verifier>`. If a builder could not commit
 (sandbox), commit its worktree yourself before verifying.
 
@@ -87,15 +91,17 @@ with `wait_agent` and handle whichever agent reports first; send a correction wi
 dispatches them in parallel and prints `<ID> hash=<sha>` as each finishes:
 
 ```bash
-printf '%s\n' U-1 U-2 U-3 U-4 U-5 | xargs -P 8 -I{} \
+printf '%s\n' U-1 U-2 U-3 U-4 U-5 | xargs -P <max_parallel> -I{} \
   bash <plugin>/bin/codex-task.sh --model "<codex_builder>" --sandbox <codex_sandbox> \
   build .orchestratore/worktrees/{} .orchestratore/briefs/{}.md
 ```
 
 The script refuses a dirty worktree, commits the builder's changes itself and never pushes.
-Verify each delivered hash with a sub-agent as above, or with `codex-task.sh verify
---model <codex_verifier>` and a brief file holding `agents/verifier.md`, the hash and the unit
-brief (a verify run that changes tracked files exits 3).
+After a failed run, retry the same unit with `--resume` so its own leftover changes are kept.
+Verify each delivered hash with a sub-agent as above, or with `codex-task.sh --model
+<codex_verifier> verify <worktree> <verify-brief.md>`, where the brief file holds
+`agents/verifier.md`, the hash and the unit brief (a verify run that changes tracked files
+exits 3). These processes need the Codex CLI logged in; they share the session's credit.
 
 ## Failures
 

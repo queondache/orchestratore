@@ -54,6 +54,8 @@ git -C "$TMP" init -q
 check "session hook silent without a run" bash -c "cd '$TMP' && [ -z \"\$(bash '$ROOT/hooks/session-state.sh')\" ]"
 mkdir -p "$TMP/.orchestratore"; printf 'status: active\nupdated: now\nnext: verify U-1\n' > "$TMP/.orchestratore/RUN.md"
 check "session hook reports an active run" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'next: verify U-1'"
+mkdir "$TMP/.orchestratore/coordinator.lock"; printf 'session: s1\n' > "$TMP/.orchestratore/coordinator.lock/owner"
+check "session hook shows the coordinator lock owner" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'coordinator lock: session: s1'"
 printf 'status: done\n' > "$TMP/.orchestratore/RUN.md"
 check "session hook silent when the run is done" bash -c "cd '$TMP' && [ -z \"\$(bash '$ROOT/hooks/session-state.sh')\" ]"
 

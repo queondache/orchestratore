@@ -18,21 +18,27 @@ protocol: [verify](references/verify.md). Brief format: the `brief` skill.
 
 1. Read the repo instructions (`CLAUDE.md`, `AGENTS.md`, `README`) and, if present, `SPEC.md`,
    `ROADMAP.md`, the bug list the user named. Product decisions in those files win.
-2. **Lock first, always** (start and resume): if `.orchestratore/coordinator.lock` exists and
-   was updated in the last 10 minutes by another session, stop and ask the user: two
-   coordinators must never run on one repo. Otherwise write it (`session: <id> runtime:
-   <claude|codex> updated: <ISO time>`), refresh `updated` on every `RUN.md` write, and delete
-   it at the end only if it is still yours. Then, if `.orchestratore/RUN.md` has
-   `status: active`, this is a resume: go to §7.
+2. **Lock first, always, for start and resume.** `mkdir -p .orchestratore && mkdir
+   .orchestratore/coordinator.lock` is atomic: if it succeeds, write
+   `coordinator.lock/owner` (`session: <id> runtime: <claude|codex> updated: <ISO time>`).
+   If it fails because the lock exists: `updated` less than 60 minutes old → another
+   coordinator is live, stop and ask the user; older → stale, take it over and log that in
+   `RUN.md`. If `mkdir` fails for permissions, the repo is read-only: stop and tell the user.
+   Heartbeat: refresh `updated` on every state change and at least every 15 minutes (keep
+   waits on agents at 15 minutes or less). Release at the end, only if `owner` is still
+   yours: `rm .orchestratore/coordinator.lock/owner && rmdir .orchestratore/coordinator.lock`.
+   Then, if `.orchestratore/RUN.md` has `status: active` or `parked`, this is a resume:
+   go to §7. Never start a new run over a resumable one unless the user says so.
 3. `git status` and `git fetch`. Work that is not yours stays untouched. Base = the branch
    the user named, else the default branch, at its current SHA.
 4. Find the real gate commands (build, test, lint) from the project files. Write `none` for a
    missing one; never invent it. Note commands that need an exclusive resource (a shared
    database, a fixed port, a browser): they run only one at a time.
-5. Pick the engine (§3), check you can write the repo and `.git` by creating the first
-   worktree, and write `.orchestratore/RUN.md` from `<plugin>/templates/RUN.md`. Add
-   `.orchestratore/` to `.git/info/exclude` so run files never get committed. If git writes are
-   blocked (read-only sandbox), stop and tell the user how to relaunch with write access.
+5. Pick the engine (§3), check you can write `.git` by creating the first worktree, and
+   write `.orchestratore/RUN.md` from `<plugin>/templates/RUN.md`. Add `.orchestratore/` to
+   the file printed by `git rev-parse --git-path info/exclude`, so run files never get
+   committed. If git writes are blocked, release the lock and tell the user how to relaunch
+   with write access.
 
 **Defaults, written, not asked:** unattended; commit + push + PR automatic; auto-merge only
 through §6; verification on every delivery; stop when every unit is done or parked. Change a
@@ -46,7 +52,8 @@ default only when the user says so.
    more than the briefs need.
 3. Classify and split with the `brief` skill: FIX / BUILD / CHECK, risk tier, one owner per
    file per wave, shared interfaces first. Units that depend on another unit go in a later
-   wave. When the tier is uncertain, take the higher one and log it under `## Decisions`.
+   wave and inherit its tier if higher (a unit built on a tier 3 unit is tier 3). When the
+   tier is uncertain, take the higher one and log it under `## Decisions`.
 4. Write every brief to `.orchestratore/briefs/<ID>.md` and add one row per unit to `RUN.md`.
 
 The plan is the set of briefs. There is no separate strategy stage and no per-unit plan.
@@ -67,15 +74,17 @@ runtime itself is exhausted, park the run (§7). Never simulate an agent you do 
 
 ## 4. Dispatch the wave
 
-- Every unit whose dependencies are integrated goes out **in one message**: several `Agent`
-  calls in Claude Code, several `spawn_agent` calls in Codex, or one `xargs -P` line for
-  `codex-task.sh`. Its worktree starts from the integration branch head that already contains
-  those dependencies; record that SHA as the unit's `base`. Serial dispatch of independent units is the main failure this skill exists
+- Every unit whose dependencies are integrated (merged into its lane branch, §6; a PR merge
+  is not needed) goes out **in one message**: several `Agent` calls in Claude Code; in Codex,
+  back-to-back `spawn_agent` calls without waiting in between, or one `xargs -P` line for
+  `codex-task.sh`. Its worktree starts from the lane head that already contains those
+  dependencies; record that SHA as the unit's `base`. Serial dispatch of independent units is the main failure this skill exists
   to prevent.
 - Concurrency: every independent unit, up to `max_parallel` (default 8) and the engine's slot
   limit. An idle slot without independent work stays idle.
-- Each builder gets: the brief file content and its worktree path. Nothing else. Brief
-  commands are targeted tests only; exclusive-resource commands run only in §6.
+- Each builder gets the brief and its worktree path (in Codex also the body of
+  `agents/builder.md`). Not your plan, not other units' briefs. Brief commands are targeted
+  tests only; exclusive-resource commands run only in §6.
 
 ## 5. Handle each result as it arrives
 
@@ -88,9 +97,10 @@ Do not wait for the wave to finish.
 2. **OK** → unit `verified`; queue it for integration.
 3. **KO** → send the verifier's findings back to the **same** builder as one bounded
    correction (`SendMessage` / `followup_task`, or a new run on the same worktree).
-4. Second KO on the same finding → new approach: different hypothesis, different model or
-   engine. Third KO → `parked` with the evidence and the condition to resume; free the slot,
-   keep going. A red gate never stops the run.
+4. Second KO on the same finding → new approach: a new builder (fresh sub-agent) on a
+   different model of the same runtime, with the findings and a different hypothesis. Third
+   KO → `parked` with the evidence and the condition to resume; free the slot, keep going. A
+   red gate never stops the run.
 5. A builder that reports a blocker needing the user → record the question (§8) and continue
    with every unit that does not depend on it.
 
@@ -103,9 +113,9 @@ Write every state change to `RUN.md` at once: unit, engine/model, hash, verdict,
    the safe ones.
 2. Merge verified branches into their lane in dependency order. A conflict goes back to the
    builder of the later branch as a correction; you do not resolve product code.
-3. On each lane head run the **full gate once** (exclusive-resource commands one at a time),
-   then a final verifier pass on that exact SHA. Any fix after this verdict needs a new
-   verdict on the new SHA.
+3. On each lane head a final verifier pass runs the **full gate once** (exclusive-resource
+   commands one at a time) plus the scope check of every unit against its own base. Any fix
+   after this verdict needs a new verdict on the new SHA.
 4. Push and open one PR per lane: units, verdicts, gate output in the body.
 5. Merge gate on the verified SHA of the tier 1-2 PR:
    `python3 <plugin>/bin/merge-gate.py --pr <n> --sha <sha> --tier <max tier> --merge`
@@ -118,12 +128,13 @@ Write every state change to `RUN.md` at once: unit, engine/model, hash, verdict,
 
 ## 7. Resume and stop
 
-- **Resume:** read `RUN.md`, `git worktree list` and the branches; trust only what git shows.
-  Finish verifications of delivered units before dispatching new ones.
+- **Resume** (after the lock in §1): read `RUN.md`, `git worktree list` and the branches;
+  trust only what git shows. Set `status: active`, finish verifications of delivered units,
+  then dispatch.
 - **Stop** (user asks, context running out, runtime exhausted): let running builders reach
-  their report, write `status: parked` and `next:` in `RUN.md`, delete `coordinator.lock`.
+  their report, write `status: parked` and `next:` in `RUN.md`, release the lock (§1).
 - **Done:** every unit merged, waiting for the user, or parked with evidence. Write the final
-  report (§9) and set `status: done`.
+  report (§9), set `status: done` and release the lock.
 
 ## 8. Questions
 

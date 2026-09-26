@@ -36,6 +36,8 @@ FAKE_GH = textwrap.dedent("""\
         pr = json.load(open(os.path.join(d, "pr.json")))
         if merged:
             pr["state"] = "MERGED"
+        if os.path.exists(os.path.join(d, "closed.state")):
+            pr["state"] = "CLOSED"
         sys.stdout.write(json.dumps(pr))
     elif args[:2] == ["repo", "view"]:
         sys.stdout.write("owner/repo\\n")
@@ -55,7 +57,9 @@ FAKE_GH = textwrap.dedent("""\
         code = os.path.join(d, "checks.exit")
         sys.exit(int(open(code).read()) if os.path.exists(code) else 0)
     elif args[:2] == ["pr", "merge"]:
-        if not os.path.exists(os.path.join(d, "queue.flag")):
+        if os.path.exists(os.path.join(d, "closed.flag")):
+            open(os.path.join(d, "closed.state"), "w").close()
+        elif not os.path.exists(os.path.join(d, "queue.flag")):
             open(os.path.join(d, "merged.flag"), "w").close()
         sys.stdout.write("ok\\n")
     else:
@@ -280,6 +284,28 @@ class MergeGateTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertFalse(out["merged"])
         self.assertTrue(out["queued"])
+
+    def test_checks_command_failure_with_passing_json_blocks(self) -> None:
+        (self.dir / "checks.exit").write_text("1")
+        code, out = self.run_gate()
+        self.assertEqual(code, 1)
+        self.assertTrue(any("exited 1" in r for r in out["reasons"]))
+
+    def test_quoted_merge_table_is_rejected_by_fallback(self) -> None:
+        cfg = self.dir / "config.toml"
+        cfg.write_text('["merge"]\nsensitive_globs = ["src/**"]\n')
+        cmd = [sys.executable, str(SCRIPT), "--pr", "7", "--sha", SHA, "--tier", "1",
+               "--allow", "**", "--config", str(cfg)]
+        proc = subprocess.run(cmd, capture_output=True, text=True, env=self.env, cwd=self.dir)
+        out = json.loads(proc.stdout)
+        self.assertFalse(out["merge"], out)
+
+    def test_closed_after_merge_request_is_an_error_not_queued(self) -> None:
+        (self.dir / "closed.flag").write_text("")
+        code, out = self.run_gate("--merge")
+        self.assertEqual(code, 2, out)
+        self.assertFalse(out["merged"])
+        self.assertFalse(out["queued"])
 
 
 if __name__ == "__main__":

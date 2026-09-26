@@ -18,12 +18,15 @@ reading to editing in one step: the planning already happened, so the agent exec
 
 If a cheap test can assert the outcome (a wrong label, a wrong number), it is FIX or BUILD,
 not CHECK. Diff size never picks the class: a hard bug is still a FIX. If the cause of a FIX is unknown,
-the unit is a short diagnosis first: reproduce, name the cause, stop. If a FIX turns out to
+the unit is a short diagnosis first: `proof` = a failing reproduction test plus the cause at
+`file:line`; `done when` = both found. Then write the fix brief with that cause in `known`. If a FIX turns out to
 need a product decision, it becomes BUILD or a question for the user.
 
-Risk tier is a separate axis. Tier 3 = schema/migrations, auth, payments, multi-tenancy,
+Risk tier is a separate axis. Tier 1 = tests, docs, tooling, internal scripts. Tier 2 =
+product code outside tier 3 areas. Tier 3 = schema/migrations, auth, payments, multi-tenancy,
 personal or health data, secrets, permissions, data deletion. Tier 3 is never auto-merged.
-When unsure whether a unit touches one of these, pick the higher tier.
+When unsure whether a unit touches one of these, pick the higher tier. A unit that depends
+on a tier 3 unit is tier 3 too.
 
 ## 2. Split into units
 
@@ -54,7 +57,7 @@ done when: <proof passes + commands exit 0 + diff confined to write-only paths>
 report: status | hash | files | command → exit code | blockers (5 lines, nothing else)
 ```
 
-Rules the agent receives with every brief (paste verbatim):
+Rules every builder receives with its brief (paste verbatim; verifiers do not get them):
 
 ```text
 Work only inside `write only`. Commit on your branch; do not push, open PRs or merge.
