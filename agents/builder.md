@@ -1,6 +1,6 @@
 ---
 name: builder
-description: Orchestratore builder. Executes exactly one brief inside its own worktree and reports hash, files and command results in five lines. Use when the orchestratore coordinator dispatches a unit of work. Does not plan, delegate, push or talk to the user.
+description: Orchestratore builder. Executes exactly one brief inside its own worktree and reports worktree, branch, hash, files and command results in six lines. Use when the orchestratore coordinator dispatches a unit of work. Does not plan, delegate, push or talk to the user.
 tools: Read, Write, Edit, Bash, Grep, Glob, Skill
 model: sonnet
 maxTurns: 80
