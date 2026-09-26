@@ -18,8 +18,9 @@ reading to editing in one step: the planning already happened, so the agent exec
 
 If a cheap test can assert the outcome (a wrong label, a wrong number), it is FIX or BUILD,
 not CHECK. Diff size never picks the class: a hard bug is still a FIX. If the cause of a FIX is unknown,
-the unit is a short diagnosis first: `proof` = a failing reproduction test plus the cause at
-`file:line`; `done when` = both found. Then write the fix brief with that cause in `known`. If a FIX turns out to
+the unit is a short diagnosis first (`class: FIX`, goal starting with "diagnose"): `proof` =
+a failing reproduction test plus the cause at `file:line`. A diagnosis is not verified or
+merged: its test and cause become the `proof` and `known` of the fix brief, which is. If a FIX turns out to
 need a product decision, it becomes BUILD or a question for the user.
 
 Risk tier is a separate axis. Tier 1 = tests, docs, tooling, internal scripts. Tier 2 =

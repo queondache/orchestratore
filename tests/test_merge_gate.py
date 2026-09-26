@@ -13,6 +13,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "bin" / "merge-gate.py"
 SHA = "a" * 40
+try:
+    import tomllib  # noqa: F401
+    HAS_TOML = True
+except ModuleNotFoundError:
+    try:
+        import tomli  # noqa: F401
+        HAS_TOML = True
+    except ModuleNotFoundError:
+        HAS_TOML = False
 
 FAKE_GH = textwrap.dedent("""\
     #!/usr/bin/env python3
@@ -170,6 +179,16 @@ class MergeGateTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 1)
         self.assertTrue(any("allowlist" in r for r in json.loads(proc.stdout)["reasons"]))
 
+    def assert_config_result(self, proc, expect_code, check):
+        """Config files need a real TOML parser; without one the gate fails closed."""
+        out = json.loads(proc.stdout)
+        if HAS_TOML:
+            self.assertEqual(proc.returncode, expect_code, out)
+            check(out)
+        else:
+            self.assertEqual(proc.returncode, 2, out)
+            self.assertFalse(out["merge"])
+
     def test_config_file_supplies_allowlist_and_sensitive(self) -> None:
         cfg = self.dir / "config.toml"
         cfg.write_text('[merge]\nauto_merge_globs = ["src/**", "tests/**"]\n'
@@ -177,9 +196,8 @@ class MergeGateTest(unittest.TestCase):
         cmd = [sys.executable, str(SCRIPT), "--pr", "7", "--sha", SHA, "--tier", "1",
                "--config", str(cfg)]
         proc = subprocess.run(cmd, capture_output=True, text=True, env=self.env, cwd=self.dir)
-        out = json.loads(proc.stdout)
-        self.assertEqual(proc.returncode, 1)
-        self.assertEqual(out["sensitive_paths"], ["tests/button.test.ts"])
+        self.assert_config_result(proc, 1, lambda out: self.assertEqual(
+            out["sensitive_paths"], ["tests/button.test.ts"]))
 
     def test_no_required_checks_blocks_by_default(self) -> None:
         (self.dir / "protection.json").unlink()
@@ -274,22 +292,32 @@ class MergeGateTest(unittest.TestCase):
         cmd = [sys.executable, str(SCRIPT), "--pr", "7", "--sha", SHA, "--tier", "1",
                "--config", str(cfg)]
         proc = subprocess.run(cmd, capture_output=True, text=True, env=self.env, cwd=self.dir)
-        out = json.loads(proc.stdout)
-        self.assertEqual(proc.returncode, 1, out)
-        self.assertEqual(out["sensitive_paths"], ["src/app/button.ts"])
+        self.assert_config_result(proc, 1, lambda out: self.assertEqual(
+            out["sensitive_paths"], ["src/app/button.ts"]))
 
-    def test_merge_queue_is_not_reported_as_merged(self) -> None:
+    def test_open_after_merge_request_is_pending_not_merged(self) -> None:
         (self.dir / "queue.flag").write_text("")
         code, out = self.run_gate("--merge")
         self.assertEqual(code, 0, out)
         self.assertFalse(out["merged"])
-        self.assertTrue(out["queued"])
+        self.assertTrue(out["pending"])
 
     def test_checks_command_failure_with_passing_json_blocks(self) -> None:
         (self.dir / "checks.exit").write_text("1")
         code, out = self.run_gate()
         self.assertEqual(code, 1)
         self.assertTrue(any("exited 1" in r for r in out["reasons"]))
+
+    def test_quoted_and_dotted_merge_tables_keep_sensitive_globs(self) -> None:
+        for text in ('["mer\\u0067e"]\nsensitive_globs = ["src/**"]\n',
+                     'merge.sensitive_globs = ["src/**"]\n'):
+            cfg = self.dir / "config.toml"
+            cfg.write_text(text)
+            cmd = [sys.executable, str(SCRIPT), "--pr", "7", "--sha", SHA, "--tier", "1",
+                   "--allow", "**", "--config", str(cfg)]
+            proc = subprocess.run(cmd, capture_output=True, text=True, env=self.env,
+                                  cwd=self.dir)
+            self.assertFalse(json.loads(proc.stdout)["merge"], text)
 
     def test_quoted_merge_table_is_rejected_by_fallback(self) -> None:
         cfg = self.dir / "config.toml"
@@ -305,7 +333,7 @@ class MergeGateTest(unittest.TestCase):
         code, out = self.run_gate("--merge")
         self.assertEqual(code, 2, out)
         self.assertFalse(out["merged"])
-        self.assertFalse(out["queued"])
+        self.assertFalse(out["pending"])
 
 
 if __name__ == "__main__":

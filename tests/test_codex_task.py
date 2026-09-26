@@ -141,6 +141,10 @@ class CodexTaskTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn("m-2", self.args_file.read_text().splitlines())
 
+    def test_double_dash_separator_is_accepted(self) -> None:
+        proc = self.run_task("--", "verify", str(self.repo), str(self.brief))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+
     def test_rejects_non_git_directory_and_bad_mode(self) -> None:
         self.assertEqual(self.run_task("build", self.tmp.name, str(self.brief)).returncode, 64)
         self.assertEqual(self.run_task("deploy", str(self.repo), str(self.brief)).returncode, 64)

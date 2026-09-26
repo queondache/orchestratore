@@ -28,6 +28,7 @@ while [ $# -gt 0 ]; do
     --model) MODEL="${2:-}"; shift ;;
     --effort) EFFORT="${2:-}"; shift ;;
     --sandbox) SANDBOX="${2:-}"; shift ;;
+    --) shift; while [ $# -gt 0 ]; do POSITIONAL+=("$1"); shift; done; break ;;
     -*) usage ;;
     *) POSITIONAL+=("$1") ;;
   esac

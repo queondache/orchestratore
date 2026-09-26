@@ -20,13 +20,17 @@ protocol: [verify](references/verify.md). Brief format: the `brief` skill.
    `ROADMAP.md`, the bug list the user named. Product decisions in those files win.
 2. **Lock first, always, for start and resume.** `mkdir -p .orchestratore && mkdir
    .orchestratore/coordinator.lock` is atomic: if it succeeds, write
-   `coordinator.lock/owner` (`session: <id> runtime: <claude|codex> updated: <ISO time>`).
-   If it fails because the lock exists: `updated` less than 60 minutes old → another
-   coordinator is live, stop and ask the user; older → stale, take it over and log that in
-   `RUN.md`. If `mkdir` fails for permissions, the repo is read-only: stop and tell the user.
-   Heartbeat: refresh `updated` on every state change and at least every 15 minutes (keep
-   waits on agents at 15 minutes or less). Release at the end, only if `owner` is still
-   yours: `rm .orchestratore/coordinator.lock/owner && rmdir .orchestratore/coordinator.lock`.
+   `coordinator.lock/owner` (`token: <random> runtime: <claude|codex> updated: <ISO time>`).
+   If it fails because the lock exists: `updated` less than 60 minutes old (or no `owner`
+   file yet) → another coordinator is live, stop and ask the user; older → stale: take it
+   over with `mv .orchestratore/coordinator.lock .orchestratore/stale-lock-<time>` (atomic,
+   only one session wins), then `mkdir` again and log the takeover in `RUN.md`. If `mkdir`
+   fails for permissions, the repo is read-only: stop and tell the user.
+   Before every state change, dispatch or merge, check that `owner` still holds your token;
+   if not, you lost the lock: stop at once without writing anything. Heartbeat: refresh
+   `updated` on every state change and at least every 15 minutes (keep waits on agents at 15
+   minutes or less). Release at the end, only with your token still there:
+   `rm .orchestratore/coordinator.lock/owner && rmdir .orchestratore/coordinator.lock`.
    Then, if `.orchestratore/RUN.md` has `status: active` or `parked`, this is a resume:
    go to §7. Never start a new run over a resumable one unless the user says so.
 3. `git status` and `git fetch`. Work that is not yours stays untouched. Base = the branch
@@ -75,7 +79,8 @@ runtime itself is exhausted, park the run (§7). Never simulate an agent you do 
 ## 4. Dispatch the wave
 
 - Every unit whose dependencies are integrated (merged into its lane branch, §6; a PR merge
-  is not needed) goes out **in one message**: several `Agent` calls in Claude Code; in Codex,
+  is not needed; a tier 3 unit's tier 1-2 dependencies are merged into the review lane too,
+  never the other way) goes out **in one message**: several `Agent` calls in Claude Code; in Codex,
   back-to-back `spawn_agent` calls without waiting in between, or one `xargs -P` line for
   `codex-task.sh`. Its worktree starts from the lane head that already contains those
   dependencies; record that SHA as the unit's `base`. Serial dispatch of independent units is the main failure this skill exists
@@ -114,13 +119,14 @@ Write every state change to `RUN.md` at once: unit, engine/model, hash, verdict,
 2. Merge verified branches into their lane in dependency order. A conflict goes back to the
    builder of the later branch as a correction; you do not resolve product code.
 3. On each lane head a final verifier pass runs the **full gate once** (exclusive-resource
-   commands one at a time) plus the scope check of every unit against its own base. Any fix
-   after this verdict needs a new verdict on the new SHA.
+   commands one at a time), checks each unit's scope as `base...delivered hash` of that unit,
+   and checks that the lane diff contains only files from the units' `write only` lists. Any
+   fix after this verdict needs a new verdict on the new SHA.
 4. Push and open one PR per lane: units, verdicts, gate output in the body.
 5. Merge gate on the verified SHA of the tier 1-2 PR:
    `python3 <plugin>/bin/merge-gate.py --pr <n> --sha <sha> --tier <max tier> --merge`
-   Exit 0 with `"merged": true` = merged; `"queued": true` = in the merge queue, check again
-   before counting it merged. Exit 1 = the PR waits for the user; write the reasons in
+   Exit 0 with `"merged": true` = merged; `"pending": true` = still open (e.g. merge queue),
+   check again before counting it merged. Exit 1 = the PR waits for the user; write the reasons in
    `RUN.md` and do not work around them. Use `--no-required-checks-ok` only when the base has
    no required checks and the full gate passed on this exact SHA.
 6. After a merge, update the project's own progress files if it has them (`ROADMAP.md`,

@@ -16,8 +16,8 @@ Any uncertainty is a "no". With --merge, a "yes" is executed through
 `gh pr merge --squash --match-head-commit <sha>`, so GitHub itself rejects the
 merge if the head moved after the check.
 
-Exit codes: 0 merge allowed (with --merge: merged, or queued when the branch uses a
-merge queue; see "merged"/"queued"), 1 not allowed, 2 error.
+Exit codes: 0 merge allowed (with --merge: "merged": true, or "pending": true when the
+PR is still open, e.g. in a merge queue), 1 not allowed, 2 error.
 Output: one JSON object on stdout.
 """
 from __future__ import annotations
@@ -77,15 +77,26 @@ def matches(path: str, pattern: str) -> bool:
 
 
 def read_config(path: Path) -> Dict[str, List[str]]:
-    """Read [merge] auto_merge_globs / sensitive_globs; missing file = empty."""
+    """Read [merge] auto_merge_globs / sensitive_globs; missing file = empty.
+
+    Needs a real TOML parser (Python 3.11+ tomllib, or the tomli package): a
+    half-parsed config could silently drop sensitive globs, so without one the
+    gate refuses to run. Pass --allow/--sensitive on the command line instead.
+    """
     if not path.is_file():
         return {}
-    text = path.read_text(encoding="utf-8")
     try:
-        import tomllib  # Python >= 3.11
-        section = tomllib.loads(text).get("merge", {})
+        import tomllib as toml  # Python >= 3.11
     except ModuleNotFoundError:
-        section = _read_merge_section(text)
+        try:
+            import tomli as toml  # type: ignore[no-redef]
+        except ModuleNotFoundError:
+            raise GateError("%s needs Python 3.11+ or the tomli package; or pass "
+                            "--allow/--sensitive instead of a config file" % path)
+    try:
+        section = toml.loads(path.read_text(encoding="utf-8")).get("merge", {})
+    except toml.TOMLDecodeError as exc:
+        raise GateError("invalid TOML in %s: %s" % (path, exc))
     result: Dict[str, List[str]] = {}
     for key in ("auto_merge_globs", "sensitive_globs"):
         value = section.get(key, [])
@@ -93,75 +104,6 @@ def read_config(path: Path) -> Dict[str, List[str]]:
             raise GateError("config [merge].%s must be a list of strings" % key)
         result[key] = value
     return result
-
-
-def _read_merge_section(text: str) -> Dict[str, Any]:
-    """Fallback for Python < 3.11: bare keys with string arrays inside [merge].
-
-    Anything else inside the section is an error, so a config the fallback
-    cannot read never silently drops sensitive globs.
-    """
-    section: Dict[str, Any] = {}
-    in_merge = False
-    lines = text.splitlines()
-    i = 0
-    while i < len(lines):
-        line = lines[i].strip()
-        i += 1
-        if line.startswith("["):
-            header = line.split("#")[0].strip()
-            in_merge = header == "[merge]"
-            if not in_merge and "merge" in header:
-                raise GateError("unsupported table header %r (use [merge] or Python 3.11+)" % header)
-            continue
-        if not in_merge or not line or line.startswith("#"):
-            continue
-        match = re.match(r"^([A-Za-z0-9_-]+)\s*=\s*(.*)$", line)
-        if not match:
-            raise GateError("cannot read config line in [merge]: %r (use Python 3.11+)" % line)
-        key, rest = match.group(1), match.group(2)
-        while True:
-            parsed = _scan_string_array(rest)
-            if parsed is not None or i >= len(lines):
-                break
-            rest += "\n" + lines[i]
-            i += 1
-        if parsed is None:
-            raise GateError("cannot read [merge].%s (use Python 3.11+)" % key)
-        section[key] = parsed
-    return section
-
-
-def _scan_string_array(raw: str) -> List[str] | None:
-    """Parse `["a", 'b'] # comment`; None when the array is not closed yet."""
-    raw = raw.strip()
-    if not raw.startswith("["):
-        raise GateError("[merge] values must be string arrays")
-    items: List[str] = []
-    pos = 1
-    while pos < len(raw):
-        ch = raw[pos]
-        if ch in "\"'":
-            close = raw.find(ch, pos + 1)
-            if close < 0:
-                return None
-            items.append(raw[pos + 1:close])
-            pos = close + 1
-        elif ch == "]":
-            tail = raw[pos + 1:].strip()
-            if tail and not tail.startswith("#"):
-                raise GateError("unexpected text after [merge] array: %r" % tail)
-            return items
-        elif ch == "#":
-            newline = raw.find("\n", pos)
-            if newline < 0:
-                return None
-            pos = newline + 1
-        elif ch in ", \t\n":
-            pos += 1
-        else:
-            raise GateError("[merge] arrays may contain only quoted strings")
-    return None
 
 
 def gh(args: List[str], repo: str | None, allow_fail: bool = False) -> Tuple[int, str, str]:
@@ -269,7 +211,7 @@ def evaluate(args: argparse.Namespace) -> Dict[str, Any]:
             if any(state != "pass" for state in states):
                 reasons.append("required check %s is %s" % (name, check_states[name]))
 
-    return {"merge": not reasons, "merged": False, "queued": False, "pr": args.pr, "sha": args.sha,
+    return {"merge": not reasons, "merged": False, "pending": False, "pr": args.pr, "sha": args.sha,
             "tier": args.tier, "reasons": reasons, "changed_paths": files,
             "sensitive_paths": sensitive_hits, "unclassified_paths": unclassified,
             "required_checks": required, "check_states": check_states}
@@ -298,11 +240,12 @@ def main(argv: List[str] | None = None) -> int:
             if state == "MERGED":
                 result["merged"] = True
             elif state == "OPEN":
-                result["queued"] = True  # accepted by a merge queue, not merged yet
+                # Not merged yet (e.g. a merge queue); check again before counting it.
+                result["pending"] = True
             else:
                 raise GateError("PR is %s after the merge request" % state)
     except (GateError, json.JSONDecodeError) as exc:
-        print(json.dumps({"merge": False, "merged": False, "queued": False, "error": str(exc),
+        print(json.dumps({"merge": False, "merged": False, "pending": False, "error": str(exc),
                           "reasons": [str(exc)]}, indent=2))
         return 2
     print(json.dumps(result, indent=2))

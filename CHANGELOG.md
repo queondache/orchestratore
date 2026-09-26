@@ -15,7 +15,7 @@ README.
 - `bin/merge-gate.py`: deterministic merge decision (tier, allowlist, sensitive paths
   including rename sources, every changed file via pagination, required checks from branch
   protection and rulesets, exact head SHA) with `--merge` via `gh pr merge
-  --match-head-commit`; merge-queue aware.
+  --match-head-commit`; merge-queue aware; fail-closed when the config cannot be parsed.
 - MIT license; everything in English; tests for portability (no personal paths or names).
 
 ### Changed

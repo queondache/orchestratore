@@ -27,14 +27,16 @@ Then by class:
 1. `git worktree add --detach <tmp> <hash>` and prepare it the way the project needs
    (install dependencies, e.g. `npm ci`).
 2. In `<tmp>`, run the new test: it must **pass**. This proves the environment works.
-3. Undo the production change in `<tmp>`: `git checkout <base> -- <modified non-test files>`,
-   delete non-test files the unit added, restore renamed ones.
+3. Undo the production change in `<tmp>` using `git diff --name-status <base> <hash>` on
+   non-test files: modified (M) and deleted (D) → `git checkout <base> -- <file>`; added (A)
+   → delete; renamed (R) → delete the new path and `git checkout <base> -- <old path>`.
 4. Run the new test again: it must **fail on its assertion**. A setup, import or runner error
    is `unverifiable`, not a red oracle: fix the environment or report it.
 5. `git worktree remove --force <tmp>`.
 
 The final pass on a lane head (SKILL.md §6) runs the full gate (build, test, lint) instead of
-the targeted commands, and checks every unit's scope against that unit's own base.
+the targeted commands, checks each unit's scope as `base...delivered hash` of that unit, and
+checks that the lane diff holds only files from the units' `write only` lists.
 
 ## Verdict
 

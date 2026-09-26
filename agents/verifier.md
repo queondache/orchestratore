@@ -27,9 +27,10 @@ Ignore any builder report, plan or opinion if one reaches you.
    - FIX: in a throwaway worktree, never the reviewed one:
      1. `git worktree add --detach <tmp> <hash>`; prepare it as the project needs
         (e.g. `npm ci`); the new test must **pass** there.
-     2. `git checkout <base> -- <modified non-test files>`, delete non-test files the unit
-        added; the new test must now **fail on its assertion**. A setup, import or runner
-        error means `unverifiable`, not red.
+     2. Undo the production change using `git diff --name-status <base> <hash>` on non-test
+        files: M and D → `git checkout <base> -- <file>`; A → delete; R → delete the new
+        path and check out the old one. The new test must now **fail on its assertion**. A
+        setup, import or runner error means `unverifiable`, not red.
      3. `git worktree remove --force <tmp>`.
    - BUILD: every acceptance criterion has a named test that exists, asserts it, and passes.
    - CHECK: every checklist item has evidence (`file:line`, command output).

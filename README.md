@@ -34,7 +34,8 @@ Claude Code:
 Codex: add the marketplace in `.agents/plugins/marketplace.json` of this repository, or clone
 the repository and point Codex at `./skills/`.
 
-Requirements: `git`, `python3` (3.9+), `gh` (authenticated) for PRs and merges. In Codex,
+Requirements: `git`, `python3` (3.9+; a `.orchestratore/config.toml` needs 3.11+ or the
+`tomli` package), `gh` (authenticated) for PRs and merges. In Codex,
 a sandbox that allows git writes (worktrees and commits).
 
 ## Use
