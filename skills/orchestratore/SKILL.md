@@ -141,12 +141,13 @@ Write every state change to `RUN.md` at once: unit, engine/model, hash, verdict,
 - **Resume** (after the lock in §1): read `RUN.md`, `git worktree list` and the branches;
   trust only what git shows. Set `status: active`, finish verifications of delivered units,
   then dispatch.
-- **Stop** (user asks, context running out, runtime exhausted): let running builders reach
-  their report, write `status: parked` and `next:` in `RUN.md`, release the lock (§1).
-- **Done:** every unit `in production`, waiting for the user, or parked with evidence. A
-  deploy still running when you must stop → `status: parked`, `next:` re-check
-  `gh run list --commit <sha>`. Write the final
-  report (§9), set `status: done` and release the lock.
+- **Stop** (user asks, context running out, runtime exhausted, or a deploy still running
+  when you must stop): let running builders reach their report, write `status: parked` and
+  `next:` in `RUN.md` (for a deploy: re-check `gh run list --commit <sha>`), release the
+  lock (§1). A stopped run stays `parked`, never `done`.
+- **Done:** only when no deploy is still running and every unit is `in production`, waiting
+  for the user, or parked with evidence. Write the final report (§9), set `status: done` and
+  release the lock.
 
 ## 8. Questions
 
