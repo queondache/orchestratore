@@ -91,7 +91,8 @@ runtime itself is exhausted, park the run (§7). Never simulate an agent you do 
   is the main failure this skill exists to prevent.
 - Concurrency: every independent unit, up to `max_parallel` (default 8, builders and
   verifiers together, native agents and `codex-task.sh` processes alike) and the engine's slot
-  limit, keeping one slot free for verifiers (Codex, 3 slots: 2 builders + 1 verifier).
+  limit, keeping one slot free for verifiers (Codex, 3 slots: 2 builders + 1 verifier). An
+  idle slot without independent work stays idle; never split a unit to fill it.
 - Each builder gets the brief and its worktree path (in Codex also the body of
   `agents/builder.md`). Not your plan, not other units' briefs. Brief commands are targeted
   tests only; exclusive-resource commands run only in §6.
@@ -103,7 +104,7 @@ Do not wait for the wave to finish.
 1. Builder report arrives → start its verifier immediately ([verify](references/verify.md)).
    Only the verifier's verdict, with its commands and exit codes, moves a unit forward. The
    builder's report is a claim. A verdict without commands and exit codes is not a KO: rerun
-   it once on another model; a second malformed verdict counts as a KO.
+   it once on another model; a second malformed one → `parked` "unverifiable" (no correction round).
 2. **OK** → unit `verified`; queue it for integration.
 3. **KO** → send the verifier's findings back to the **same** builder as one bounded
    correction (`SendMessage` / `followup_task`, or a new run on the same worktree).
