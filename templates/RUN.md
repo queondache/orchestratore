@@ -16,10 +16,11 @@ next: <one action>
 
 | ID | class | tier | write only | base | builder | state | hash | verdict |
 |---|---|---|---|---|---|---|---|---|
-| <ID> | FIX/BUILD/CHECK | 1-3 | <paths> | <sha> | <model> | queued/building/verifying/verified/merged/waiting/parked | <sha> | <OK/KO + verifier model> |
+| <ID> | FIX/BUILD/CHECK | 1-3 | <paths> | <sha> | <model> | queued/building/verifying/verified/merged/in production/waiting/parked | <sha> | <OK/KO + verifier model> |
 
-States: queued → building → verifying → verified → merged | waiting (PR needs the user) |
-parked (evidence + resume condition below).
+States: queued → building → verifying → verified → merged → in production (pipeline green on
+the merge SHA, or `pipeline: none`) | waiting (PR needs the user) | parked (evidence + resume
+condition below).
 
 ## Decisions
 

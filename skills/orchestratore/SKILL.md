@@ -130,8 +130,9 @@ Write every state change to `RUN.md` at once: unit, engine/model, hash, verdict,
    no required checks and the full gate passed on this exact SHA.
 6. After a merge, check the CI and deploy runs on the merge SHA (`gh run list --commit
    <sha>`, or the project's deploy status). Red → open a FIX unit that fixes forward (never
-   revert or force-push on your own). Report a unit as "in production" only when that run
-   is green. You check the project's pipeline; you never trigger a deploy yourself.
+   revert or force-push on your own). Green → state `in production`. No CI or deploy run for
+   the SHA (project without a pipeline) → `in production` at merge, with `pipeline: none` in
+   `RUN.md`. You check the project's pipeline; you never trigger a deploy yourself.
 7. Update the project's own progress files if it has them (`ROADMAP.md`, changelog), then
    start the next wave if units remain.
 
@@ -142,8 +143,9 @@ Write every state change to `RUN.md` at once: unit, engine/model, hash, verdict,
   then dispatch.
 - **Stop** (user asks, context running out, runtime exhausted): let running builders reach
   their report, write `status: parked` and `next:` in `RUN.md`, release the lock (§1).
-- **Done:** every unit in production (merged, pipeline green), waiting for the user, or
-  parked with evidence. Write the final
+- **Done:** every unit `in production`, waiting for the user, or parked with evidence. A
+  deploy still running when you must stop → `status: parked`, `next:` re-check
+  `gh run list --commit <sha>`. Write the final
   report (§9), set `status: done` and release the lock.
 
 ## 8. Questions
