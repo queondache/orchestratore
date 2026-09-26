@@ -1,100 +1,88 @@
 #!/usr/bin/env bash
-# Gate strutturale del plugin orchestratore. Exit 0 solo se tutto passa.
-# Uso: tests/check-structure.sh   (da qualsiasi cwd)
+# Structural gate for the orchestratore plugin. Exit 0 only if every check passes.
+# Usage: bash tests/check-structure.sh   (from any directory)
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FAIL=0
 
 check() {
   local desc="$1"; shift
-  if "$@" >/dev/null 2>&1; then
-    printf 'OK  %s\n' "$desc"
-  else
-    printf 'KO  %s\n' "$desc"; FAIL=$((FAIL+1))
-  fi
+  if "$@" >/dev/null 2>&1; then printf 'OK  %s\n' "$desc"; else printf 'KO  %s\n' "$desc"; FAIL=$((FAIL+1)); fi
 }
 
-json_key() { # json_key <file> <jq-path>
-  jq -e "$2" "$1"
+VERSION="$(jq -r .version "$ROOT/.claude-plugin/plugin.json")"
+SHIPPED=("$ROOT/skills" "$ROOT/agents" "$ROOT/commands" "$ROOT/hooks" "$ROOT/bin" "$ROOT/templates")
+
+# Manifests
+check "Claude plugin.json valid" jq -e '.name=="orchestratore" and (.version|test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) and .license=="MIT"' "$ROOT/.claude-plugin/plugin.json"
+check "Claude marketplace lists the plugin at ./" jq -e '.plugins|length==1 and .[0].source=="./"' "$ROOT/.claude-plugin/marketplace.json"
+check "Codex plugin.json valid" jq -e '.name=="orchestratore" and .skills=="./skills/" and .license=="MIT" and (.interface.displayName|length>0)' "$ROOT/.codex-plugin/plugin.json"
+check "Codex marketplace valid" jq -e '.name=="orchestratore" and (.plugins|length==1)' "$ROOT/.agents/plugins/marketplace.json"
+for f in .claude-plugin/marketplace.json .codex-plugin/plugin.json .agents/plugins/marketplace.json; do
+  check "$f version = $VERSION" jq -e --arg v "$VERSION" '.version==$v' "$ROOT/$f"
+done
+check "LICENSE is MIT" grep -q '^MIT License$' "$ROOT/LICENSE"
+check "CHANGELOG has an entry for $VERSION" grep -q "^## $VERSION" "$ROOT/CHANGELOG.md"
+
+# Skills
+for dir in "$ROOT"/skills/*/; do
+  name="$(basename "$dir")"; skill="$dir/SKILL.md"
+  check "skill $name: name matches directory" grep -q "^name: $name$" "$skill"
+  check "skill $name: description starts with 'Use when'" grep -q '^description: Use when ' "$skill"
+  check "skill $name: frontmatter <= 1024 chars" bash -c "[ \$(awk '/^---\$/{n++; next} n==1' '$skill' | wc -c) -le 1024 ]"
+  check "skill $name: relative links resolve" bash -c "cd '$dir' && grep -o '](references/[^)]*)' SKILL.md | sed 's/](//;s/)\$//' | while read -r l; do test -f \"\$l\" || exit 1; done"
+done
+check "orchestratore SKILL.md <= 200 lines" bash -c "[ \$(wc -l < '$ROOT/skills/orchestratore/SKILL.md') -le 200 ]"
+check "brief SKILL.md <= 120 lines" bash -c "[ \$(wc -l < '$ROOT/skills/brief/SKILL.md') -le 120 ]"
+
+# Agents
+for a in builder verifier; do
+  f="$ROOT/agents/$a.md"
+  check "agent $a: name, model, tools" bash -c "grep -q '^name: $a\$' '$f' && grep -q '^model: ' '$f' && grep -q '^tools: ' '$f'"
+done
+check "verifier is read-only" bash -c "! grep -qE '^tools:.*(Write|Edit)' '$ROOT/agents/verifier.md'"
+check "builder and verifier default to different models" bash -c "[ \"\$(sed -n 's/^model: //p' '$ROOT/agents/builder.md')\" != \"\$(sed -n 's/^model: //p' '$ROOT/agents/verifier.md')\" ]"
+
+# Command and hooks
+check "command orchestra has description" grep -q '^description: ' "$ROOT/commands/orchestra.md"
+check "command lists start status resume stop" bash -c "for s in start status resume stop; do grep -q \"\\*\\*\$s\\*\\*\" '$ROOT/commands/orchestra.md' || exit 1; done"
+check "hooks.json valid" jq -e '.hooks.SessionStart' "$ROOT/hooks/hooks.json"
+check "hook scripts referenced by hooks.json exist" bash -c "jq -r '.. | .command? // empty' '$ROOT/hooks/hooks.json' | grep -o 'hooks/[a-z-]*\.sh' | while read -r s; do test -f '$ROOT/'\$s || exit 1; done"
+
+TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+git -C "$TMP" init -q
+check "session hook silent without a run" bash -c "cd '$TMP' && [ -z \"\$(bash '$ROOT/hooks/session-state.sh')\" ]"
+mkdir -p "$TMP/.orchestratore"; printf 'status: active\nupdated: now\nnext: verify U-1\n' > "$TMP/.orchestratore/RUN.md"
+check "session hook reports an active run" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'next: verify U-1'"
+mkdir "$TMP/.orchestratore/coordinator.lock"; printf 'session: s1\n' > "$TMP/.orchestratore/coordinator.lock/owner"
+check "session hook shows the coordinator lock owner" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'coordinator lock: session: s1'"
+printf 'status: done\n' > "$TMP/.orchestratore/RUN.md"
+check "session hook silent when the run is done" bash -c "cd '$TMP' && [ -z \"\$(bash '$ROOT/hooks/session-state.sh')\" ]"
+
+# Scripts
+check "codex-task.sh parses" bash -n "$ROOT/bin/codex-task.sh"
+check "merge-gate.py parses" python3 -c "import ast; ast.parse(open('$ROOT/bin/merge-gate.py').read())"
+check "scripts are executable" bash -c "test -x '$ROOT/bin/codex-task.sh' && test -x '$ROOT/bin/merge-gate.py' && test -x '$ROOT/hooks/session-state.sh'"
+
+# Templates
+check "RUN template has the fields the hook reads" bash -c "grep -q '^status: ' '$ROOT/templates/RUN.md' && grep -q '^next: ' '$ROOT/templates/RUN.md'"
+check "config template parses as TOML" python3 -c "import sys
+try:
+    import tomllib
+except ModuleNotFoundError:
+    sys.exit(0)
+tomllib.load(open('$ROOT/templates/config.toml','rb'))"
+
+# Hygiene: shipped files are portable and in English. Perl, not grep: \b must mean the
+# same on macOS and Linux. Only git-tracked text files count, never build artefacts.
+shipped_grep() { # shipped_grep <perl-regex>: prints matches, succeeds if there are none
+  (cd "$ROOT" && git ls-files -z skills agents commands hooks bin templates | xargs -0 perl -ne "print \"\$ARGV:\$.: \$_\" if m{$1}; close ARGV if eof" | grep . && return 1 || return 0)
 }
-
-SKILL="$ROOT/skills/orchestratore/SKILL.md"
-REFS="$ROOT/skills/orchestratore/references"
-
-# Manifest
-check "plugin.json CC valido con name/version/description" \
-  json_key "$ROOT/.claude-plugin/plugin.json" '.name=="orchestratore" and (.version|test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) and (.description|length>0)'
-check "marketplace.json CC con un plugin source ./" \
-  json_key "$ROOT/.claude-plugin/marketplace.json" '.name=="orchestratore" and (.plugins|length==1) and .plugins[0].source=="./"'
-check "plugin.json cx valido con skills ./skills/" \
-  json_key "$ROOT/.codex-plugin/plugin.json" '.name=="orchestratore" and .skills=="./skills/" and (.interface.displayName|length>0)'
-check "marketplace.json cx presente" \
-  json_key "$ROOT/.agents/plugins/marketplace.json" '.name=="orchestratore" and (.plugins|length==1)'
-
-# SKILL.md
-check "SKILL.md esiste" test -f "$SKILL"
-check "SKILL.md frontmatter name: orchestratore" grep -q '^name: orchestratore$' "$SKILL"
-check "SKILL.md frontmatter description" grep -q '^description: .\{40,\}' "$SKILL"
-check "SKILL.md <= 250 righe" bash -c "[ \$(wc -l < '$SKILL') -le 250 ]"
-check "SKILL.md nomina controller locale" grep -q 'controller locale' "$SKILL"
-check "SKILL.md frase celebrazione esatta" grep -q '^una milestone meno$' "$SKILL"
-check "SKILL.md GIF delfino" grep -q 'AhV2lfKBfEvcEqj6h3' "$SKILL"
-check "SKILL.md GIF balena" grep -q 'Q6rD2TLgqMiHf4a0Pt' "$SKILL"
-check "SKILL.md tetti 5 milestone e 15 bugfix" bash -c "grep -q '\*\*5 builder\*\* in' '$SKILL' && grep -q '\*\*15 builder\*\* in' '$SKILL'"
-check "SKILL.md reviewer Claude separato" grep -q 'reviewer Claude separato' "$SKILL"
-check "SKILL.md regola builder != verificatore" grep -qi 'modello diverso' "$SKILL"
-
-# References
-for f in controller.md routing.md lane.md credito.md parallelismo.md verifica.md skill-map.md adapter-cc.md adapter-cx.md project-adapter.md codex-skills-catalog.jsonl; do
-  check "references/$f esiste" test -s "$REFS/$f"
-done
-check "controller espone JSON CLI congelata" grep -q 'init|start|add-task|schedule|dispatch|complete|fail|checkpoint|status|acquire|release' "$REFS/controller.md"
-check "controller nomina i tre ingressi" bash -c "for i in 'App Codex locale' 'Codex CLI' 'Claude CLI'; do grep -q \"\$i\" '$REFS/controller.md' || exit 1; done"
-check "references vecchie rimosse" bash -c "! test -e '$REFS/runtime-bridges.md' && ! test -e '$REFS/skill-activation.md'"
-check "routing.md contiene i 10 modelli" bash -c "for m in fable gpt-6-astra opus gpt-5.6-sol sonnet gpt-5.6-terra haiku gpt-5.6-luna; do grep -q \"\$m\" '$REFS/routing.md' || exit 1; done"
-check "lane.md contiene regola verdetto su hash" grep -qi 'hash' "$REFS/lane.md"
-check "lane.md contiene pre-merge" grep -q 'suggerisco merge' "$REFS/lane.md"
-
-# Agent del plugin
-for a in worker-impl worker-mech verificatore pre-merge integratore; do
-  check "agents/$a.md esiste" test -s "$ROOT/agents/$a.md"
-  check "agents/$a.md dichiara name" grep -q "^name: $a$" "$ROOT/agents/$a.md"
-  check "agents/$a.md dichiara model" grep -q '^model: ' "$ROOT/agents/$a.md"
-  check "agents/$a.md dichiara tools" grep -q '^tools: ' "$ROOT/agents/$a.md"
-done
-check "verificatore e in sola lettura" bash -c "! grep -qE '^tools:.*(Write|Edit)' '$ROOT/agents/verificatore.md'"
-check "pre-merge e in sola lettura" bash -c "! grep -qE '^tools:.*(Write|Edit)' '$ROOT/agents/pre-merge.md'"
-check "integratore non implementa" grep -qi 'Nessuna implementazione nuova' "$ROOT/agents/integratore.md"
-
-# Bridge
-check "bin/spawn-cx.sh eseguibile" test -x "$ROOT/bin/spawn-cx.sh"
-check "bin/spawn-cc.sh eseguibile" test -x "$ROOT/bin/spawn-cc.sh"
-check "bridge cx passa il gate eseguibile" bash "$ROOT/tests/check-bridge.sh"
-
-# Comandi e hook
-for c in orchestra orchestra-status; do
-  check "commands/$c.md esiste" test -s "$ROOT/commands/$c.md"
-  check "commands/$c.md ha description" grep -q '^description: ' "$ROOT/commands/$c.md"
-done
-check "commands/orchestra.md elenca i sottocomandi" bash -c "for s in start status peso credito stop riprendi; do grep -q \"\$s\" '$ROOT/commands/orchestra.md' || exit 1; done"
-check "hooks/hooks.json esiste" test -s "$ROOT/hooks/hooks.json"
-check "hooks/guard-run.sh eseguibile" test -x "$ROOT/hooks/guard-run.sh"
-check "hooks/guard_run.py esiste" test -s "$ROOT/hooks/guard_run.py"
-check "hooks/session-run-state.sh eseguibile" test -x "$ROOT/hooks/session-run-state.sh"
-check "hook passano il gate eseguibile" bash "$ROOT/tests/check-hooks.sh"
-
-# Template
-check "templates/RUN.md" test -s "$ROOT/templates/RUN.md"
-check "template legacy run.md rimosso dall'indice Git" bash -c "! git -C '$ROOT' ls-files --error-unmatch templates/run.md >/dev/null 2>&1"
-check "RUN template limita la memoria" bash -c "[ \$(wc -l < '$ROOT/templates/RUN.md') -le 300 ] && [ \$(wc -c < '$ROOT/templates/RUN.md') -le 15360 ]"
-check "templates/config.toml con peso default" bash -c "grep -q 'cx = 100' '$ROOT/templates/config.toml' && grep -q 'valido_fino = \"2026-10-12\"' '$ROOT/templates/config.toml'"
-check "templates/state.toml" test -s "$ROOT/templates/state.toml"
-
-# Igiene
-check "nessun TODO/TBD nei file consegnati" bash -c "! grep -rEn 'TODO|TBD' '$ROOT/skills' '$ROOT/templates' '$ROOT/.claude-plugin' '$ROOT/.codex-plugin'"
-check "nessun path utente cablato fuori da adapter-cx.md" bash -c "! grep -rln '/Users/andreapesce' '$ROOT/skills' '$ROOT/templates' | grep -v 'adapter-cx.md' | grep -v 'codex-skills-catalog.jsonl'"
-check "README.md presente" test -s "$ROOT/README.md"
+check "no absolute user paths or personal names in shipped files" shipped_grep '/Users/|/home/[a-z]|andreapesce|~/Dev|\bAndrea\b'
+check "no Italian leftovers in shipped files" shipped_grep '(?i)\b(della|degli|perché|quando|milestone meno|cervello|verificatore)\b'
+check "no TODO/TBD in shipped files" shipped_grep '\bTODO\b|\bTBD\b'
+check "0.6 controller is gone" bash -c "! test -e '$ROOT/controller' && ! test -e '$ROOT/bin/orchestratore-controller'"
 
 echo
-if [ "$FAIL" -eq 0 ]; then echo "VERDE: tutti i controlli passano"; exit 0; fi
-echo "ROSSO: $FAIL controlli falliti"; exit 1
+if [ "$FAIL" -eq 0 ]; then echo "GREEN: all checks pass"; exit 0; fi
+echo "RED: $FAIL checks failed"; exit 1

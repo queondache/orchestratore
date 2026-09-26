@@ -1,34 +1,20 @@
 ---
-description: Avvia, ispeziona o governa un run dell'orchestratore (start, status, peso, credito, stop, riprendi)
-argument-hint: start | status | peso dev cx <n> | credito <cc|cx> <ok|esaurito> | stop | riprendi
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Skill, Agent, TodoWrite, AskUserQuestion
+description: Start, inspect, resume or stop an orchestratore run (start | status | resume | stop)
+argument-hint: start [what to deliver] | status | resume | stop
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Skill, Agent, SendMessage, AskUserQuestion
 ---
 
-Sottocomando richiesto: **$ARGUMENTS** (vuoto = `start`).
+Requested: **$ARGUMENTS** (empty = `start`).
 
-Carica la skill `orchestratore` e seguila per intero: è lei la fonte di verità, questo comando
-è solo la porta d'ingresso. App Codex locale, Codex CLI e Claude CLI sono ingressi equivalenti
-al controller locale di `references/controller.md`: usa lo stesso `run_id`, senza creare stato
-parallelo nel comando. Prima di qualsiasi azione esegui l'avvio sicuro (§0 della skill):
-istruzioni del repo, `brain.lock`, stato credito, working tree, toolchain.
+Load the `orchestratore` skill and follow it; this command is only the entry point.
 
-Instradamento del sottocomando:
+- **start** `[what]` — new run on what the user named (bug list, milestones, features); if
+  nothing is named, the open items of `ROADMAP.md` or the bug list in the repo instructions.
+  Follow the skill from §1 without asking for its defaults.
+- **status** — the §9 report, built from `.orchestratore/RUN.md` and `git`, never from memory.
+- **resume** — skill §1 step 2 (the lock) first, then §7: reconcile `RUN.md` with worktrees
+  and branches, finish pending verifications, then dispatch.
+- **stop** — skill §7: let running builders report, write `status: parked` and `next:`,
+  release the lock as in §1.
 
-- **`start`** (o argomento vuoto) — run nuovo. Avvio sicuro, poi contratto di autonomia con i
-  default di §1 senza chiederli, `## Piano di parallelizzazione` con la prova di indipendenza
-  sui file reali, routing `cheapest-capable` per task, e apertura delle lane. L'unica domanda ammessa all'avvio è `standard` o
-  `alternativo` per il cervello.
-- **`status`** — report di §7 dal contenuto reale di `.orchestratore/RUN.md` e dallo stato Git,
-  mai dalla conversazione. Include slot builder occupati, verifiche in volo, domande aperte,
-  modalità credito e prossimo checkpoint.
-- **`peso dev cx <n>`** — override del peso in corsa. Non tocca i flag credito. Scrivilo in
-  `RUN.md` e applicalo solo alle assegnazioni nuove.
-- **`credito <cc|cx> <ok|esaurito>`** — aggiorna `~/.orchestratore/state.toml` e applica il
-  failover di `references/credito.md`. Riconosci anche le formulazioni naturali equivalenti.
-- **`stop`** — chiudi solo il checkpoint atomico sicuro, scrivi l'handoff completo in `RUN.md`,
-  metti `stato: handoff`, rilascia `brain.lock`. Non interrompere un merge a metà.
-- **`riprendi`** — ripresa di §7: agenti vivi riconciliati con `RUN.md`, impronta del
-  filesystem e stato Git verificati, consegne e review chiuse prima di aprire fronti nuovi.
-
-Un sottocomando non riconosciuto: dillo in una riga ed elenca quelli validi. Non inventare
-comportamenti nuovi.
+Unknown subcommand: say so in one line and list the four valid ones.

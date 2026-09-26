@@ -1,105 +1,92 @@
-# orchestratore 0.6.0
+# orchestratore
 
-Plugin dual-runtime (Claude Code + Codex) che orchestra worker su più milestone in parallelo e
-su più task dentro ogni milestone, con prova di indipendenza sui file reali, lane contract-first
-quando le milestone si toccano e integratore dedicato. Il controller locale usa SQLite WAL e
-lease autorevole; app Codex locale, Codex CLI e Claude CLI entrano nello stesso `run_id`.
-Il flusso standard è strategia Claude, builder Codex e review Claude separata. Il profilo
-`milestone` ammette fino a 5 builder simultanei; `bugfix` fino a 15, ma solo per bug
-riproducibili con ownership di file disgiunta. Reviewer e pre-merge sono fuori quota builder.
-La capacità review è `ceil(builder della wave/3)`, con cap 2/5, e le consegne hanno precedenza
-sulle nuove assegnazioni. I processi pesanti locali restano serializzati.
-Il routing è `cheapest-capable`: cervello cx Astra medium; dev Luna da medium, Terra da
-medium e Sol da low; Astra worker da low solo quando un trigger osservabile richiede escalation.
-Verifica indipendente a ogni consegna, non solo a fine milestone; un gate rosso non ferma il
-run: feedback invariato deduplicato, due tentativi per approccio e massimo due approcci
-automatici prima di parcheggiare la lane e liberare lo slot. A milestone chiusa: merge, allineamento di
-ROADMAP/progress/decisioni e apertura immediata della lane successiva. Il verificatore esegue
-quattro passi con evidenza raw — hash, gate verde, oracolo (il test nuovo deve diventare rosso
-senza la modifica), perimetro. Il merge automatico è fail-closed: vale solo per tier 1-2,
-richiede una allowlist esplicita che copra ogni file del diff e almeno un check CI richiesto
-verde; tier 3, aree sensibili e path non classificati restano PR in attesa.
+A multi-agent coordinator for **Claude Code** and **Codex**. Give it a batch of bugs, fixes,
+features or roadmap milestones; it plans once, dispatches every independent unit in parallel,
+verifies each delivery with a different model the moment it arrives, and merges only through a
+deterministic gate.
 
-I worker Codex e Claude operano in worktree distinti con ownership verificata. Durante un run
-non possono usare `gh`, `curl` o `git push`: il controller è l'unica autorità del protocollo
-per leggere PR/check e richiedere il merge. Questi controlli sono guardrail contro errori e
-gate d'integrazione, non una sandbox contro un worker locale ostile.
+Start it in Claude Code or in Codex: the coordinator keeps the logic of the whole run and its
+sub-agents come from the same runtime.
 
-La ripresa A-E richiede evidenza della fase precedente; E è completa solo con outcome PR,
-merge o attesa approvata e documenti allineati. Checkpoint e session rollover sono espliciti:
-si persiste da 50 e si apre una nuova sessione da 70 senza affidarsi all'auto-compact. Il retry
-è finito a 2×2.
+## Why
 
-Spec: `docs/specs/2026-09-12-orchestratore-plugin-design.md`. Piani: `docs/plans/`.
+Most multi-agent setups are slow for the wrong reasons: a planning stage per task, one agent
+at a time, reviews that wait for the whole batch, and a builder's "tests pass" taken as proof.
+Orchestratore removes each of those:
 
-## Stato release
-
-La release 0.6.0 è tracciata dalla PR
-[#5](https://github.com/queondache/orchestratore/pull/5) e identificata dal tag `v0.6.0`:
-prima della creazione del tag il contenuto resta in preparazione; dopo il tag, le installazioni
-esistenti richiedono update o reinstallazione perché usano snapshot/cache.
+| Step | What happens |
+|---|---|
+| Plan once | The coordinator writes one short brief per unit (FIX, BUILD or CHECK) with files, constraints and the proof required. No per-unit planning. |
+| Dispatch | All independent units go out in one message, each in its own git worktree. |
+| Verify on arrival | A different model checks hash, scope, commands and a class-specific proof (for a FIX: the new test must fail without the fix). |
+| Correct or park | A KO goes back to the same builder once; then a new approach; then the unit is parked with evidence. The run keeps going. |
+| Gate the merge | `bin/merge-gate.py` merges only tier 1-2 changes fully inside an explicit allowlist, with required CI checks green on the exact verified SHA. Everything else waits for you. |
 
 ## Install
 
 Claude Code:
-```bash
-claude plugin marketplace add queondache/orchestratore
-claude plugin install orchestratore@orchestratore
+
+```text
+/plugin marketplace add queondache/orchestratore
+/plugin install orchestratore@orchestratore
 ```
 
-Codex:
+Codex: add the marketplace in `.agents/plugins/marketplace.json` of this repository, or clone
+the repository and point Codex at `./skills/`.
+
+Requirements: `git`, `python3` (3.9+; a `.orchestratore/config.toml` needs 3.11+ or the
+`tomli` package), `gh` (authenticated) for PRs and merges. In Codex,
+a sandbox that allows git writes (worktrees and commits).
+
+## Use
+
+Claude Code: `/orchestratore:orchestra start fix issues #12 #15 #19` — or just ask
+"orchestrate these fixes in parallel". Codex: "Use orchestratore to fix these bugs: …".
+
+Other subcommands: `status`, `resume`, `stop`. The run state lives in
+`.orchestratore/RUN.md` (excluded from git automatically).
+
+## Configure
+
+Optional `.orchestratore/config.toml`; see [templates/config.toml](templates/config.toml).
+The main keys:
+
+- `[engines] max_parallel` — concurrent builders (default 8), capped by the runtime's slots.
+- `[models]` — builder and verifier model per runtime (they must differ).
+- `[merge] auto_merge_globs` — the paths allowed to auto-merge. **Empty by default: nothing
+  auto-merges until you list paths.** `sensitive_globs` adds to the built-in list (schema,
+  migrations, auth, payments, tenancy, personal/health data, secrets, permissions, deletion).
+
+## Engine notes
+
+- **Claude Code:** builders are `Agent` sub-agents with `isolation: "worktree"`; the
+  verifier agent is read-only.
+- **Codex:** native sub-agents (`spawn_agent`) up to the session's slot limit, each told to
+  work in a coordinator-made worktree; beyond that, `bin/codex-task.sh` runs one Codex
+  process per unit (`xargs -P` for the whole wave) and commits its changes.
+- Tier 3 units go to a separate PR that always waits for you, so they never block the rest.
+- Worktrees, prompts and sandboxes are guardrails against mistakes, not a security boundary
+  against a hostile agent.
+
+## Upgrading from 0.6.x
+
+0.7.0 is a rewrite. The SQLite controller, the Italian-language protocol and the
+`spawn-cc.sh` / `spawn-cx.sh` bridges are gone.
+
+- Finish or stop any 0.6 run before upgrading; 0.7 does not read the 0.6 database.
+- To keep 0.6, install from the tag `v0.6.0`.
+- `/orchestra peso` and `/orchestra credito` no longer exist: models go in
+  `[models]`, and an engine that runs out of credit is marked unavailable for the run.
+
+## Development
+
 ```bash
-codex plugin marketplace add queondache/orchestratore
-codex plugin add orchestratore@orchestratore
+bash tests/check-structure.sh
+python3 -m unittest discover -s tests
 ```
 
-Sviluppo locale: al posto di `queondache/orchestratore` passa il path del clone
-(`~/Dev/skills/orchestratore`).
+CI runs both on every pull request.
 
-## Aggiornamento
+## License
 
-Le installazioni del plugin sono snapshot/cache: le modifiche al repository non vengono
-propagate automaticamente. Ogni release richiede un bump di versione, l'update/upgrade del
-marketplace e l'update o la reinstallazione del plugin in ciascun runtime.
-
-## Uso
-
-In un progetto con `SPEC.md` e `ROADMAP.md`: `/orchestratore:orchestra start` (CC) oppure
-«avvia il run» (cx). In `bugfix`, ROADMAP è opzionale: indica una fonte congelata con ID,
-riproduzione e oracolo per ogni bug. Sottocomandi: `start`, `status`, `peso`, `credito`, `stop`, `riprendi`;
-`/orchestratore:orchestra-status` è il report di sola lettura.
-
-`SPEC.md` è la fonte dei requisiti, `ROADMAP.md` la fonte delle milestone e del loro stato,
-`.orchestratore/RUN.md` l'unica fonte operativa. All'avvio il RUN congela un profilo concreto:
-`milestone` per ROADMAP, feature, refactor o run misti; `bugfix` solo per un insieme di bug
-indipendenti con riproduzione/oracolo. La precedenza è prompt, config progetto, rilevamento;
-`auto` non entra mai nel RUN. Il RUN contiene massimo 5 milestone o 15 bug aperti e viene
-aggiornato e ricompattato entro 300 righe/15 KB. Non vengono creati
-`recon.md`, context pack o prompt-file permanenti; SQLite conserva soltanto stato macchina,
-lease, fasi, retry, checkpoint ed event-id.
-La policy di arresto predefinita segue il profilo: `milestone-budget: tutte` oppure
-`bug-budget: tutti` dalla fonte bug congelata.
-
-## Struttura
-
-- `skills/orchestratore/` la skill e le reference (routing, lane, parallelismo, verifica,
-  credito, skill-map, adapter-cc, adapter-cx, project-adapter)
-- `templates/` RUN.md, config.toml, state.toml
-- `agents/` i cinque agent del plugin (worker-impl, worker-mech, verificatore, pre-merge,
-  integratore)
-- `bin/` i bridge `spawn-cx.sh` e `spawn-cc.sh`, entrambi con `--dry-run`
-- `commands/` `/orchestratore:orchestra` e `/orchestratore:orchestra-status`
-- `hooks/` guardia PreToolUse sui comandi vietati durante un run, stato del run a SessionStart
-- `controller/` riduttore di transizioni, schema SQLite e prove di recovery/idempotenza
-- `tests/` gate strutturale, regressioni, mutazioni, bridge, hook e controller
-
-## Test
-
-```bash
-tests/check-structure.sh
-tests/check-regressions.sh
-tests/check-regressions-mutations.sh
-tests/check-bridge.sh
-tests/check-hooks.sh
-tests/check-controller.sh
-```
+MIT — see [LICENSE](LICENSE).

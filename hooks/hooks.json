@@ -1,31 +1,11 @@
 {
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/guard-run.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Write|Edit|NotebookEdit|apply_patch",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/guard-write.py"
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-run-state.sh"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-state.sh\""
           }
         ]
       }

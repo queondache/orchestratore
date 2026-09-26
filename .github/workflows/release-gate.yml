@@ -17,34 +17,16 @@ jobs:
   release-gate:
     name: release-gate
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install ripgrep and verify toolchain
-        env:
-          DEBIAN_FRONTEND: noninteractive
+      - name: Structure and portability
+        run: bash tests/check-structure.sh
+
+      - name: Unit tests
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends ripgrep
-          for tool in bash chmod cp cut date dirname env find git grep head jq ln mkdir mktemp perl python3 pwd rg sed sh shasum stat touch tr wc; do
-            command -v "$tool" >/dev/null
-          done
-
-      # check-structure owns the executable bridge and hook checks.  The
-      # regression gate skips those two duplicates but keeps every invariant.
-      - name: Structure, bridge, and hooks
-        run: ./tests/check-structure.sh
-
-      - name: Regression invariants
-        env:
-          ORCHESTRATORE_SKIP_EXEC: "1"
-        run: ./tests/check-regressions.sh
-
-      - name: Controller
-        run: ./tests/check-controller.sh
-
-      - name: Mutation candidate gate
-        if: github.ref == 'refs/heads/main' || github.event.pull_request.draft == false
-        run: ./tests/check-regressions-mutations.sh
+          git config --global user.email ci@example.com
+          git config --global user.name ci
+          python3 -m unittest discover -s tests -v

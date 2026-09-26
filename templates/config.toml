@@ -1,32 +1,23 @@
-# Peso CC/cx dell'orchestratore.
-# Globale: ~/.orchestratore/config.toml. Per progetto: .orchestratore/config.toml (vince).
-# Valori interi, dev.cx + dev.cc = 100.
+# Orchestratore project configuration: copy to .orchestratore/config.toml.
+# Every key is optional; missing keys use the runtime defaults.
 
-[peso]
-dev = { cx = 100, cc = 0 }
-verifica = "cc"            # cc | cx | opposto
-valido_fino = "2026-10-12" # alla scadenza il cervello chiede il nuovo peso, non lo applica in silenzio
+[engines]
+max_parallel = 8         # concurrent builders, further capped by the runtime's slot limit
 
-[costo]
-strategia = "cheapest-capable"
-premium_solo_con_trigger = true # Astra/Opus/high: KO, disaccordo, ambiguità o rischio emerso
+[models]
+# Use the names your runtime exposes. Builder and verifier must differ.
+claude_builder = "sonnet"
+claude_verifier = "opus"
+codex_builder = ""       # "" = the coordinator picks from the models the session lists
+codex_verifier = ""      # must differ from codex_builder
+codex_effort = "medium"
+codex_sandbox = "workspace-write"   # codex-task.sh: read-only | workspace-write | danger-full-access
 
-[parallelismo]
-# auto viene risolto in milestone|bugfix prima del primo dispatch e non entra mai nel RUN.
-work_profile = "auto"     # auto | milestone | bugfix
-builder_milestone = 5
-builder_bugfix = 15
-review_ogni_builder = 3   # capacità = ceil(builder della wave / 3), mai 0 con review pendenti
-review_milestone = 2      # cap; reviewer fuori quota builder
-review_bugfix = 5         # cap; reviewer fuori quota builder
-
-[tetti]
-domande_aperte = 8
-
-[rischio]
-# Un diff che tocca queste aree non va mai in auto-merge: resta PR in attesa di Andrea.
-# Glob relativi alla radice del progetto. Assente = default di references/verifica.md.
-aree_sensibili = [
-  "**/migrations/**", "**/schema*", "**/auth/**", "**/payments/**",
-  "**/billing/**", "**/users/**", "**/roles/**", "**/*secret*", "**/*.env*",
-]
+[merge]
+# Auto-merge happens only when EVERY changed path matches one of these globs,
+# none matches a sensitive glob, the tier is 1-2 and required checks passed.
+# Empty list = auto-merge is off and every PR waits for you.
+auto_merge_globs = []
+# Added to the built-in sensitive paths (schema, migrations, auth, payments, tenancy,
+# personal/health data, secrets, permissions, deletion). Built-ins cannot be removed.
+sensitive_globs = []
