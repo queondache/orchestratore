@@ -1,24 +1,37 @@
 {
   "name": "orchestratore",
-  "version": "0.6.0",
-  "description": "Orchestratore multi-agente dual-runtime con controller durevole, worktree isolati, review indipendente e auto-merge fail-closed su allowlist e CI richiesta.",
-  "author": { "name": "Andrea Pesce", "url": "https://github.com/queondache" },
+  "version": "0.7.0",
+  "description": "Multi-agent coordinator for Claude Code and Codex: plan once, dispatch independent units in parallel, verify each delivery with a different model, merge only through a deterministic gate.",
+  "author": {
+    "name": "Andrea Pesce",
+    "url": "https://github.com/queondache"
+  },
   "homepage": "https://github.com/queondache/orchestratore",
   "repository": "https://github.com/queondache/orchestratore",
-  "license": "UNLICENSED",
-  "keywords": ["orchestrator", "multi-agent", "milestone", "codex"],
+  "license": "MIT",
+  "keywords": [
+    "orchestrator",
+    "multi-agent",
+    "parallel",
+    "swarm",
+    "verification",
+    "codex"
+  ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Orchestratore",
-    "shortDescription": "Cervello multi-agente per milestone parallele",
-    "longDescription": "Coordina worker Codex e Claude Code tramite un controller durevole: assignment isolati in worktree, routing economico, review indipendente e merge solo con allowlist esplicita, rischio basso e CI richiesta verde.",
+    "shortDescription": "Parallel agents with independent verification",
+    "longDescription": "Splits a batch of bugs, fixes or milestones into independent briefs, runs them on parallel sub-agents or Codex processes in isolated worktrees, verifies each delivery with a different model, and merges only through a deterministic gate (tier, allowlist, required checks).",
     "developerName": "Andrea Pesce",
     "category": "Development",
-    "capabilities": ["Instructions"],
+    "capabilities": [
+      "Instructions"
+    ],
     "defaultPrompt": [
-      "Usa orchestratore per avviare il run sulle milestone di ROADMAP.md.",
-      "riprendi",
-      "orchestra status"
+      "Use orchestratore to fix these bugs in parallel: ...",
+      "Use orchestratore on the open milestones in ROADMAP.md.",
+      "orchestratore status",
+      "orchestratore resume"
     ]
   }
 }

@@ -1,13 +1,21 @@
 {
   "name": "orchestratore",
-  "version": "0.6.0",
-  "description": "Orchestratore multi-agente dual-runtime con controller durevole, worktree isolati, review indipendente e auto-merge fail-closed su allowlist e CI richiesta.",
+  "version": "0.7.0",
+  "description": "Multi-agent coordinator for Claude Code and Codex: plan once, dispatch independent units in parallel, verify each delivery with a different model, merge only through a deterministic gate.",
   "author": {
     "name": "Andrea Pesce",
     "url": "https://github.com/queondache"
   },
   "homepage": "https://github.com/queondache/orchestratore",
   "repository": "https://github.com/queondache/orchestratore",
-  "license": "UNLICENSED",
-  "keywords": ["orchestrator", "multi-agent", "milestone", "codex", "claude-code"]
+  "license": "MIT",
+  "keywords": [
+    "orchestrator",
+    "multi-agent",
+    "parallel",
+    "swarm",
+    "verification",
+    "codex",
+    "claude-code"
+  ]
 }
