@@ -2,17 +2,16 @@
 # Every key is optional; missing keys use the runtime defaults.
 
 [engines]
-mode = "auto"            # auto | claude | codex | mixed
-max_parallel = 8         # concurrent builders, further capped by the engine's slot limit
+max_parallel = 8         # concurrent builders, further capped by the runtime's slot limit
 
 [models]
 # Use the names your runtime exposes. Builder and verifier must differ.
 claude_builder = "sonnet"
 claude_verifier = "opus"
-codex_builder = ""       # "" = Codex default model
-codex_verifier = ""      # required in codex mode unless you pick one per run in RUN.md
+codex_builder = ""       # "" = the coordinator picks from the models the session lists
+codex_verifier = ""      # must differ from codex_builder
 codex_effort = "medium"
-codex_sandbox = "workspace-write"   # read-only | workspace-write | danger-full-access
+codex_sandbox = "workspace-write"   # codex-task.sh: read-only | workspace-write | danger-full-access
 
 [merge]
 # Auto-merge happens only when EVERY changed path matches one of these globs,

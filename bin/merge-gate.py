@@ -16,7 +16,8 @@ Any uncertainty is a "no". With --merge, a "yes" is executed through
 `gh pr merge --squash --match-head-commit <sha>`, so GitHub itself rejects the
 merge if the head moved after the check.
 
-Exit codes: 0 merge allowed (and merged with --merge), 1 not allowed, 2 error.
+Exit codes: 0 merge allowed (with --merge: merged, or queued when the branch uses a
+merge queue; see "merged"/"queued"), 1 not allowed, 2 error.
 Output: one JSON object on stdout.
 """
 from __future__ import annotations
@@ -95,16 +96,69 @@ def read_config(path: Path) -> Dict[str, List[str]]:
 
 
 def _read_merge_section(text: str) -> Dict[str, Any]:
-    """Minimal fallback for Python < 3.11: string arrays inside [merge]."""
-    match = re.search(r"^\[merge\]\s*$(.*?)(?=^\[|\Z)", text, re.M | re.S)
-    if not match:
-        return {}
-    body = re.sub(r"#[^\n\"']*$", "", match.group(1), flags=re.M)
+    """Fallback for Python < 3.11: bare keys with string arrays inside [merge].
+
+    Anything else inside the section is an error, so a config the fallback
+    cannot read never silently drops sensitive globs.
+    """
     section: Dict[str, Any] = {}
-    for key, raw in re.findall(r"^(\w+)\s*=\s*\[(.*?)\]", body, re.M | re.S):
-        section[key] = re.findall(r"\"([^\"]*)\"|'([^']*)'", raw)
-        section[key] = [a or b for a, b in section[key]]
+    in_merge = False
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        i += 1
+        if line.startswith("["):
+            in_merge = line.split("#")[0].strip() == "[merge]"
+            continue
+        if not in_merge or not line or line.startswith("#"):
+            continue
+        match = re.match(r"^([A-Za-z0-9_-]+)\s*=\s*(.*)$", line)
+        if not match:
+            raise GateError("cannot read config line in [merge]: %r (use Python 3.11+)" % line)
+        key, rest = match.group(1), match.group(2)
+        while True:
+            parsed = _scan_string_array(rest)
+            if parsed is not None or i >= len(lines):
+                break
+            rest += "\n" + lines[i]
+            i += 1
+        if parsed is None:
+            raise GateError("cannot read [merge].%s (use Python 3.11+)" % key)
+        section[key] = parsed
     return section
+
+
+def _scan_string_array(raw: str) -> List[str] | None:
+    """Parse `["a", 'b'] # comment`; None when the array is not closed yet."""
+    raw = raw.strip()
+    if not raw.startswith("["):
+        raise GateError("[merge] values must be string arrays")
+    items: List[str] = []
+    pos = 1
+    while pos < len(raw):
+        ch = raw[pos]
+        if ch in "\"'":
+            close = raw.find(ch, pos + 1)
+            if close < 0:
+                return None
+            items.append(raw[pos + 1:close])
+            pos = close + 1
+        elif ch == "]":
+            tail = raw[pos + 1:].strip()
+            if tail and not tail.startswith("#"):
+                raise GateError("unexpected text after [merge] array: %r" % tail)
+            return items
+        elif ch == "#":
+            newline = raw.find("\n", pos)
+            if newline < 0:
+                return None
+            pos = newline + 1
+        elif ch in ", \t\n":
+            pos += 1
+        else:
+            raise GateError("[merge] arrays may contain only quoted strings")
+    return None
 
 
 def gh(args: List[str], repo: str | None, allow_fail: bool = False) -> Tuple[int, str, str]:
@@ -118,17 +172,33 @@ def gh(args: List[str], repo: str | None, allow_fail: bool = False) -> Tuple[int
     return proc.returncode, proc.stdout, proc.stderr
 
 
+def gh_json_pages(path: str) -> List[Any]:
+    """GET a REST list endpoint with every page, flattened."""
+    _, out, _ = gh(["api", path, "--paginate", "--slurp"], None)
+    data = json.loads(out)
+    if isinstance(data, list) and all(isinstance(page, list) for page in data):
+        return [item for page in data for item in page]
+    if isinstance(data, list):
+        return data
+    raise GateError("unexpected response from %s" % path)
+
+
 def required_checks(slug: str, base: str) -> List[str] | None:
-    """Names of required checks on the base branch; None when none configured."""
+    """Required check names from branch protection and rulesets; None when none."""
+    names = set()
     code, out, err = gh(["api", "repos/%s/branches/%s/protection/required_status_checks"
                          % (slug, base)], None, allow_fail=True)
-    if code != 0:
-        if "404" in err or "not protected" in err.lower():
-            return None
+    if code == 0:
+        data = json.loads(out)
+        names.update(data.get("contexts") or [])
+        names.update(c.get("context") for c in data.get("checks") or [] if c.get("context"))
+    elif "404" not in err and "not protected" not in err.lower():
         raise GateError("cannot read branch protection: %s" % err.strip())
-    data = json.loads(out)
-    names = set(data.get("contexts") or [])
-    names.update(c.get("context") for c in data.get("checks") or [] if c.get("context"))
+    for rule in gh_json_pages("repos/%s/rules/branches/%s" % (slug, base)):
+        if rule.get("type") == "required_status_checks":
+            for item in (rule.get("parameters") or {}).get("required_status_checks") or []:
+                if item.get("context"):
+                    names.add(item["context"])
     return sorted(names) or None
 
 
@@ -138,10 +208,19 @@ def evaluate(args: argparse.Namespace) -> Dict[str, Any]:
     sensitive = [canonical_glob(g) for g in config.get("sensitive_globs", []) + args.sensitive]
     reasons: List[str] = []
 
+    slug = args.repo or gh(["repo", "view", "--json", "nameWithOwner", "-q",
+                            ".nameWithOwner"], None)[1].strip()
     _, out, _ = gh(["pr", "view", str(args.pr), "--json",
-                    "headRefOid,baseRefName,state,isDraft,files"], args.repo)
+                    "headRefOid,baseRefName,state,isDraft,changedFiles"], args.repo)
     pr = json.loads(out)
-    files = sorted(f["path"] for f in pr.get("files") or [])
+    entries = gh_json_pages("repos/%s/pulls/%d/files" % (slug, args.pr))
+    if len(entries) != pr.get("changedFiles"):
+        raise GateError("read %d changed files but the PR reports %s"
+                        % (len(entries), pr.get("changedFiles")))
+    # A rename is classified by both ends: moving code out of a sensitive
+    # directory is as sensitive as editing it there.
+    files = sorted({p for e in entries
+                    for p in (e.get("filename"), e.get("previous_filename")) if p})
     if pr.get("state") != "OPEN":
         reasons.append("PR is %s, not OPEN" % pr.get("state"))
     if pr.get("isDraft"):
@@ -165,8 +244,6 @@ def evaluate(args: argparse.Namespace) -> Dict[str, Any]:
         if unclassified:
             reasons.append("paths outside the auto-merge allowlist: %s" % ", ".join(unclassified))
 
-    slug = args.repo or gh(["repo", "view", "--json", "nameWithOwner", "-q",
-                            ".nameWithOwner"], None)[1].strip()
     required = required_checks(slug, pr.get("baseRefName", ""))
     check_states: Dict[str, str] = {}
     if required is None:
@@ -177,15 +254,16 @@ def evaluate(args: argparse.Namespace) -> Dict[str, Any]:
         _, out, _ = gh(["pr", "checks", str(args.pr), "--required", "--json", "name,bucket"],
                        args.repo, allow_fail=True)
         try:
-            check_states = {c["name"]: c["bucket"] for c in json.loads(out or "[]")}
+            runs = [(c["name"], c["bucket"]) for c in json.loads(out or "[]")]
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             raise GateError("cannot parse required checks") from exc
         for name in required:
-            state = check_states.get(name, "missing")
-            if state != "pass":
-                reasons.append("required check %s is %s" % (name, state))
+            states = [bucket for check, bucket in runs if check == name] or ["missing"]
+            check_states[name] = ",".join(states)
+            if any(state != "pass" for state in states):
+                reasons.append("required check %s is %s" % (name, check_states[name]))
 
-    return {"merge": not reasons, "merged": False, "pr": args.pr, "sha": args.sha,
+    return {"merge": not reasons, "merged": False, "queued": False, "pr": args.pr, "sha": args.sha,
             "tier": args.tier, "reasons": reasons, "changed_paths": files,
             "sensitive_paths": sensitive_hits, "unclassified_paths": unclassified,
             "required_checks": required, "check_states": check_states}
@@ -208,9 +286,13 @@ def main(argv: List[str] | None = None) -> int:
         if result["merge"] and args.merge:
             gh(["pr", "merge", str(args.pr), "--squash", "--match-head-commit", args.sha],
                args.repo)
-            result["merged"] = True
+            # With a merge queue, gh only enqueues: report merged only when GitHub says so.
+            state = json.loads(gh(["pr", "view", str(args.pr), "--json", "state"],
+                                  args.repo)[1]).get("state")
+            result["merged"] = state == "MERGED"
+            result["queued"] = not result["merged"]
     except (GateError, json.JSONDecodeError) as exc:
-        print(json.dumps({"merge": False, "merged": False, "error": str(exc),
+        print(json.dumps({"merge": False, "merged": False, "queued": False, "error": str(exc),
                           "reasons": [str(exc)]}, indent=2))
         return 2
     print(json.dumps(result, indent=2))

@@ -122,6 +122,13 @@ class CodexTaskTest(unittest.TestCase):
         self.assertIn("codex exec", proc.stdout)
         self.assertFalse(self.args_file.exists())
 
+    def test_rejects_dirty_worktree_before_running(self) -> None:
+        (self.repo / "user-notes.txt").write_text("not mine\n")
+        proc = self.run_task("build", str(self.repo), str(self.brief), action="write")
+        self.assertEqual(proc.returncode, 65)
+        self.assertFalse(self.args_file.exists())
+        self.assertIn("user-notes.txt", git(self.repo, "status", "--porcelain"))
+
     def test_rejects_non_git_directory_and_bad_mode(self) -> None:
         self.assertEqual(self.run_task("build", self.tmp.name, str(self.brief)).returncode, 64)
         self.assertEqual(self.run_task("deploy", str(self.repo), str(self.brief)).returncode, 64)

@@ -8,10 +8,14 @@ README.
 ### Added
 - `brief` skill: FIX / BUILD / CHECK classification, one-owner-per-file splitting and a fixed
   brief format so agents start editing without re-planning. Usable on its own.
-- Engine modes `claude`, `codex` and `mixed`, including Codex native sub-agents and
-  `bin/codex-task.sh` for waves larger than the Codex slot limit.
-- `bin/merge-gate.py`: deterministic merge decision (tier, allowlist, sensitive paths,
-  required checks, exact head SHA) with `--merge` via `gh pr merge --match-head-commit`.
+- Runs entirely in Claude Code (`Agent` sub-agents in worktrees) or entirely in Codex
+  (native `spawn_agent` sub-agents, plus `bin/codex-task.sh` for waves larger than the slot
+  limit).
+- Tier 3 units integrate into a separate PR that waits for the user.
+- `bin/merge-gate.py`: deterministic merge decision (tier, allowlist, sensitive paths
+  including rename sources, every changed file via pagination, required checks from branch
+  protection and rulesets, exact head SHA) with `--merge` via `gh pr merge
+  --match-head-commit`; merge-queue aware.
 - MIT license; everything in English; tests for portability (no personal paths or names).
 
 ### Changed
@@ -22,4 +26,4 @@ README.
 ### Removed
 - SQLite controller, lease and dispatch CLI, per-task strategy stage, review pool,
   global heavy-process lock, `spawn-cc.sh` / `spawn-cx.sh`, guard hooks, credit/weight commands,
-  `orchestra-status` command, hardcoded model names.
+  `orchestra-status` command, hardcoded model names, cross-runtime delegation.

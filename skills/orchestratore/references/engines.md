@@ -1,84 +1,90 @@
-# Engines: how to dispatch builders and verifiers
+# Engines: dispatching builders and verifiers
 
-Three modes, one protocol. Pick the mode in SKILL.md §3 and record it in `RUN.md`.
+The run stays on the runtime that hosts the coordinator: Claude Code sub-agents in Claude
+Code, Codex sub-agents in Codex. Record the runtime and both models in `RUN.md`.
 
 ## Configuration
 
-Optional `.orchestratore/config.toml` (template: `<plugin>/templates/config.toml`). Missing
-keys use the runtime's defaults. Model names are whatever your runtime exposes today; the
-plugin never hardcodes them.
+Optional `.orchestratore/config.toml` (template: `<plugin>/templates/config.toml`). A missing
+file or key means the default below. Model names are whatever your runtime exposes; the plugin
+never hardcodes them.
 
 ```toml
 [engines]
-mode = "auto"          # auto | claude | codex | mixed
 max_parallel = 8
 
 [models]
 claude_builder = "sonnet"
 claude_verifier = "opus"      # must differ from claude_builder
-codex_builder = ""            # "" = Codex default model
-codex_verifier = ""           # must differ from codex_builder in codex mode
+codex_builder = ""            # "" = pick from the models your Codex session lists
+codex_verifier = ""           # must differ from codex_builder
 codex_effort = "medium"
-codex_sandbox = "workspace-write"   # read-only | workspace-write | danger-full-access
+codex_sandbox = "workspace-write"   # for codex-task.sh: read-only | workspace-write | danger-full-access
 ```
 
-`auto`: in Claude Code → `claude` (or `mixed` if `codex` is installed and `codex_builder` is
-set); in Codex → `codex` (or `mixed` if `claude` is installed and `claude_verifier` is set).
-In `codex` mode with empty model keys, pick two different models from the ones your Codex
-session lists and write both in `RUN.md` before the first dispatch.
+In Codex with empty model keys, pick two different models from your session's list and write
+both in `RUN.md` before the first dispatch.
 
 ## Worktrees
 
-Every builder writes in its own worktree on its own branch, created from the run base:
+Every builder writes in its own worktree on its own branch, created from the unit's base
+(the run base, or the integration head that contains the unit's dependencies):
 
 ```bash
 git worktree add -b orch/<run>/<ID> .orchestratore/worktrees/<ID> <base-sha>
 ```
 
-In Claude Code `isolation: "worktree"` does this for you; the builder reports its branch
-and hash. Remove worktrees with `git worktree remove` only after their branch is merged or
-parked.
+Remove a worktree with `git worktree remove` only after its branch is merged or parked.
+Creating worktrees and committing need write access to `.git`: if your sandbox denies it,
+stop at §1 and tell the user (Codex: relaunch with a sandbox that allows git writes, e.g.
+`--sandbox danger-full-access` in a trusted repo).
 
-## Mode `claude`
+## Claude Code
 
 Builders, all in **one message**, `run_in_background: true`:
 
 ```text
 Agent(subagent_type="orchestratore:builder", model=<claude_builder>,
-      isolation="worktree", description="<ID>", prompt=<brief content + gate commands>)
+      isolation="worktree", description="<ID>", prompt=<brief content>)
 ```
+
+`isolation: "worktree"` creates the worktree from the current checkout; for a later wave,
+check out the integration head first, or create the worktree yourself and pass
+`workdir: <path>` in the prompt without `isolation`. The builder reports branch and hash.
 
 Verifier, the moment a builder reports:
 
 ```text
 Agent(subagent_type="orchestratore:verifier", model=<claude_verifier>,
-      prompt="worktree: <path>  hash: <sha>  base: <base-sha>\n" + <brief content>)
+      prompt="worktree: <path>  hash: <sha>  base: <unit base sha>\n" + <brief content>)
 ```
 
-A correction goes back to the same builder with `SendMessage` to its agent ID. If the
-plugin agents are not available, use `general-purpose` and paste the body of
+A correction goes back to the same builder with `SendMessage` to its agent ID. If the plugin
+agents are not available, use `general-purpose` and paste the body of
 `<plugin>/agents/builder.md` or `verifier.md` at the top of the prompt.
 
-## Mode `codex`
+## Codex
 
-**Native sub-agents** (Codex `multi_agent`): the session allows a fixed number of active
-agents including you (commonly 4, so 3 workers; `list_agents` shows the current ones). Sub-agents
-share your directory, so the worktree goes in the message:
+**Native sub-agents** (`multi_agent`). The session allows a fixed number of active agents
+including you (commonly 4, so 3 sub-agents; `list_agents` shows the live ones). Sub-agents
+share your directory, so create the worktree first and put it in the message:
 
 ```text
 spawn_agent(task_name="<ID>", fork_turns="none", model=<codex_builder>,
             reasoning_effort=<codex_effort>,
             message=<body of <plugin>/agents/builder.md> + "workdir: <abs worktree path>\n"
-                    + "Run every command and edit only inside workdir.\n" + <brief content>)
+                    + <brief content>)
 ```
 
-`fork_turns="none"` is required for the model and effort overrides to apply, and it keeps
-the sub-agent's context clean. Wait with `wait_agent`; send a correction with
+`fork_turns="none"` is required for the model and effort overrides to apply and keeps the
+sub-agent's context clean; this skill is the instruction that authorises the override. Wait
+with `wait_agent` and handle whichever agent reports first; send a correction with
 `followup_task(target=<ID>, message=<findings>)`. Verifiers are spawned the same way with
-`<plugin>/agents/verifier.md` and `model=<codex_verifier>`.
+`<plugin>/agents/verifier.md` and `model=<codex_verifier>`. If a builder could not commit
+(sandbox), commit its worktree yourself before verifying.
 
-**Beyond the slot limit**, run each unit as its own Codex process. One line dispatches the
-whole wave in parallel and prints `<ID> hash=<sha>` per unit as each finishes:
+**Waves larger than the slot limit**: run each unit as its own Codex process. One line
+dispatches them in parallel and prints `<ID> hash=<sha>` as each finishes:
 
 ```bash
 printf '%s\n' U-1 U-2 U-3 U-4 U-5 | xargs -P 8 -I{} \
@@ -86,26 +92,14 @@ printf '%s\n' U-1 U-2 U-3 U-4 U-5 | xargs -P 8 -I{} \
   build .orchestratore/worktrees/{} .orchestratore/briefs/{}.md
 ```
 
-The script commits the builder's changes itself (a sandboxed Codex may not be able to write
-the shared `.git`). Verify with the same script in `verify` mode and `--model
-<codex_verifier>`, passing a brief file that contains the verifier instructions, the hash
-and the unit brief. A verify run that changes tracked files exits 3.
+The script refuses a dirty worktree, commits the builder's changes itself and never pushes.
+Verify each delivered hash with a sub-agent as above, or with `codex-task.sh verify
+--model <codex_verifier>` and a brief file holding `agents/verifier.md`, the hash and the unit
+brief (a verify run that changes tracked files exits 3).
 
-## Mode `mixed`
+## Failures
 
-The cheaper engine builds, the other verifies, so builder and verifier differ by runtime.
-
-- Claude Code coordinator, Codex builds: `codex-task.sh build` per unit (background Bash or
-  one `xargs -P` line); verify with `Agent(orchestratore:verifier)`.
-- Codex coordinator, Claude verifies: after each `hash=`, run
-  `claude -p --model <claude_verifier> --permission-mode bypassPermissions --disallowed-tools Edit Write NotebookEdit < verify-brief.md`
-  from the worktree, where `verify-brief.md` holds `agents/verifier.md`, the hash and the
-  unit brief. Afterwards `git status --porcelain` must be empty and HEAD unchanged;
-  otherwise discard the verdict.
-
-## Runtime failure
-
-Exit codes 69 (not installed), quota, authentication or credit errors: mark the engine
-`unavailable` in `RUN.md`, move its queued units to the other engine or mode, and keep the
-builder/verifier model difference. Both engines unavailable: `status: parked`, report, stop.
-Do not retry an engine that failed for credit or quota until the user says it is restored.
+Quota, authentication or credit errors on a model: retry the unit once on another model of the
+same runtime, keeping builder and verifier different. Runtime exhausted: `status: parked`,
+report, stop. Do not retry a model that failed for credit or quota until the user says it is
+restored.

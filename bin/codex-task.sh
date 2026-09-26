@@ -13,7 +13,7 @@
 # Output: `<id> hash=`, `<id> log=` and `<id> last=` lines on stdout (safe to run many in
 # parallel with xargs -P); the full transcript is in the log
 # next to the brief (<brief-dir>/<id>.<mode>.log), the final message in <id>.<mode>.last.md.
-# Exit: Codex's exit code, 3 on a verify violation, 64 on bad usage.
+# Exit: Codex's exit code, 3 on a verify violation, 64 on bad usage, 65 on a dirty worktree.
 set -uo pipefail
 
 usage() { echo "usage: codex-task.sh [--dry-run] [--model M] [--effort E] [--sandbox S] <build|verify> <worktree> <brief.md>" >&2; exit 64; }
@@ -59,7 +59,10 @@ if [ "$DRY_RUN" -eq 1 ]; then
 fi
 command -v codex >/dev/null 2>&1 || { echo "codex is not installed" >&2; exit 69; }
 
-HEAD_BEFORE="$(git -C "$WORKTREE" rev-parse HEAD)"
+HEAD_BEFORE="$(git -C "$WORKTREE" rev-parse HEAD)" || { echo "cannot read HEAD in $WORKTREE" >&2; exit 1; }
+DIRTY="$(git -C "$WORKTREE" status --porcelain)" || { echo "git status failed in $WORKTREE" >&2; exit 1; }
+# Build commits everything it finds, so it must start clean: never sweep in someone else's work.
+[ -z "$DIRTY" ] || { printf 'worktree is not clean, refusing to run:\n%s\n' "$DIRTY" >&2; exit 65; }
 printf '=== %s %s %s\n' "$(date -u +%FT%TZ)" "$MODE" "$*" >> "$LOG"
 "$@" < "$BRIEF" >> "$LOG" 2>&1
 STATUS=$?
@@ -68,8 +71,11 @@ echo "$ID log=$LOG"
 echo "$ID last=$LAST"
 [ "$STATUS" -eq 0 ] || { echo "codex exited $STATUS; nothing committed" >&2; exit "$STATUS"; }
 
+HEAD_AFTER="$(git -C "$WORKTREE" rev-parse HEAD)" || { echo "cannot read HEAD in $WORKTREE" >&2; exit 1; }
+CHANGES="$(git -C "$WORKTREE" status --porcelain)" || { echo "git status failed in $WORKTREE" >&2; exit 1; }
+
 if [ "$MODE" = verify ]; then
-  if [ "$(git -C "$WORKTREE" rev-parse HEAD)" != "$HEAD_BEFORE" ] || ! git -C "$WORKTREE" diff --quiet HEAD; then
+  if [ "$HEAD_AFTER" != "$HEAD_BEFORE" ] || ! git -C "$WORKTREE" diff --quiet HEAD; then
     echo "$ID violation: verify changed HEAD or tracked files in $WORKTREE"
     exit 3
   fi
@@ -77,9 +83,10 @@ if [ "$MODE" = verify ]; then
   exit 0
 fi
 
-if [ -z "$(git -C "$WORKTREE" status --porcelain)" ]; then
+if [ -z "$CHANGES" ]; then
   echo "$ID no changes to commit"
 else
   git -C "$WORKTREE" add -A && git -C "$WORKTREE" commit -q -m "orchestratore: $ID" || { echo "commit failed in $WORKTREE" >&2; exit 1; }
+  HEAD_AFTER="$(git -C "$WORKTREE" rev-parse HEAD)" || { echo "cannot read HEAD in $WORKTREE" >&2; exit 1; }
 fi
-echo "$ID hash=$(git -C "$WORKTREE" rev-parse HEAD)"
+echo "$ID hash=$HEAD_AFTER"

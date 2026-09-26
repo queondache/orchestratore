@@ -12,7 +12,7 @@ time on paperwork. The plugin also depended on one user's machine, language and 
 ## Goal
 
 From "here is the work" to verified, merged or PR-ready changes as fast as the work's real
-independence allows, on Claude Code alone, on Codex alone, or on both.
+independence allows, with the whole run in Claude Code or the whole run in Codex.
 
 Success measures: time to first edit, time to first verified delivery, idle time waiting for
 review, rework rounds, interruptions of the user.

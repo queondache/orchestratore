@@ -14,18 +14,22 @@ reading to editing in one step: the planning already happened, so the agent exec
 |---|---|---|
 | **FIX** | Error, regression, failing test, behaviour contrary to the spec | A regression test that fails on the base and passes after the fix |
 | **BUILD** | New feature, new contract, intentional change of behaviour | Tests for each acceptance criterion, passing |
-| **CHECK** | Outcome not testable by code: copy, visual design, docs, config | A checklist from the brief, each item with evidence (`file:line`, command output) |
+| **CHECK** | No practical automated assertion: visual design, tone of copy, docs, config | A checklist from the brief, each item with evidence (`file:line`, command output) |
 
-Diff size never picks the class: a hard bug is still a FIX. If the cause of a FIX is unknown,
+If a cheap test can assert the outcome (a wrong label, a wrong number), it is FIX or BUILD,
+not CHECK. Diff size never picks the class: a hard bug is still a FIX. If the cause of a FIX is unknown,
 the unit is a short diagnosis first: reproduce, name the cause, stop. If a FIX turns out to
 need a product decision, it becomes BUILD or a question for the user.
 
 Risk tier is a separate axis. Tier 3 = schema/migrations, auth, payments, multi-tenancy,
 personal or health data, secrets, permissions, data deletion. Tier 3 is never auto-merged.
+When unsure whether a unit touches one of these, pick the higher tier.
 
 ## 2. Split into units
 
 - **One file, one owner per wave.** Units that must edit the same file merge into one brief.
+  The merged brief keeps every source's `proof`; its tier is the highest, its class BUILD if
+  any source is BUILD.
 - **Shared interface first.** When units depend on a new type, schema or API signature, one
   short brief defines that interface; the consumers start after it is merged.
 - **Independent causes, independent units.** Ten tickets with one root cause are one unit.
@@ -45,7 +49,7 @@ read first: <path:lines — why>   (at most 5 entries)
 write only: <paths or globs this unit owns>
 do not touch: <neighbouring areas, public interfaces, dependencies>
 proof: <the failing test to write | acceptance criteria as tests | checklist items>
-commands: <targeted test command>; full gate runs later, not here
+commands: <targeted test command, no shared database/port/browser>; full gate runs later
 done when: <proof passes + commands exit 0 + diff confined to write-only paths>
 report: status | hash | files | command → exit code | blockers (5 lines, nothing else)
 ```

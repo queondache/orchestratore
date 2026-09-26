@@ -12,8 +12,8 @@ Ignore any builder report, plan or opinion if one reaches you.
 
 ## Rules
 
-- Never modify tracked files, commit, push or merge. Bash is for reading, git inspection and
-  running the brief's commands. Leave `git status` exactly as you found it.
+- Never modify files in the worktree you review, commit, push or merge. Bash is for reading,
+  git inspection and running the brief's commands. Leave its `git status` exactly as found.
 - Every claim comes from a command you ran in this session. No command, no claim.
 - If something cannot be checked with your tools, write `unverifiable: <why>`; do not guess.
 
@@ -23,9 +23,10 @@ Ignore any builder report, plan or opinion if one reaches you.
 2. **Scope:** `git -C <worktree> diff --name-only <base>...<hash>` stays inside `write only`.
 3. **Commands:** run the brief's `commands` (on a final pass: the full gate) and keep exit codes.
 4. **Proof by class:**
-   - FIX: restore the base version of the changed non-test files
-     (`git checkout <base> -- <files>`), run the new test: it must fail. Then
-     `git checkout <hash> -- <files>` and confirm `git status` is clean.
+   - FIX: in a throwaway worktree, never the reviewed one:
+     `git worktree add --detach <tmp> <hash>`; in `<tmp>` run
+     `git checkout <base> -- <changed non-test files>` and the new test: it must fail.
+     Then `git worktree remove --force <tmp>`.
    - BUILD: every acceptance criterion has a named test that exists, asserts it, and passes.
    - CHECK: every checklist item has evidence (`file:line`, command output).
 

@@ -5,7 +5,8 @@ features or roadmap milestones; it plans once, dispatches every independent unit
 verifies each delivery with a different model the moment it arrives, and merges only through a
 deterministic gate.
 
-Works all-Claude, all-Codex, or mixed (one runtime builds, the other verifies).
+Start it in Claude Code or in Codex: the coordinator keeps the logic of the whole run and its
+sub-agents come from the same runtime.
 
 ## Why
 
@@ -33,8 +34,8 @@ Claude Code:
 Codex: add the marketplace in `.agents/plugins/marketplace.json` of this repository, or clone
 the repository and point Codex at `./skills/`.
 
-Requirements: `git`, `python3` (3.9+), `gh` (authenticated) for PRs and merges. Optional:
-the other CLI (`codex` or `claude`) for mixed mode.
+Requirements: `git`, `python3` (3.9+), `gh` (authenticated) for PRs and merges. In Codex,
+a sandbox that allows git writes (worktrees and commits).
 
 ## Use
 
@@ -49,7 +50,7 @@ Other subcommands: `status`, `resume`, `stop`. The run state lives in
 Optional `.orchestratore/config.toml`; see [templates/config.toml](templates/config.toml).
 The main keys:
 
-- `[engines] mode` — `auto`, `claude`, `codex`, `mixed`; `max_parallel` (default 8).
+- `[engines] max_parallel` — concurrent builders (default 8), capped by the runtime's slots.
 - `[models]` — builder and verifier model per runtime (they must differ).
 - `[merge] auto_merge_globs` — the paths allowed to auto-merge. **Empty by default: nothing
   auto-merges until you list paths.** `sensitive_globs` adds to the built-in list (schema,
@@ -62,6 +63,7 @@ The main keys:
 - **Codex:** native sub-agents (`spawn_agent`) up to the session's slot limit, each told to
   work in a coordinator-made worktree; beyond that, `bin/codex-task.sh` runs one Codex
   process per unit (`xargs -P` for the whole wave) and commits its changes.
+- Tier 3 units go to a separate PR that always waits for you, so they never block the rest.
 - Worktrees, prompts and sandboxes are guardrails against mistakes, not a security boundary
   against a hostile agent.
 
