@@ -92,12 +92,13 @@ whichever agent reports first; send a correction with
 dispatches them in parallel and prints `<ID> hash=<sha>` as each finishes:
 
 ```bash
-printf '%s\n' U-1 U-2 U-3 U-4 U-5 | xargs -P <max_parallel> -I{} \
+printf '%s\n' U-1 U-2 U-3 U-4 U-5 | xargs -P <free> -I{} \
   bash <plugin>/bin/codex-task.sh --model "<codex_builder>" --sandbox <codex_sandbox> \
   build .orchestratore/worktrees/{} .orchestratore/briefs/{}.md
 ```
 
-The script refuses a dirty worktree, commits the builder's changes itself and never pushes.
+`<free>` is `max_parallel` minus the builders and verifiers already running, keeping one
+for verification. The script refuses a dirty worktree, commits the builder's changes itself and never pushes.
 After a failed run, retry the same unit with `--resume` so its own leftover changes are kept.
 Verify each delivered hash with a sub-agent as above, or with `codex-task.sh --model
 <codex_verifier> verify <worktree> <verify-brief.md>`, where the brief file holds

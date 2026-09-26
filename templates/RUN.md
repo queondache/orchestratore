@@ -8,7 +8,7 @@ integration: orch/<run> (tier 1-2)   orch/<run>-review (tier 3)
 runtime: claude | codex
 builder: <model>        verifier: <model, different>
 gate: build=<cmd|none> test=<cmd|none> lint=<cmd|none>
-pipeline: <post-merge CI/deploy found at start | none>   check: <read-only command, e.g. gh run list --commit <sha>>
+pipeline: <post-merge deploy found at start | none>   check: <read-only command, e.g. gh run list --commit <sha> --workflow <deploy>>
 exclusive: <commands that need a shared resource, run one at a time | none>
 git: commit+push+PR automatic | read-only        auto-merge: merge-gate | off
 next: <one action>
@@ -19,8 +19,8 @@ next: <one action>
 |---|---|---|---|---|---|---|---|---|
 | <ID> | FIX/BUILD/CHECK | 1-3 | <paths> | <sha> | <model> | queued/building/verifying/verified/merged/in production/waiting/parked | <sha> | <OK/KO + verifier model> |
 
-States: queued → building → verifying → verified → merged → in production (pipeline green on
-its merge SHA or a later one containing it, or `pipeline: none`) | waiting (PR needs the user) | parked (evidence + resume
+States: queued → building → verifying → verified → merged → in production (deploy green on
+its merge SHA or a later one containing it; with `pipeline: none` the unit stays merged) | waiting (PR needs the user) | parked (evidence + resume
 condition below).
 
 ## Decisions

@@ -33,7 +33,7 @@ on a tier 3 unit is tier 3 too.
 
 - **One file, one owner per wave.** Units that must edit the same file merge into one brief.
   The merged brief keeps every source's `proof`; its tier is the highest, its class BUILD if
-  any source is BUILD.
+  any source is BUILD. Each FIX source keeps its regression oracle as a named proof.
 - **Shared interface first.** When units depend on a new type, schema or API signature, one
   short brief defines that interface; the consumers start after it is merged.
 - **Independent causes, independent units.** Ten tickets with one root cause are one unit.

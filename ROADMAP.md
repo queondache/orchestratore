@@ -9,3 +9,4 @@ Releases up to 0.6.0 (Italian protocol, SQLite controller) are tagged `v0.4.1`�
 | R07-3 | Coordinator on native sub-agents: all-Claude Code or all-Codex | DONE | `skills/orchestratore/`, `bin/codex-task.sh`, `tests/test_codex_task.py` |
 | R07-4 | Deterministic merge gate | DONE | `bin/merge-gate.py`, `tests/test_merge_gate.py` |
 | R07-5 | Measure a real run against the 0.6 baseline (time to first edit, to verified delivery) | OPEN | — |
+| R07-6 | Split CHECK into intent (FIX/BUILD) × proof (test / visual / checklist) | OPEN | idea from Codex review of 0.7.0 |

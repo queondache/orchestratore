@@ -37,11 +37,11 @@ protocol: [verify](references/verify.md). Brief format: the `brief` skill.
 4. Find the real gate commands (build, test, lint) from the project files. Write `none` for a
    missing one; never invent it. Note commands that need an exclusive resource (a shared
    database, a fixed port, a browser): they run only one at a time. Find the post-merge
-   pipeline the same way (`.github/workflows/` triggered on the default branch, deploy
-   config such as `vercel.json` or a Git-connected host) and write it as `pipeline:` with a
-   read-only check command: `gh run list --commit <sha>` for GitHub Actions,
-   `gh api repos/<owner>/<repo>/commits/<sha>/status` for hosts that post commit statuses.
-   `pipeline: none` if there is none.
+   deploy the same way (a `.github/workflows/` job that deploys from the default branch,
+   deploy config such as `vercel.json`, or a Git-connected host) and write it as `pipeline:`
+   with a read-only check command: `gh run list --commit <sha> --workflow <deploy workflow>`
+   for GitHub Actions, `gh api repos/<owner>/<repo>/commits/<sha>/status` for hosts that post
+   commit statuses. `pipeline: none` if nothing deploys; CI that only tests is not a deploy.
 5. Pick the engine (§3), check you can write `.git` by creating the first worktree, and
    write `.orchestratore/RUN.md` from `<plugin>/templates/RUN.md`. Add `.orchestratore/` to
    the file printed by `git rev-parse --git-path info/exclude`, so run files never get
@@ -84,13 +84,14 @@ runtime itself is exhausted, park the run (§7). Never simulate an agent you do 
 
 - Every unit whose dependencies are integrated (merged into its lane branch, §6; a PR merge
   is not needed; a tier 3 unit's tier 1-2 dependencies are merged into the review lane too,
-  never the other way) goes out **in one message**: several `Agent` calls in Claude Code; in Codex,
-  back-to-back `spawn_agent` calls without waiting in between, or one `xargs -P` line for
-  `codex-task.sh`. Its worktree starts from the lane head that already contains those
-  dependencies; record that SHA as the unit's `base`. Serial dispatch of independent units is the main failure this skill exists
-  to prevent.
-- Concurrency: every independent unit, up to `max_parallel` (default 8) and the engine's slot
-  limit. An idle slot without independent work stays idle.
+  never the other way) goes out **in one message**: several `Agent` calls in Claude Code; in
+  Codex, back-to-back `spawn_agent` calls without waiting in between, or one `xargs -P` line
+  for `codex-task.sh`. Its worktree starts from the lane head that already contains those
+  dependencies; record that SHA as the unit's `base`. Serial dispatch of independent units
+  is the main failure this skill exists to prevent.
+- Concurrency: every independent unit, up to `max_parallel` (default 8, builders and
+  verifiers together, native agents and `codex-task.sh` processes alike) and the engine's slot
+  limit, keeping one slot free for verifiers (Codex, 3 slots: 2 builders + 1 verifier).
 - Each builder gets the brief and its worktree path (in Codex also the body of
   `agents/builder.md`). Not your plan, not other units' briefs. Brief commands are targeted
   tests only; exclusive-resource commands run only in §6.
@@ -102,16 +103,16 @@ Do not wait for the wave to finish.
 1. Builder report arrives → start its verifier immediately ([verify](references/verify.md)).
    Only the verifier's verdict, with its commands and exit codes, moves a unit forward. The
    builder's report is a claim. A verdict without commands and exit codes is not a KO: rerun
-   it once on another model.
+   it once on another model; a second malformed verdict counts as a KO.
 2. **OK** → unit `verified`; queue it for integration.
 3. **KO** → send the verifier's findings back to the **same** builder as one bounded
    correction (`SendMessage` / `followup_task`, or a new run on the same worktree).
 4. Second KO on the same finding → new approach: a new builder (fresh sub-agent) on a
    different model of the same runtime, with the findings and a different hypothesis. Third
-   KO → `parked` with the evidence and the condition to resume; free the slot, keep going. A
+   KO → `parked` with the evidence and the condition to resume; free the slot, keep going.
+   Units that depend on a parked unit are parked too ("blocked by <ID>") and resume with it. A
    red gate never stops the run.
-5. A builder that reports a blocker needing the user → record the question (§8) and continue
-   with every unit that does not depend on it.
+5. A blocker needing the user → record the question (§8); continue with units not depending on it.
 
 Write every state change to `RUN.md` at once: unit, engine/model, hash, verdict, next step.
 
@@ -133,16 +134,17 @@ Write every state change to `RUN.md` at once: unit, engine/model, hash, verdict,
    check again before counting it merged. Exit 1 = the PR waits for the user; write the reasons in
    `RUN.md` and do not work around them. Use `--no-required-checks-ok` only when the base has
    no required checks and the full gate passed on this exact SHA.
-6. After a merge, follow the `pipeline:` recorded in §1. `pipeline: none` → the unit is
-   `in production` at merge. Otherwise run the recorded check on the merge SHA: green on it,
-   or on a later merge SHA that contains it (e.g. after a fix-forward) → `in production`; red
-   → open one FIX unit that fixes forward (never revert or force-push on your own); the
-   original unit then takes the FIX unit's final state, with the red run as evidence. A red
-   again after that fix → park both, no further FIX units. Running → check again. No clear green or red within 30 minutes (no run, skipped, cancelled, status
-   not observable) → `waiting` with "deploy to confirm". You check the pipeline; you never
-   trigger a deploy yourself.
-7. Update the project's own progress files if it has them (`ROADMAP.md`, changelog), then
-   start the next wave if units remain.
+6. After a merge, follow the `pipeline:` recorded in §1. `pipeline: none` → the unit stays
+   `merged`, final (report: merged, no deploy observed). Otherwise run the recorded check on
+   the merge SHA: green on it, or on a later merge SHA that contains it (e.g. after a
+   fix-forward) → `in production`; red → open one FIX unit that fixes forward (never revert or
+   force-push on your own); the original unit then takes the FIX unit's final state, with the
+   red run as evidence. A red again after that fix → park both, no further FIX units. Running
+   → check again. No clear green or red within 30 minutes (no run, skipped, cancelled, status
+   not observable) → `waiting` with "deploy to confirm". You never trigger a deploy yourself.
+7. Update the project's own progress files if it has them (`ROADMAP.md`, changelog).
+   Dispatch never waits for steps 4-6: a unit goes out as soon as its dependencies are
+   integrated in its lane (§4); the post-merge check runs alongside.
 
 ## 7. Resume and stop
 
@@ -153,9 +155,8 @@ Write every state change to `RUN.md` at once: unit, engine/model, hash, verdict,
   when you must stop): let running builders reach their report, write `status: parked` and
   `next:` in `RUN.md` (for a deploy: the recorded check command on that SHA), release the
   lock (§1). A stopped run stays `parked`, never `done`.
-- **Done:** only when no deploy is still running and every unit is `in production`, waiting
-  for the user, or parked with evidence. Write the final report (§9), set `status: done` and
-  release the lock.
+- **Done:** no deploy running; every unit `in production`, `merged` with `pipeline: none`,
+  waiting for the user, or parked with evidence. Final report (§9), `status: done`, unlock.
 
 ## 8. Questions
 
@@ -170,7 +171,7 @@ question that ends the turn in Codex. Silence is never an answer.
 After each merge and at the end:
 
 ```text
-In production: <units, deploy run green on sha> | Merged, deploy pending: <units>
+In production: <units, deploy green on sha> | Merged, no deploy observed / deploy pending: <units>
 Waiting for you: <PRs / questions> | Parked: <units + reason>
 Verified since last report: <unit — verdict on sha>
 Engines: <runtime, builder model, verifier model>; slots <in use>/<limit>

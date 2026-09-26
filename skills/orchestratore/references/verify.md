@@ -22,6 +22,9 @@ Then by class:
 | **BUILD** | Each acceptance criterion in `proof` maps to a named test that exists and passes | a criterion has no test, or a test does not assert it |
 | **CHECK** | Each checklist item in `proof` has evidence: `file:line`, command output, or a rendered result | an item is unverified or contradicted |
 
+A merged unit (several sources in one brief) runs the proof of every source: the oracle for
+each FIX source, the tests for each BUILD criterion, the evidence for each CHECK item.
+
 **FIX oracle steps:**
 
 1. `git worktree add --detach <tmp> <hash>` and prepare it the way the project needs
