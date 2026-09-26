@@ -38,7 +38,9 @@ protocol: [verify](references/verify.md). Brief format: the `brief` skill.
    missing one; never invent it. Note commands that need an exclusive resource (a shared
    database, a fixed port, a browser): they run only one at a time. Find the post-merge
    pipeline the same way (`.github/workflows/` triggered on the default branch, deploy
-   config such as `vercel.json` or a Git-connected host) and write it as `pipeline:`, or
+   config such as `vercel.json` or a Git-connected host) and write it as `pipeline:` with a
+   read-only check command: `gh run list --commit <sha>` for GitHub Actions,
+   `gh api repos/<owner>/<repo>/commits/<sha>/status` for hosts that post commit statuses.
    `pipeline: none` if there is none.
 5. Pick the engine (§3), check you can write `.git` by creating the first worktree, and
    write `.orchestratore/RUN.md` from `<plugin>/templates/RUN.md`. Add `.orchestratore/` to
@@ -132,12 +134,13 @@ Write every state change to `RUN.md` at once: unit, engine/model, hash, verdict,
    `RUN.md` and do not work around them. Use `--no-required-checks-ok` only when the base has
    no required checks and the full gate passed on this exact SHA.
 6. After a merge, follow the `pipeline:` recorded in §1. `pipeline: none` → the unit is
-   `in production` at merge. Otherwise check its runs on the merge SHA (`gh run list --commit
-   <sha>`, or the host's deploy status): not started yet or running → pending, check again;
-   green on the unit's merge SHA, or on a later merge SHA that contains it (e.g. after a
-   fix-forward) → `in production`; red → open a FIX unit that fixes forward (never revert or
-   force-push on your own). If that FIX unit is parked, park the original unit too, with the
-   red run as evidence. You check the pipeline; you never trigger a deploy yourself.
+   `in production` at merge. Otherwise run the recorded check on the merge SHA: green on it,
+   or on a later merge SHA that contains it (e.g. after a fix-forward) → `in production`; red
+   → open a FIX unit that fixes forward (never revert or force-push on your own), and if that
+   FIX unit is parked, park the original unit too, with the red run as evidence; running →
+   check again. No clear green or red within 30 minutes (no run, skipped, cancelled, status
+   not observable) → `waiting` with "deploy to confirm". You check the pipeline; you never
+   trigger a deploy yourself.
 7. Update the project's own progress files if it has them (`ROADMAP.md`, changelog), then
    start the next wave if units remain.
 
@@ -148,7 +151,7 @@ Write every state change to `RUN.md` at once: unit, engine/model, hash, verdict,
   then dispatch.
 - **Stop** (user asks, context running out, runtime exhausted, or a deploy still running
   when you must stop): let running builders reach their report, write `status: parked` and
-  `next:` in `RUN.md` (for a deploy: re-check `gh run list --commit <sha>`), release the
+  `next:` in `RUN.md` (for a deploy: the recorded check command on that SHA), release the
   lock (§1). A stopped run stays `parked`, never `done`.
 - **Done:** only when no deploy is still running and every unit is `in production`, waiting
   for the user, or parked with evidence. Write the final report (§9), set `status: done` and
