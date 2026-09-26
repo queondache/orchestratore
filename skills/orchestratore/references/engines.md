@@ -81,7 +81,7 @@ spawn_agent(task_name="<ID>", fork_turns="none", model=<codex_builder>,
 sub-agent's context clean; this skill is the instruction that authorises the override. Since
 the sub-agent does not inherit your context, put the repository rules it must follow in the
 brief (`do not touch`, `read first`). Issue the `spawn_agent` calls back to back, then wait
-with `wait_agent` (timeout of 15 minutes or less, for the lock heartbeat) and handle
+with `wait_agent` and handle
 whichever agent reports first; send a correction with
 `followup_task(target=<ID>, message=<findings>)`. A model change needs a new sub-agent:
 `followup_task` keeps the old model. Verifiers are spawned the same way with

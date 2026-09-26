@@ -21,16 +21,14 @@ protocol: [verify](references/verify.md). Brief format: the `brief` skill.
 2. **Lock first, always, for start and resume.** `mkdir -p .orchestratore && mkdir
    .orchestratore/coordinator.lock` is atomic: if it succeeds, write
    `coordinator.lock/owner` (`token: <random> runtime: <claude|codex> updated: <ISO time>`).
-   If it fails because the lock exists: `updated` less than 60 minutes old (or no `owner`
-   file yet), or any `orch/` branch has a commit from the last 60 minutes (a Claude Code
-   coordinator cannot refresh the lock while it waits for agents) → another coordinator
-   may be live, stop and ask the user; otherwise stale: take it over with `mv .orchestratore/coordinator.lock .orchestratore/stale-lock-<time>` (atomic,
-   only one session wins), then `mkdir` again and log the takeover in `RUN.md`. If `mkdir`
-   fails for permissions, the repo is read-only: stop and tell the user.
+   If it fails because the lock exists, another coordinator may be live: stop and ask the
+   user, showing `owner`. Never take a lock over by yourself, however old it looks: only
+   the user can confirm the previous coordinator is gone and remove it. If `mkdir` fails for
+   permissions, the repo is read-only: stop and tell the user.
    Before every state change, dispatch or merge, check that `owner` still holds your token;
-   if not, you lost the lock: stop at once without writing anything. Heartbeat: refresh
-   `updated` on every state change and at least every 15 minutes (keep waits on agents at 15
-   minutes or less). Release at the end, only with your token still there:
+   if not, you lost the lock: stop at once without writing anything. Refresh `updated` on
+   every state change, so the user can see how recent it is. Release at the end, only with
+   your token still there:
    `rm .orchestratore/coordinator.lock/owner && rmdir .orchestratore/coordinator.lock`.
    Then, if `.orchestratore/RUN.md` has `status: active` or `parked`, this is a resume:
    go to §7. Never start a new run over a resumable one unless the user says so.
