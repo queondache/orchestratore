@@ -136,9 +136,9 @@ Write every state change to `RUN.md` at once: unit, engine/model, hash, verdict,
 6. After a merge, follow the `pipeline:` recorded in §1. `pipeline: none` → the unit is
    `in production` at merge. Otherwise run the recorded check on the merge SHA: green on it,
    or on a later merge SHA that contains it (e.g. after a fix-forward) → `in production`; red
-   → open a FIX unit that fixes forward (never revert or force-push on your own), and if that
-   FIX unit is parked, park the original unit too, with the red run as evidence; running →
-   check again. No clear green or red within 30 minutes (no run, skipped, cancelled, status
+   → open one FIX unit that fixes forward (never revert or force-push on your own); the
+   original unit then takes the FIX unit's final state, with the red run as evidence. A red
+   again after that fix → park both, no further FIX units. Running → check again. No clear green or red within 30 minutes (no run, skipped, cancelled, status
    not observable) → `waiting` with "deploy to confirm". You check the pipeline; you never
    trigger a deploy yourself.
 7. Update the project's own progress files if it has them (`ROADMAP.md`, changelog), then
