@@ -14,7 +14,8 @@
 # Output: `<id> hash=`, `<id> log=` and `<id> last=` lines on stdout (safe to run many in
 # parallel with xargs -P); the full transcript is in the log
 # next to the brief (<brief-dir>/<id>.<mode>.log), the final message in <id>.<mode>.last.md.
-# Exit: Codex's exit code, 3 on a verify violation, 64 on bad usage, 65 on a dirty worktree.
+# Exit: Codex's exit code, 3 on a verify violation, 64 on bad usage, 65 on a dirty worktree,
+# 69 when codex is not installed.
 set -uo pipefail
 
 usage() { echo "usage: codex-task.sh [--dry-run] [--resume] [--model M] [--effort E] [--sandbox S] <build|verify> <worktree> <brief.md>" >&2; exit 64; }

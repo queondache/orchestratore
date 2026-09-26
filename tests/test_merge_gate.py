@@ -53,6 +53,9 @@ FAKE_GH = textwrap.dedent("""\
     elif args[:1] == ["api"]:
         path = [a for a in args[1:] if not a.startswith("-")][0]
         if path.endswith("/files"):
+            if os.path.exists(os.path.join(d, "files.fail")):
+                sys.stderr.write("gh: HTTP 502\\n")
+                sys.exit(1)
             emit("files.json")
         elif path.endswith("/required_status_checks"):
             emit("protection.json")
@@ -334,6 +337,25 @@ class MergeGateTest(unittest.TestCase):
         self.assertEqual(code, 2, out)
         self.assertFalse(out["merged"])
         self.assertFalse(out["pending"])
+
+    def test_skipped_required_check_blocks_even_when_gh_exits_zero(self) -> None:
+        self.write("checks.json", [{"name": "ci", "bucket": "skipping"}])
+        code, out = self.run_gate()
+        self.assertEqual(code, 1)
+        self.assertTrue(any("skipping" in r for r in out["reasons"]))
+
+    def test_repo_flag_is_forwarded_to_every_pr_call(self) -> None:
+        self.run_gate("--repo", "owner/repo", "--merge")
+        pr_calls = [c for c in self.calls() if c[:1] == ["pr"]]
+        self.assertTrue(pr_calls)
+        for call in pr_calls:
+            self.assertIn("--repo", call, call)
+
+    def test_files_api_failure_is_an_error(self) -> None:
+        (self.dir / "files.fail").write_text("")
+        code, out = self.run_gate()
+        self.assertEqual(code, 2)
+        self.assertFalse(out["merge"])
 
 
 if __name__ == "__main__":

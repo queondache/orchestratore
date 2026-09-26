@@ -22,8 +22,9 @@ protocol: [verify](references/verify.md). Brief format: the `brief` skill.
    .orchestratore/coordinator.lock` is atomic: if it succeeds, write
    `coordinator.lock/owner` (`token: <random> runtime: <claude|codex> updated: <ISO time>`).
    If it fails because the lock exists: `updated` less than 60 minutes old (or no `owner`
-   file yet) → another coordinator is live, stop and ask the user; older → stale: take it
-   over with `mv .orchestratore/coordinator.lock .orchestratore/stale-lock-<time>` (atomic,
+   file yet), or any `orch/` branch has a commit from the last 60 minutes (a Claude Code
+   coordinator cannot refresh the lock while it waits for agents) → another coordinator
+   may be live, stop and ask the user; otherwise stale: take it over with `mv .orchestratore/coordinator.lock .orchestratore/stale-lock-<time>` (atomic,
    only one session wins), then `mkdir` again and log the takeover in `RUN.md`. If `mkdir`
    fails for permissions, the repo is read-only: stop and tell the user.
    Before every state change, dispatch or merge, check that `owner` still holds your token;

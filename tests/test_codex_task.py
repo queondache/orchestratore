@@ -145,6 +145,11 @@ class CodexTaskTest(unittest.TestCase):
         proc = self.run_task("--", "verify", str(self.repo), str(self.brief))
         self.assertEqual(proc.returncode, 0, proc.stderr)
 
+    def test_rejects_invalid_sandbox(self) -> None:
+        proc = self.run_task("--sandbox", "yolo", "build", str(self.repo), str(self.brief))
+        self.assertEqual(proc.returncode, 64)
+        self.assertFalse(self.args_file.exists())
+
     def test_rejects_non_git_directory_and_bad_mode(self) -> None:
         self.assertEqual(self.run_task("build", self.tmp.name, str(self.brief)).returncode, 64)
         self.assertEqual(self.run_task("deploy", str(self.repo), str(self.brief)).returncode, 64)

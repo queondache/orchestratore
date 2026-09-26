@@ -48,9 +48,10 @@ Agent(subagent_type="orchestratore:builder", model=<claude_builder>,
       isolation="worktree", description="<ID>", prompt=<brief content>)
 ```
 
-`isolation: "worktree"` creates the worktree from the current checkout; for a later wave,
-check out the integration head first, or create the worktree yourself and pass
-`workdir: <path>` in the prompt without `isolation`. The builder reports branch and hash.
+`isolation: "worktree"` creates the worktree from the current checkout, so use it only for
+the first wave. For later waves create the worktree yourself from the lane head (above) and
+pass `workdir: <path>` in the prompt without `isolation`; never check out branches in the
+user's own checkout. The builder reports worktree, branch and hash.
 
 Verifier, the moment a builder reports:
 

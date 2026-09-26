@@ -55,7 +55,7 @@ do not touch: <neighbouring areas, public interfaces, dependencies>
 proof: <the failing test to write | acceptance criteria as tests | checklist items>
 commands: <targeted test command, no shared database/port/browser>; full gate runs later
 done when: <proof passes + commands exit 0 + diff confined to write-only paths>
-report: status | hash | files | command → exit code | blockers (5 lines, nothing else)
+report: status | worktree + branch | hash | files | command → exit code | blockers
 ```
 
 Rules every builder receives with its brief (paste verbatim; verifiers do not get them):
@@ -79,7 +79,7 @@ do not touch: src/cart/shipping.ts, the Discount type
 proof: test "applies discount when shipping is free" fails on base, passes after
 commands: npm test -- tests/cart/total.test.ts
 done when: proof passes, command exits 0, diff only in the two files
-report: status | hash | files | command → exit code | blockers
+report: status | worktree + branch | hash | files | command → exit code | blockers
 ```
 
 ## Common mistakes
@@ -90,4 +90,4 @@ report: status | hash | files | command → exit code | blockers
 | Pasting whole files or the full spec | `read first` with path and line range |
 | Two briefs writing the same file in one wave | Merge them, or sequence them |
 | `proof` says "add tests" | Name the test and what it must show |
-| Report asks for a narrative | Five fixed lines; details stay in the log |
+| Report asks for a narrative | Six fixed lines; details stay in the log |

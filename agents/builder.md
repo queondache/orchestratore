@@ -33,6 +33,7 @@ planned the work: you execute the brief, you do not re-plan it or re-explore the
 
 ```text
 status: done | blocked | failed
+worktree: <absolute path>   branch: <git branch --show-current>
 hash: <git rev-parse HEAD, or "uncommitted">
 files: <changed paths>
 commands: <command> → exit <code>   (one line each)
