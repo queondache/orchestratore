@@ -128,8 +128,12 @@ Write every state change to `RUN.md` at once: unit, engine/model, hash, verdict,
    check again before counting it merged. Exit 1 = the PR waits for the user; write the reasons in
    `RUN.md` and do not work around them. Use `--no-required-checks-ok` only when the base has
    no required checks and the full gate passed on this exact SHA.
-6. After a merge, update the project's own progress files if it has them (`ROADMAP.md`,
-   changelog), then start the next wave if units remain.
+6. After a merge, check the CI and deploy runs on the merge SHA (`gh run list --commit
+   <sha>`, or the project's deploy status). Red → open a FIX unit that fixes forward (never
+   revert or force-push on your own). Report a unit as "in production" only when that run
+   is green. You check the project's pipeline; you never trigger a deploy yourself.
+7. Update the project's own progress files if it has them (`ROADMAP.md`, changelog), then
+   start the next wave if units remain.
 
 ## 7. Resume and stop
 
@@ -138,7 +142,8 @@ Write every state change to `RUN.md` at once: unit, engine/model, hash, verdict,
   then dispatch.
 - **Stop** (user asks, context running out, runtime exhausted): let running builders reach
   their report, write `status: parked` and `next:` in `RUN.md`, release the lock (§1).
-- **Done:** every unit merged, waiting for the user, or parked with evidence. Write the final
+- **Done:** every unit in production (merged, pipeline green), waiting for the user, or
+  parked with evidence. Write the final
   report (§9), set `status: done` and release the lock.
 
 ## 8. Questions
@@ -154,7 +159,8 @@ question that ends the turn in Codex. Silence is never an answer.
 After each merge and at the end:
 
 ```text
-Done: <units merged> | Waiting for you: <PRs / questions> | Parked: <units + reason>
+In production: <units, deploy run green on sha> | Merged, deploy pending: <units>
+Waiting for you: <PRs / questions> | Parked: <units + reason>
 Verified since last report: <unit — verdict on sha>
 Engines: <runtime, builder model, verifier model>; slots <in use>/<limit>
 Next: <one action>
