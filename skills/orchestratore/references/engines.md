@@ -105,7 +105,8 @@ After a failed run, retry the same unit with `--resume` so its own leftover chan
 Verify each delivered hash with a sub-agent as above, or with `codex-task.sh --model
 <codex_verifier> verify <worktree> <verify-brief.md>`, where the brief file holds
 `agents/verifier.md`, the hash and the unit brief (a verify run that changes tracked files
-exits 3). These processes need the Codex CLI logged in; they share the session's credit.
+exits 3). Its verdict is `<ID>.verify.last.md`: pass it to `bin/verdict-check.py --verdict
+<file> --hash <hash>` before acting on it, like every verdict. These processes need the Codex CLI logged in; they share the session's credit.
 
 ## Mixed: Claude Code coordinates, Codex builds
 
@@ -134,7 +135,7 @@ coordinator. Builder and verifier then differ by runtime, not only by model.
    Exit 65 (dirty worktree) → inspect; the unit's own leftovers after a failure → rerun with
    `--resume`.
 6. **Verify:** `Agent(orchestratore:verifier, model=<claude_verifier>)` on the hash, as in the
-   Claude Code section.
+   Claude Code section, then `bin/verdict-check.py --hash <hash>` on its verdict.
 7. **KO:** first KO → a new `codex-task.sh build` on the same worktree with
    `.orchestratore/briefs/codex-fix1/<ID>.md` = the brief + the verifier's findings.
    Second KO → new approach on the

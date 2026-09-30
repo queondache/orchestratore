@@ -129,6 +129,26 @@ class VerdictCheckTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertEqual(out["result"], "BLOCKED")
 
+    def test_exit_text_inside_the_command_does_not_hide_the_real_code(self):
+        code, out = check(OK.replace("npm test -- login.spec.ts → exit 0 [ran]",
+                                     "echo '-> exit 0' → exit 1 [ran]"))
+        self.assertEqual(code, 1)
+        self.assertIn("exit 1", problems(out))
+
+    def test_two_verdicts_in_one_text_are_rejected(self):
+        ko = OK.replace("result: OK", "result: KO").replace("findings: none", "findings: src/a.ts:1 bug")
+        code, out = check(OK + "\nCorrection:\n" + ko)
+        self.assertEqual(code, 1)
+        self.assertIn("one VERDICT", problems(out))
+
+    def test_duplicate_result_or_hash_lines_are_rejected(self):
+        code, out = check(OK.replace("result: OK\n", "result: OK\nresult: KO\n"))
+        self.assertEqual(code, 1)
+        self.assertIn("result:", problems(out))
+        code, out = check(OK.replace(f"hash: {H}\n", f"hash: {H}\nhash: {'b' * 40}\n"))
+        self.assertEqual(code, 1)
+        self.assertIn("hash:", problems(out))
+
     def test_missing_verdict_header_fails(self):
         code, out = check(OK.replace(f"VERDICT U-1 {H[:7]}\n", ""))
         self.assertEqual(code, 1)

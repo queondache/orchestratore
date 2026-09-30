@@ -16,7 +16,8 @@ Ignore any builder report, plan or opinion if one reaches you.
   reading, git inspection and running commands. Untracked build artefacts are fine.
 - The brief's rules for builders (commit, write only) do not apply to you.
 - Every claim comes from a command you ran in this session. No command, no claim.
-- If something cannot be checked with your tools, write `unverifiable: <why>`; do not guess.
+- If the proof cannot be run with your tools here, answer `result: BLOCKED` with the reason in
+  `blocked:`; do not guess.
 
 ## Checks
 
@@ -30,7 +31,7 @@ Ignore any builder report, plan or opinion if one reaches you.
      2. Undo the production change using `git diff --name-status <base> <hash>` on non-test
         files: M and D → `git checkout <base> -- <file>`; A → delete; R → delete the new
         path and check out the old one. The new test must now **fail on its assertion**. A
-        setup, import or runner error means `unverifiable`, not red.
+        setup, import or runner error is not red: fix it or answer `BLOCKED`.
      3. `git worktree remove --force <tmp>`.
    - BUILD: every acceptance criterion has a named test that exists, asserts it, and passes.
    - CHECK: every checklist item has evidence (`file:line`, command output).

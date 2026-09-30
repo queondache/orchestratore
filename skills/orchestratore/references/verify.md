@@ -34,7 +34,7 @@ each FIX source, the tests for each BUILD criterion, the evidence for each CHECK
    non-test files: modified (M) and deleted (D) → `git checkout <base> -- <file>`; added (A)
    → delete; renamed (R) → delete the new path and `git checkout <base> -- <old path>`.
 4. Run the new test again: it must **fail on its assertion**. A setup, import or runner error
-   is `unverifiable`, not a red oracle: fix the environment or report it.
+   is not a red oracle: fix the environment or answer `BLOCKED` with what is missing.
 5. `git worktree remove --force <tmp>`.
 
 The final pass on a lane head (SKILL.md §6) runs the full gate (build, test, lint) instead of

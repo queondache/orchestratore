@@ -30,8 +30,11 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 RESULTS = {"OK", "KO", "BLOCKED"}
-COMMAND_RE = re.compile(r"(?:→|->)\s*exit\s+(-?\d+)\b(.*)$")
-TAG_RE = re.compile(r"\[(ran|ci|reused)(?:\s+([^\]]*))?\]\s*$")
+# Exit code and provenance tag must close the line, so text inside the command
+# (e.g. `echo '-> exit 0'`) can never stand in for the real result.
+COMMAND_RE = re.compile(r"(?:→|->)\s*exit\s+(-?\d+)\s*(\[[^\]]*\])?\s*$")
+ANY_EXIT_RE = re.compile(r"(?:→|->)\s*exit\s+-?\d+")
+TAG_RE = re.compile(r"^\[(ran|ci|reused)(?:\s+([^\]]*))?\]$")
 
 
 def field(lines: List[str], name: str) -> Optional[str]:
@@ -52,6 +55,11 @@ def evaluate(text: str, delivered: Optional[str]) -> Dict[str, object]:
     if start is None:
         return {"valid": False, "result": None, "problems": ["no `VERDICT <ID> <hash>` header"]}
     lines = [line for line in raw[start:] if not line.startswith("```")]
+    if sum(1 for line in lines if line.startswith("VERDICT ")) > 1:
+        problems.append("more than one VERDICT block: send exactly one verdict")
+    for name in ("result", "hash", "scope", "findings", "blocked"):
+        if sum(1 for line in lines if line.startswith(f"{name}:")) > 1:
+            problems.append(f"more than one `{name}:` line")
 
     header = lines[0].split()
     header_hash = header[2] if len(header) >= 3 else ""
@@ -76,10 +84,13 @@ def evaluate(text: str, delivered: Optional[str]) -> Dict[str, object]:
     for cmd in commands:
         m = COMMAND_RE.search(cmd)
         if not m:
-            problems.append(f"command without `→ exit <code>`: {cmd!r}")
+            if ANY_EXIT_RE.search(cmd):
+                problems.append(f"command must end with `→ exit <code> [provenance]`: {cmd!r}")
+            else:
+                problems.append(f"command without `→ exit <code>`: {cmd!r}")
             continue
-        code, rest = int(m.group(1)), m.group(2).strip()
-        tag = TAG_RE.search(rest)
+        code = int(m.group(1))
+        tag = TAG_RE.match(m.group(2) or "")
         if not tag:
             problems.append(f"command without provenance [ran|ci <ref>|reused <what>]: {cmd!r}")
             continue

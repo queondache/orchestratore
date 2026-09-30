@@ -11,7 +11,8 @@ blocked verdict distinct from failure).
   the delivered one; result OK, KO or BLOCKED; every command with `→ exit <n>` and a
   provenance tag `[ran]`, `[ci <ref>]` or `[reused <what>]`; OK only with every exit 0, only
   `ran`/`ci` evidence, no scope violation, no findings. JSON, exit 0/1/2. The coordinator acts
-  only on an accepted verdict.
+  only on an accepted verdict; exit code and tag must close the command line, and a text with
+  two verdicts or duplicate `result:`/`hash:` lines is rejected.
 - Verdict result `BLOCKED` with a `blocked:` line: the proof cannot run here (missing
   database, service, memory, credentials). Not a KO, does not count against the unit; the
   coordinator provides the means (the project's checks on the exact hash) or sets `waiting`.
