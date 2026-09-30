@@ -17,6 +17,17 @@ GOAL="$(field goal)"
 [ -n "$GOAL" ] && printf 'goal: %s\n' "$GOAL"
 NEXT="$(field next)"
 [ -n "$NEXT" ] && printf 'next: %s\n' "$NEXT"
+CHECK="$(cd "$(dirname "$0")/.." && pwd)/bin/run-check.py"
+if command -v python3 >/dev/null 2>&1 && [ -f "$CHECK" ]; then
+  PROBLEMS="$(python3 "$CHECK" --run "$RUN" 2>/dev/null | python3 -c 'import json,sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for p in d.get("problems", [])[:3]:
+    print("RUN.md check: " + p)' 2>/dev/null)"
+  [ -n "$PROBLEMS" ] && printf '%s\n' "$PROBLEMS"
+fi
 if [ -f "$ROOT/.orchestratore/coordinator.lock/owner" ]; then
   printf 'coordinator lock: %s (another coordinator may be running; check before starting)\n' \
     "$(tr '\n' ' ' < "$ROOT/.orchestratore/coordinator.lock/owner")"
