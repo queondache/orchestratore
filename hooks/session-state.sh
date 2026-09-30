@@ -13,6 +13,8 @@ STATUS="$(field status)"
 
 printf 'orchestratore run in this repository: status %s, updated %s\n' \
   "${STATUS:-unknown}" "$(field updated)"
+GOAL="$(field goal)"
+[ -n "$GOAL" ] && printf 'goal: %s\n' "$GOAL"
 NEXT="$(field next)"
 [ -n "$NEXT" ] && printf 'next: %s\n' "$NEXT"
 if [ -f "$ROOT/.orchestratore/coordinator.lock/owner" ]; then
