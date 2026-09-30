@@ -23,7 +23,7 @@ next: <the true next action, rewritten on every state change>
 |---|---|---|---|---|---|---|---|---|---|
 | <ID> | FIX/BUILD/CHECK | 1-3 | <paths> | <sha> | <model> | queued/building/verifying/verified/merged/in production/waiting/parked | <sha> | <OK/KO + verifier model> | <0-3; 3 = parked> |
 
-States: queued → building → verifying → verified → merged → in production (deploy green on
+States: queued (note "blocked by PR #n" while its dependencies sit on a blocked lane) → building → verifying → verified → merged → in production (deploy green on
 its merge SHA or a later one containing it; with `pipeline: none` the unit stays merged) | waiting (PR needs the user) | parked (evidence + resume
 condition below).
 

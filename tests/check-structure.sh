@@ -77,7 +77,9 @@ skill_says() { # skill_says <phrase>: the phrase appears in SKILL.md, line break
 }
 check "skill: RUN header overwritten in place, never a second header" skill_says 'never add a second header'
 check "skill: third KO on a unit parks it whatever the findings" skill_says 'Third KO on the unit, whatever the findings'
-check "skill: no dispatch onto a red or waiting lane" skill_says 'never go onto a lane whose full gate is red or whose PR waits'
+check "skill: a lane is blocked while red or waiting for the user" skill_says 'A lane is **blocked** while its full gate is red or its PR waits for the user'
+check "skill: never stack onto a blocked lane; independents open the next lane" skill_says 'an independent unit opens the next lane from the base'
+check "skill: merge and deploy details live in references/merge.md" test -f "$ROOT/skills/orchestratore/references/merge.md"
 check "skill: one PR per wave, never growing across waves" skill_says 'never let one PR grow across waves'
 check "skill: KO count survives new findings and group reviews" skill_says 'counts one KO for each unit in the group'
 check "config template parses as TOML" python3 -c "import sys
