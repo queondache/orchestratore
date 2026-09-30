@@ -20,7 +20,7 @@ Brings back "Claude Code coordinates, Codex builds" (default design up to 0.6, d
 - `bin/run-check.py`: deterministic check of `RUN.md` (one title and one `goal:` / `status:`
   / `updated:` / `next:` line, goal unchanged against `goal.lock`, status value, KO column
   0-3 with a unit at 3 parked, `## Log` last with at most 100 entries). JSON output, exit
-  0/1/2; `--record-goal` at start. Run after every `RUN.md` write and before every merge.
+  0/1/2; `--record-goal` at start and after a resume migration (output `goal_recorded`). Run after every `RUN.md` write and before every merge.
 - The session hook prints up to three `RUN.md check:` problems.
 - Resume migrates an old-format `RUN.md` to `.orchestratore/log/<date>-RUN.md` and starts a
   fresh page carrying goal, units and `next:`.
