@@ -40,7 +40,7 @@ for a in builder verifier diagnostician; do
   f="$ROOT/agents/$a.md"
   check "agent $a: name, model, tools" bash -c "grep -q '^name: $a\$' '$f' && grep -q '^model: ' '$f' && grep -q '^tools: ' '$f'"
 done
-check "diagnostician is read-only" bash -c "! grep -qE '^tools:.*(Write|Edit)' '$ROOT/agents/diagnostician.md'"
+check "diagnostician is read-only" bash -c "grep -q '^tools: ' '$ROOT/agents/diagnostician.md' && ! grep -qE '^tools:.*(Write|Edit)' '$ROOT/agents/diagnostician.md'"
 check "diagnostician returns the fixed diagnosis format" bash -c "grep -q '^DIAGNOSIS <ID>' '$ROOT/agents/diagnostician.md' && grep -q '^cause: code | test | brief | environment' '$ROOT/agents/diagnostician.md' && grep -q '^question: ' '$ROOT/agents/diagnostician.md'"
 check "verifier is read-only" bash -c "! grep -qE '^tools:.*(Write|Edit)' '$ROOT/agents/verifier.md'"
 check "builder and verifier default to different models" bash -c "[ \"\$(sed -n 's/^model: //p' '$ROOT/agents/builder.md')\" != \"\$(sed -n 's/^model: //p' '$ROOT/agents/verifier.md')\" ]"
