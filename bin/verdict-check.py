@@ -38,15 +38,23 @@ RESULTS = {"OK", "KO", "BLOCKED"}
 # verifiers write "exit 0, expected non-zero [ran expect-fail]" or
 # "exit 0 [ran] (12 tests)".
 EXIT_RE = re.compile(r"(?:→|->)\s*exit\s+(-?\d+|non-?zero)\b", re.IGNORECASE)
-TAG_AFTER_RE = re.compile(r"^[^\[]*\[([^\]]*)\]")
-TAG_RE = re.compile(r"^(ran|ci|reused)(?:\s+(.*))?$")
-FIELD_RE = re.compile(r"^[a-z]+:")
+TAG_RE = re.compile(r"\[(ran|ci|reused)(?:\s+([^\]]*))?\]")
+BULLET_RE = re.compile(r"^[-*]\s+")
 
 
 def field(lines: List[str], name: str) -> Optional[str]:
-    for line in lines:
+    """Value of `name:`; an empty value takes the bullet lines right below it."""
+    for i, line in enumerate(lines):
         if line.startswith(f"{name}:"):
-            return line[len(name) + 1:].strip()
+            value = line[len(name) + 1:].strip()
+            if not value:
+                bullets = []
+                for nxt in lines[i + 1:]:
+                    if not BULLET_RE.match(nxt):
+                        break
+                    bullets.append(BULLET_RE.sub("", nxt))
+                value = "; ".join(bullets)
+            return value
     return None
 
 
@@ -85,18 +93,22 @@ def evaluate(text: str, delivered: Optional[str]) -> Dict[str, object]:
     if result not in RESULTS:
         problems.append(f"result {result!r} is not one of OK, KO, BLOCKED")
 
+    # Commands: every `commands:` line, plus the bullet lines right below one. Any other
+    # line carrying `→ exit <code>` is reported, never silently dropped.
     commands: List[str] = []
     in_list = False
-    for line in lines:
+    for line in lines[1:]:
         if line.startswith("commands:"):
             rest = line[len("commands:"):].strip()
-            in_list = not rest
             if rest:
                 commands.append(rest)
-        elif in_list and line[:2] in {"- ", "* "}:
-            commands.append(line[2:].strip())
-        elif in_list and (FIELD_RE.match(line) or line):
+            in_list = True
+        elif in_list and BULLET_RE.match(line):
+            commands.append(BULLET_RE.sub("", line))
+        else:
             in_list = False
+            if EXIT_RE.search(line):
+                problems.append(f"command line outside `commands:`: {line!r}")
     evidence = []
     for cmd in commands:
         exits = EXIT_RE.findall(cmd)
@@ -108,8 +120,7 @@ def evaluate(text: str, delivered: Optional[str]) -> Dict[str, object]:
             continue
         m = EXIT_RE.search(cmd)
         code = int(m.group(1)) if m.group(1).lstrip("-").isdigit() else 1
-        after = TAG_AFTER_RE.match(cmd[m.end():])
-        tag = TAG_RE.match(after.group(1).strip()) if after else None
+        tag = TAG_RE.search(cmd[m.end():])
         if not tag:
             problems.append(f"command without provenance [ran|ci <ref>|reused <what>]: {cmd!r}")
             continue
@@ -125,6 +136,8 @@ def evaluate(text: str, delivered: Optional[str]) -> Dict[str, object]:
     if result == "OK":
         if not commands:
             problems.append("OK needs at least one command with its exit code")
+        elif not any(code == 0 and kind in {"ran", "ci"} and not ef for _, code, kind, ef in evidence):
+            problems.append("OK needs at least one passing [ran] or [ci] command, not only expect-fail runs")
         for cmd, code, kind, expect_fail in evidence:
             if expect_fail:
                 if code == 0:

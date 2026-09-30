@@ -66,7 +66,7 @@ commands: backend checks on this hash → exit 0 [ci https://github.com/o/r/acti
 
 Provenance of every command line: `[ran]` = run by the verifier in this session on this
 hash; `[ran expect-fail]` = a run that must fail (the FIX oracle with the fix undone: its
-non-zero exit is the proof); `[ci <ref>] = the project's own checks on this exact hash; `[reused <what>]` = an
+non-zero exit is the proof); `[ci <ref>]` = the project's own checks on this exact hash; `[reused <what>]` = an
 earlier result. OK rests only on `ran` and `ci`; reused evidence may support a KO, never an
 OK. **BLOCKED** = the proof cannot run here (missing database, service, memory, credentials):
 say what is missing in `blocked:`; it is not a KO and does not count against the unit.

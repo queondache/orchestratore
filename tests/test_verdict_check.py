@@ -205,6 +205,46 @@ class VerdictCheckTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 2)
 
 
+class ToleranceHolesTest(unittest.TestCase):
+    """Holes the tolerant parser must not open (found by the independent verifier)."""
+
+    def test_bullet_under_a_non_empty_commands_line_is_read(self):
+        text = OK.replace("[ci https://github.com/o/r/actions/runs/1]\n",
+                          "[ci https://github.com/o/r/actions/runs/1]\n- lint → exit 1 [ran]\n")
+        code, out = check(text)
+        self.assertEqual(code, 1)
+        self.assertIn("exit 1", problems(out))
+
+    def test_exit_line_outside_commands_is_reported(self):
+        for stray in ("proof: oracle red: yes\n- lint → exit 1 [ran]\n", "-lint → exit 1 [ran]\n",
+                      "some prose\n- lint → exit 1 [ran]\n"):
+            text = OK.replace("proof: oracle red: yes\n", stray if stray.startswith("proof") else
+                              "proof: oracle red: yes\n" + stray)
+            code, out = check(text)
+            self.assertEqual(code, 1, (stray, out))
+            self.assertIn("outside", problems(out))
+
+    def test_ok_cannot_rest_on_expect_fail_alone(self):
+        text = "\n".join(l for l in OK.splitlines() if not l.startswith("commands:"))
+        text = text.replace("proof:", "commands: npm test → exit 1 [ran expect-fail]\nproof:")
+        code, out = check(text)
+        self.assertEqual(code, 1)
+        self.assertIn("passing", problems(out))
+
+    def test_bulleted_findings_and_blocked_are_read(self):
+        ko = (OK.replace("result: OK", "result: KO").replace("→ exit 0 [ran]", "→ exit 1 [ran]")
+              .replace("findings: none", "findings:\n- src/a.ts:3 missing test"))
+        code, out = check(ko)
+        self.assertEqual(code, 0, out)
+        blocked = OK.replace("result: OK", "result: BLOCKED").replace("blocked: none", "blocked:\n- no database")
+        code, out = check(blocked)
+        self.assertEqual(code, 0, out)
+
+    def test_bracket_note_before_the_tag(self):
+        code, out = check(OK.replace("→ exit 0 [ran]", "→ exit 0 (see [log]) [ran]"), "--hash", H)
+        self.assertEqual(code, 0, out)
+
+
 class RealVerdictsTest(unittest.TestCase):
     """Verdicts written by real verifier agents on scratch FIX units: all three are correct."""
     FIX = ROOT / "tests" / "fixtures" / "verdicts"
