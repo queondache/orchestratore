@@ -133,6 +133,23 @@ class RunCheckTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertEqual(out["_lock_after"].strip(), "fix the three login bugs")
 
+    def test_record_goal_writes_lock_even_with_other_problems(self):
+        code, out = run(VALID.replace("status: active", "status: running"), "--record-goal")
+        self.assertEqual(code, 1)
+        self.assertTrue(out["goal_recorded"])
+        self.assertEqual(out["_lock_after"].strip(), "fix the three login bugs")
+
+    def test_record_goal_reports_when_it_cannot_record(self):
+        code, out = run(VALID.replace("goal: fix the three login bugs", "goal: "), "--record-goal")
+        self.assertEqual(code, 1)
+        self.assertFalse(out["goal_recorded"])
+        self.assertIsNone(out["_lock_after"])
+
+    def test_parked_with_a_note_or_capitalised_is_parked(self):
+        for state in ("parked (blocked by U-1)", "Parked"):
+            code, out = run(VALID.replace("| parked | 1111111 | KO opus | 3 |", f"| {state} | 1111111 | KO opus | 3 |"))
+            self.assertEqual(code, 0, (state, out))
+
     def test_goal_unchanged_against_lock_passes(self):
         code, out = run(VALID, goal_lock="fix the three login bugs\n")
         self.assertEqual(code, 0, out)

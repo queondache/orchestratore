@@ -11,9 +11,10 @@ RUN.md? The answer is "yes" only when every condition holds:
   * the Units table has a KO column; every KO is 0-3 and a unit at 3 is parked;
   * `## Log` is the last section and holds at most 100 entries.
 
-With --record-goal the current goal is written to goal.lock next to RUN.md
-(once, at start, or when the user changes the goal). A plain check never
-writes anything.
+With --record-goal a valid goal is written to goal.lock next to RUN.md (at
+start, after a resume migration, or when the user changes the goal), even if
+other problems remain; `goal_recorded` in the output says whether it was. A
+plain check never writes anything.
 
 Exit codes: 0 page OK, 1 problems found, 2 error (no RUN.md).
 Output: one JSON object on stdout.
@@ -78,7 +79,7 @@ def check_units(lines: List[str], problems: List[str]) -> None:
             problems.append(f"unit {unit}: KO {ko} exceeds {MAX_KO}; it should have been parked at {MAX_KO}")
         elif int(ko) == MAX_KO and state_i is not None:
             state = row[state_i] if state_i < len(row) else ""
-            if state != "parked":
+            if not state.lower().startswith("parked"):
                 problems.append(f"unit {unit}: third KO but state is {state!r}, must be parked")
 
 
@@ -127,15 +128,25 @@ def evaluate(run_path: Path, record_goal: bool) -> Dict[str, object]:
         problems.append(f"status {statuses[0]!r} is not one of {sorted(STATUSES)}")
 
     lock = run_path.parent / "goal.lock"
-    if record_goal and goal and not problems:
-        lock.write_text(goal + "\n", encoding="utf-8")
+    goal_ok = len(goals) == 1 and bool(goal) and not goal.startswith("<")
+    goal_recorded = False
+    if record_goal:
+        if goal_ok:
+            lock.write_text(goal + "\n", encoding="utf-8")
+            goal_recorded = True
+        else:
+            problems.append("--record-goal: no valid goal to record")
     elif lock.exists() and goal and lock.read_text(encoding="utf-8").strip() != goal:
         problems.append("goal changed since it was recorded; only the user changes it "
                         "(if they did, rerun with --record-goal)")
 
     check_units(lines, problems)
     check_log(lines, problems)
-    return {"ok": not problems, "run": str(run_path), "goal": goal, "problems": problems}
+    result: Dict[str, object] = {"ok": not problems, "run": str(run_path), "goal": goal,
+                                 "problems": problems}
+    if record_goal:
+        result["goal_recorded"] = goal_recorded
+    return result
 
 
 def main(argv: List[str] | None = None) -> int:

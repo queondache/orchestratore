@@ -151,8 +151,9 @@ lines, move it to `.orchestratore/log/<date>.md`). After each write and before e
 
 - **Resume** (after the lock in §1): run `bin/run-check.py`. An old-format page (several
   headers, no Units table) moves to `.orchestratore/log/<date>-RUN.md`; a fresh page from the
-  template carries over goal (from its objective, else ask the user), units and `next:`. Read
-  `goal:`, `next:`, the Units table, `git worktree list` and the branches; trust only git.
+  template carries over goal (from its objective, else ask the user), units and `next:`, then
+  `--record-goal`. Read `goal:`, `next:`, the Units table, then `git worktree list` and the
+  branches: trust only what git shows.
   Set `status: active`, finish verifications of delivered units, then dispatch.
 - **Stop** (user asks, context or runtime exhausted, or a deploy still running): let running
   builders report, write `status: parked` and `next:` (for a deploy: the recorded check
