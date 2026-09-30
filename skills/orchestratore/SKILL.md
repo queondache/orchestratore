@@ -190,8 +190,7 @@ Next: <one action>
 
 | Thought | Reality |
 |---|---|
-| "I'll plan each unit in detail first" | The brief is the plan. Dispatch. |
-| "I'll launch them one by one" | One message, all independent units. |
+| "I'll plan each unit first, then launch one by one" | The brief is the plan. One message, all units. |
 | "Wait for all builders, then review" | Verify each on arrival. |
 | "The builder says tests pass" | Only the verifier's commands count. |
 | "Same model can verify, it's faster" | Different model, always. |
