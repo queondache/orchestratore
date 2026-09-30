@@ -52,8 +52,9 @@ check "hook scripts referenced by hooks.json exist" bash -c "jq -r '.. | .comman
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 git -C "$TMP" init -q
 check "session hook silent without a run" bash -c "cd '$TMP' && [ -z \"\$(bash '$ROOT/hooks/session-state.sh')\" ]"
-mkdir -p "$TMP/.orchestratore"; printf 'status: active\nupdated: now\nnext: verify U-1\n' > "$TMP/.orchestratore/RUN.md"
+mkdir -p "$TMP/.orchestratore"; printf 'status: active\nupdated: now\ngoal: fix the login bugs\nnext: verify U-1\n' > "$TMP/.orchestratore/RUN.md"
 check "session hook reports an active run" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'next: verify U-1'"
+check "session hook surfaces the run goal" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'goal: fix the login bugs'"
 mkdir "$TMP/.orchestratore/coordinator.lock"; printf 'session: s1\n' > "$TMP/.orchestratore/coordinator.lock/owner"
 check "session hook shows the coordinator lock owner" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'coordinator lock: session: s1'"
 printf 'status: done\n' > "$TMP/.orchestratore/RUN.md"
@@ -65,7 +66,22 @@ check "merge-gate.py parses" python3 -c "import ast; ast.parse(open('$ROOT/bin/m
 check "scripts are executable" bash -c "test -x '$ROOT/bin/codex-task.sh' && test -x '$ROOT/bin/merge-gate.py' && test -x '$ROOT/hooks/session-state.sh'"
 
 # Templates
-check "RUN template has the fields the hook reads" bash -c "grep -q '^status: ' '$ROOT/templates/RUN.md' && grep -q '^next: ' '$ROOT/templates/RUN.md'"
+check "RUN template has the fields the hook reads" bash -c "grep -q '^status: ' '$ROOT/templates/RUN.md' && grep -q '^next: ' '$ROOT/templates/RUN.md' && grep -q '^goal: ' '$ROOT/templates/RUN.md'"
+check "RUN template counts KO verdicts per unit" grep -q '| KO |' "$ROOT/templates/RUN.md"
+check "RUN template keeps the Log as the last section" bash -c "[ \"\$(grep '^## ' '$ROOT/templates/RUN.md' | tail -n 1)\" = '## Log' ]"
+
+# Focus rules: the run page is overwritten in place, KO verdicts are capped per unit
+# whatever the findings, and new work never stacks on a lane that is red or waiting.
+skill_says() { # skill_says <phrase>: the phrase appears in SKILL.md, line breaks ignored
+  tr '\n' ' ' < "$ROOT/skills/orchestratore/SKILL.md" | tr -s ' ' | grep -qF "$1"
+}
+check "skill: RUN header overwritten in place, never a second header" skill_says 'never add a second header'
+check "skill: third KO on a unit parks it whatever the findings" skill_says 'Third KO on the unit, whatever the findings'
+check "skill: a lane is blocked while red or waiting for the user" skill_says 'A lane is **blocked** while its full gate is red or its PR waits for the user'
+check "skill: never stack onto a blocked lane; independents open the next lane" skill_says 'an independent unit opens the next lane from the base'
+check "skill: merge and deploy details live in references/merge.md" test -f "$ROOT/skills/orchestratore/references/merge.md"
+check "skill: one PR per wave, never growing across waves" skill_says 'never let one PR grow across waves'
+check "skill: KO count survives new findings and group reviews" skill_says 'counts one KO for each unit in the group'
 check "config template parses as TOML" python3 -c "import sys
 try:
     import tomllib
