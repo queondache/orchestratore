@@ -3,6 +3,7 @@
 
 [engines]
 max_parallel = 8         # concurrent builders, further capped by the runtime's slot limit
+mode = "single"          # "mixed": a Claude Code coordinator has Codex build and Claude verify
 
 [models]
 # Use the names your runtime exposes. Builder and verifier must differ.

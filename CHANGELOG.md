@@ -1,12 +1,26 @@
 # Changelog
 
+## 0.9.0 — 2026-09-30
+
+Brings back "Claude Code coordinates, Codex builds" (default design up to 0.6, dropped in
+0.7 for speed and portability) on top of the 0.7 engine, without the controller.
+
+### Added
+- Mixed mode (`[engines] mode = "mixed"` or on request, Claude Code coordinator only): Codex
+  builds each unit through `bin/codex-task.sh` in a worktree, Claude verifies with
+  `orchestratore:verifier`. Preflight `codex login status`; one background Bash call per
+  unit so each result is verified on arrival; second KO switches to a Claude builder; Codex
+  unavailable → Claude builders, no silent retry.
+- `bin/codex-task.sh` prints `<id> model=<name>`: the model from this run's Codex header
+  (`unknown` if absent), recorded as proof of which model ran.
+
 ## 0.8.1 — 2026-09-30
 
 ### Added
 - `bin/run-check.py`: deterministic check of `RUN.md` (one title and one `goal:` / `status:`
   / `updated:` / `next:` line, goal unchanged against `goal.lock`, status value, KO column
   0-3 with a unit at 3 parked, `## Log` last with at most 100 entries). JSON output, exit
-  0/1/2; `--record-goal` at start. Run after every `RUN.md` write and before every merge.
+  0/1/2; `--record-goal` at start and after a resume migration (output `goal_recorded`). Run after every `RUN.md` write and before every merge.
 - The session hook prints up to three `RUN.md check:` problems.
 - Resume migrates an old-format `RUN.md` to `.orchestratore/log/<date>-RUN.md` and starts a
   fresh page carrying goal, units and `next:`.

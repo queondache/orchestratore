@@ -22,6 +22,7 @@ Orchestratore removes each of those:
 | Correct or park | A KO goes back to the same builder once; then a new approach; then the unit is parked with evidence. The run keeps going. |
 | Gate the merge | `bin/merge-gate.py` merges only tier 1-2 changes fully inside an explicit allowlist, with required CI checks green on the exact verified SHA. Everything else waits for you. |
 | Keep the run on target | `bin/run-check.py` checks after every write that `RUN.md` is still one page: one header, the recorded goal unchanged, at most 3 KO per unit, the Log last and short. The session hook shows its problems. |
+| Codex builds, Claude checks | With `mode = "mixed"` a Claude Code coordinator sends each unit to Codex through `bin/codex-task.sh` and verifies it with a Claude verifier; the model that really ran is recorded. |
 
 ## Install
 

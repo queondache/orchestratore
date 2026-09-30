@@ -66,17 +66,18 @@ will wait on a PR, and open one PR per wave: never let one PR grow across waves.
 
 ## 3. Engines
 
-The whole run stays on the runtime you are in: builders and verifiers are sub-agents of that
-runtime. Commands for each: [engines](references/engines.md).
+By default the whole run stays on your runtime. **Mixed** (`mode = "mixed"` or the user asks):
+a Claude Code coordinator has Codex build and Claude verify. Commands: [engines](references/engines.md).
 
 | Runtime | Builders | Verifiers |
 |---|---|---|
 | **Claude Code** | `Agent` tool, `orchestratore:builder`, `isolation: "worktree"` | `orchestratore:verifier` on a different model |
 | **Codex** | native sub-agents (`spawn_agent`) in worktrees you create; waves larger than the slot limit via `codex-task.sh` | sub-agents on a different model |
+| **Mixed** (Claude Code) | one background `codex-task.sh build` per unit in worktrees you create; record its `model=` | `orchestratore:verifier` (Claude) |
 
-Record builder and verifier models in `RUN.md`; they are always different. If a sub-agent
-fails for quota, auth or credit, retry once on another model of the same runtime; if the
-runtime itself is exhausted, park the run (§7). Never simulate an agent you do not have.
+Record builder and verifier models in `RUN.md`; always different. Quota, auth or credit
+failure: retry once on another model of the same runtime (mixed: Codex down → Claude
+builders); runtime exhausted → park the run (§7). Never simulate an agent you do not have.
 
 ## 4. Dispatch the wave
 
@@ -86,9 +87,9 @@ runtime itself is exhausted, park the run (§7). Never simulate an agent you do 
   lane from the base (`orch/<run>-2`, `orch/<run>-review-2`, ...). Never stack onto it.
 - Every unit whose dependencies are integrated (merged into its lane branch, §6; a PR merge
   is not needed while the lane is not blocked; a tier 3 unit's tier 1-2 dependencies are
-  merged into the review lane too, never the other way) goes out **in one message**: several
-  `Agent` calls in Claude Code; in Codex, back-to-back `spawn_agent` calls without waiting,
-  or one `xargs -P` line for `codex-task.sh`. Its worktree starts from the lane head with those
+  merged into the review lane too, never the other way) goes out **in one message**: `Agent`
+  calls in Claude Code (mixed: background Bash calls); in Codex, back-to-back `spawn_agent`
+  calls, or one `xargs -P` line for `codex-task.sh`. Its worktree starts from the lane head with those
   dependencies; record that SHA as the unit's `base`. Serial dispatch of independent units
   is the main failure this skill exists to prevent.
 - Concurrency: every independent unit, up to `max_parallel` (default 8, builders and
@@ -111,7 +112,7 @@ Do not wait for the wave to finish.
 3. **KO** → send the verifier's findings back to the **same** builder as one bounded
    correction (`SendMessage` / `followup_task`, or a new run on the same worktree).
 4. Second KO → new approach: a new builder (fresh sub-agent) on a different model of the
-   same runtime, with all findings and a different hypothesis. Third KO on the unit, whatever
+   same runtime (mixed: a Claude builder), with all findings and a different hypothesis. Third KO on the unit, whatever
    the findings → `parked` with the evidence and the condition to resume; free the slot, keep
    going. Count KOs in the `KO` column: a new finding does not reset it, and a review round on
    a group of units counts one KO for each unit in the group. Dependents of a parked unit are
@@ -189,8 +190,7 @@ Next: <one action>
 
 | Thought | Reality |
 |---|---|
-| "I'll plan each unit in detail first" | The brief is the plan. Dispatch. |
-| "I'll launch them one by one" | One message, all independent units. |
+| "I'll plan each unit first, then launch one by one" | The brief is the plan. One message, all independent units. |
 | "Wait for all builders, then review" | Verify each on arrival. |
 | "The builder says tests pass" | Only the verifier's commands count. |
 | "Same model can verify, it's faster" | Different model, always. |

@@ -1,7 +1,8 @@
 # Engines: dispatching builders and verifiers
 
-The run stays on the runtime that hosts the coordinator: Claude Code sub-agents in Claude
-Code, Codex sub-agents in Codex. Record the runtime and both models in `RUN.md`.
+By default the run stays on the runtime that hosts the coordinator: Claude Code sub-agents in
+Claude Code, Codex sub-agents in Codex. **Mixed mode** (Claude Code coordinator, Codex
+builders, Claude verifiers) is described below. Record the runtime and both models in `RUN.md`.
 
 ## Configuration
 
@@ -12,6 +13,7 @@ never hardcodes them.
 ```toml
 [engines]
 max_parallel = 8
+mode = "single"               # "mixed": Claude Code coordinates, Codex builds, Claude verifies
 
 [models]
 claude_builder = "sonnet"
@@ -105,9 +107,46 @@ Verify each delivered hash with a sub-agent as above, or with `codex-task.sh --m
 `agents/verifier.md`, the hash and the unit brief (a verify run that changes tracked files
 exits 3). These processes need the Codex CLI logged in; they share the session's credit.
 
+## Mixed: Claude Code coordinates, Codex builds
+
+Use it when `mode = "mixed"` or the user asks for Codex builders, only with a Claude Code
+coordinator. Builder and verifier then differ by runtime, not only by model.
+
+1. **Preflight (§1):** `command -v codex` and `codex login status` both exit 0. Otherwise
+   write under `## Decisions` "mixed unavailable: <reason>" and run single-runtime.
+2. **Worktrees:** create each one yourself (section Worktrees above); no `isolation`.
+3. **Brief file:** `.orchestratore/briefs/codex/<ID>.md` (the file name is the unit ID the script
+   prints: `<ID> hash=`) = body of `<plugin>/agents/builder.md`
+   + `workdir: <abs worktree path>` + the unit brief. Brief commands must work offline under
+   `workspace-write` (no network); if they cannot, say so in the brief or set
+   `codex_sandbox = "danger-full-access"` in a trusted repo.
+4. **Dispatch:** one Bash call per unit, all in **one message**, each with
+   `run_in_background: true`, so each unit reports on its own and is verified on arrival:
+
+   ```bash
+   bash <plugin>/bin/codex-task.sh --model "<codex_builder>" --effort <codex_effort> \
+     --sandbox <codex_sandbox> build .orchestratore/worktrees/<ID> .orchestratore/briefs/codex/<ID>.md
+   ```
+
+   Never one `xargs -P` line here: it reports only when the whole wave ends.
+5. **Result:** read the `<ID> hash=` and `<ID> model=` lines. Write the `model=` value in the
+   builder column: it is the model that ran, not the one requested. `model=unknown` → log it.
+   Exit 65 (dirty worktree) → inspect; the unit's own leftovers after a failure → rerun with
+   `--resume`.
+6. **Verify:** `Agent(orchestratore:verifier, model=<claude_verifier>)` on the hash, as in the
+   Claude Code section.
+7. **KO:** first KO → a new `codex-task.sh build` on the same worktree with
+   `.orchestratore/briefs/codex-fix1/<ID>.md` = the brief + the verifier's findings.
+   Second KO → new approach on the
+   other runtime: `Agent(orchestratore:builder, model=<claude_builder>)` on the same worktree
+   with all findings (verifier stays `<claude_verifier>`, which must differ). Third KO → parked.
+8. **Codex unavailable** (exit 69, quota, auth or credit): mark it `unavailable` in `RUN.md`,
+   send its queued and correction work to Claude builders, and do not call Codex again until
+   the user says it is restored.
+
 ## Failures
 
 Quota, authentication or credit errors on a model: retry the unit once on another model of the
-same runtime, keeping builder and verifier different. Runtime exhausted: `status: parked`,
+same runtime (mixed mode: Mixed step 8), keeping builder and verifier different. Runtime exhausted: `status: parked`,
 report, stop. Do not retry a model that failed for credit or quota until the user says it is
 restored.

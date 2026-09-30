@@ -87,6 +87,14 @@ check "skill: KO count survives new findings and group reviews" skill_says 'coun
 check "skill: run-check after each RUN.md write and before each merge" skill_says 'After each write and before each merge run `python3 <plugin>/bin/run-check.py`'
 check "skill: goal recorded at start" skill_says 'run-check.py --record-goal'
 check "skill: resume migrates an old-format page" skill_says 'An old-format page'
+# Mixed mode: Claude Code coordinates, Codex builds, Claude verifies.
+check "skill: mixed mode row in the engines table" grep -q '^| \*\*Mixed\*\* (Claude Code) |' "$ROOT/skills/orchestratore/SKILL.md"
+check "engines: mixed section exists" grep -q '^## Mixed: Claude Code coordinates, Codex builds' "$ROOT/skills/orchestratore/references/engines.md"
+check "engines: mixed preflight checks codex login" grep -q 'codex login status' "$ROOT/skills/orchestratore/references/engines.md"
+check "engines: mixed dispatch is one background Bash per unit" grep -q 'one Bash call per unit' "$ROOT/skills/orchestratore/references/engines.md"
+check "engines: mixed records the model that ran" grep -q 'Write the `model=` value in the' "$ROOT/skills/orchestratore/references/engines.md"
+check "engines: mixed falls back to Claude builders" grep -q 'send its queued and correction work to Claude builders' "$ROOT/skills/orchestratore/references/engines.md"
+check "config template has engines.mode" grep -q '^mode = "single"' "$ROOT/templates/config.toml"
 check "config template parses as TOML" python3 -c "import sys
 try:
     import tomllib

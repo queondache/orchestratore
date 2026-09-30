@@ -9,7 +9,7 @@ updated: <ISO 8601>
 run: <run id, e.g. 20260926-1030>
 base: <branch>@<sha>
 integration: orch/<run> (tier 1-2)   orch/<run>-review (tier 3)
-runtime: claude | codex
+runtime: claude | codex | mixed (Claude Code coordinator, Codex builders)
 builder: <model>        verifier: <model, different>
 gate: build=<cmd|none> test=<cmd|none> lint=<cmd|none>
 pipeline: <post-merge deploy found at start | none>   check: <read-only command, e.g. gh run list --commit <sha> --workflow <deploy>>
