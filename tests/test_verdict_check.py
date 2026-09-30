@@ -240,6 +240,15 @@ class ToleranceHolesTest(unittest.TestCase):
         code, out = check(blocked)
         self.assertEqual(code, 0, out)
 
+    def test_exit_quoted_in_prose_fields_is_allowed(self):
+        text = OK.replace("proof: oracle red: yes", "proof: oracle red: yes (test → exit 1 on assertion)")
+        code, out = check(text, "--hash", H)
+        self.assertEqual(code, 0, out)
+        ko = (OK.replace("result: OK", "result: KO").replace("→ exit 0 [ran]", "→ exit 1 [ran]")
+              .replace("findings: none", "findings:\n- a.py:1 script -> exit 2 instead of 0"))
+        code, out = check(ko, "--hash", H)
+        self.assertEqual(code, 0, out)
+
     def test_bracket_note_before_the_tag(self):
         code, out = check(OK.replace("→ exit 0 [ran]", "→ exit 0 (see [log]) [ran]"), "--hash", H)
         self.assertEqual(code, 0, out)

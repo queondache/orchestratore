@@ -40,6 +40,7 @@ RESULTS = {"OK", "KO", "BLOCKED"}
 EXIT_RE = re.compile(r"(?:→|->)\s*exit\s+(-?\d+|non-?zero)\b", re.IGNORECASE)
 TAG_RE = re.compile(r"\[(ran|ci|reused)(?:\s+([^\]]*))?\]")
 BULLET_RE = re.compile(r"^[-*]\s+")
+PROSE_RE = re.compile(r"^(proof|findings|blocked|scope|result|hash):")
 
 
 def field(lines: List[str], name: str) -> Optional[str]:
@@ -97,7 +98,17 @@ def evaluate(text: str, delivered: Optional[str]) -> Dict[str, object]:
     # line carrying `→ exit <code>` is reported, never silently dropped.
     commands: List[str] = []
     in_list = False
+    in_prose = False  # inside proof/findings/blocked/scope and their bullets: free text
     for line in lines[1:]:
+        prose = bool(PROSE_RE.match(line)) or (in_prose and bool(BULLET_RE.match(line)))
+        if prose:
+            in_list, in_prose = False, True
+            m = EXIT_RE.search(line)
+            # A quoted exit code in prose is fine; a tagged one is evidence out of place.
+            if m and TAG_RE.search(line[m.end():]):
+                problems.append(f"command line outside `commands:`: {line!r}")
+            continue
+        in_prose = False
         if line.startswith("commands:"):
             rest = line[len("commands:"):].strip()
             if rest:
