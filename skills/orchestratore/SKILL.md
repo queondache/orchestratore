@@ -62,8 +62,7 @@ will wait on a PR, and open one PR per wave: never let one PR grow across waves.
    file per wave, shared interfaces first. Dependent units go in a later wave and inherit a
    higher tier (built on tier 3 = tier 3); an uncertain tier → the higher one, logged.
 4. Write every brief to `.orchestratore/briefs/<ID>.md` and add one row per unit to `RUN.md`.
-
-The plan is the set of briefs: no separate strategy stage, no per-unit plan.
+   The plan is the set of briefs: no separate strategy stage, no per-unit plan.
 
 ## 3. Engines
 
@@ -152,13 +151,14 @@ lines, move it to `.orchestratore/log/<date>.md`). After each write and before e
 - **Resume** (after the lock in §1): run `bin/run-check.py`. An old-format page (several
   headers, no Units table) moves to `.orchestratore/log/<date>-RUN.md`; a fresh page from the
   template carries over goal (from its objective, else ask the user), units and `next:`, then
-  `--record-goal`. Read `goal:`, `next:`, the Units table, `git worktree list` and branches.
+  `--record-goal`. Read `goal:`, `next:`, the Units table, then `git worktree list` and the
+  branches: trust only what git shows.
   Set `status: active`, finish verifications of delivered units, then dispatch.
 - **Stop** (user asks, context or runtime exhausted, or a deploy still running): let running
   builders report, write `status: parked` and `next:` (for a deploy: the recorded check
   command on that SHA), release the lock (§1). A stopped run stays `parked`, never `done`.
-- **Done:** no deploy running; every unit `in production`, `merged` with `pipeline: none`,
-  waiting for the user, or parked with evidence. Final report (§9), `status: done`, unlock.
+- **Done:** no deploy running; every unit `in production`, `merged` (`pipeline: none`),
+  waiting or parked with evidence. Final report (§9), `status: done`, unlock.
 
 ## 8. Questions
 
