@@ -11,9 +11,11 @@
 #           A change is reported as a violation (exit 3).
 #
 # Defaults: sandbox workspace-write, Codex's own configured model and effort.
-# Output: `<id> hash=`, `<id> log=` and `<id> last=` lines on stdout (safe to run many in
+# Output: `<id> hash=`, `<id> model=`, `<id> log=` and `<id> last=` lines on stdout (safe to run many in
 # parallel with xargs -P); the full transcript is in the log
 # next to the brief (<brief-dir>/<id>.<mode>.log), the final message in <id>.<mode>.last.md.
+# `model=` is the model Codex printed in this run's header (`unknown` if absent): proof of
+# which model ran, never the requested --model.
 # Exit: Codex's exit code, 3 on a verify violation, 64 on bad usage, 65 on a dirty worktree,
 # 69 when codex is not installed.
 set -uo pipefail
@@ -72,9 +74,12 @@ if [ -n "$DIRTY" ] && ! { [ "$RESUME" -eq 1 ] && [ "$MODE" = build ]; }; then
   exit 65
 fi
 printf '=== %s %s %s\n' "$(date -u +%FT%TZ)" "$MODE" "$*" >> "$LOG"
+START="$(wc -c < "$LOG" | tr -d ' ')"
 "$@" < "$BRIEF" >> "$LOG" 2>&1
 STATUS=$?
 printf '=== exit %s\n' "$STATUS" >> "$LOG"
+RAN_MODEL="$(tail -c +"$((START + 1))" "$LOG" | sed -n 's/^model: //p' | head -n 1)"
+echo "$ID model=${RAN_MODEL:-unknown}"
 echo "$ID log=$LOG"
 echo "$ID last=$LAST"
 [ "$STATUS" -eq 0 ] || { echo "codex exited $STATUS; nothing committed" >&2; exit "$STATUS"; }

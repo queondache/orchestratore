@@ -62,22 +62,22 @@ will wait on a PR, and open one PR per wave: never let one PR grow across waves.
    file per wave, shared interfaces first. Dependent units go in a later wave and inherit a
    higher tier (built on tier 3 = tier 3); an uncertain tier → the higher one, logged.
 4. Write every brief to `.orchestratore/briefs/<ID>.md` and add one row per unit to `RUN.md`.
-
-The plan is the set of briefs: no separate strategy stage, no per-unit plan.
+   The plan is the set of briefs: no separate strategy stage, no per-unit plan.
 
 ## 3. Engines
 
-The whole run stays on the runtime you are in: builders and verifiers are sub-agents of that
-runtime. Commands for each: [engines](references/engines.md).
+By default the whole run stays on your runtime. **Mixed** (`mode = "mixed"` or the user asks):
+a Claude Code coordinator has Codex build and Claude verify. Commands: [engines](references/engines.md).
 
 | Runtime | Builders | Verifiers |
 |---|---|---|
 | **Claude Code** | `Agent` tool, `orchestratore:builder`, `isolation: "worktree"` | `orchestratore:verifier` on a different model |
 | **Codex** | native sub-agents (`spawn_agent`) in worktrees you create; waves larger than the slot limit via `codex-task.sh` | sub-agents on a different model |
+| **Mixed** (Claude Code) | one background `codex-task.sh build` per unit in worktrees you create; record its `model=` | `orchestratore:verifier` (Claude) |
 
-Record builder and verifier models in `RUN.md`; they are always different. If a sub-agent
-fails for quota, auth or credit, retry once on another model of the same runtime; if the
-runtime itself is exhausted, park the run (§7). Never simulate an agent you do not have.
+Record builder and verifier models in `RUN.md`; always different. Quota, auth or credit
+failure: retry once on another model of the same runtime (mixed: Codex down → Claude
+builders); runtime exhausted → park the run (§7). Never simulate an agent you do not have.
 
 ## 4. Dispatch the wave
 
@@ -87,9 +87,9 @@ runtime itself is exhausted, park the run (§7). Never simulate an agent you do 
   lane from the base (`orch/<run>-2`, `orch/<run>-review-2`, ...). Never stack onto it.
 - Every unit whose dependencies are integrated (merged into its lane branch, §6; a PR merge
   is not needed while the lane is not blocked; a tier 3 unit's tier 1-2 dependencies are
-  merged into the review lane too, never the other way) goes out **in one message**: several
-  `Agent` calls in Claude Code; in Codex, back-to-back `spawn_agent` calls without waiting,
-  or one `xargs -P` line for `codex-task.sh`. Its worktree starts from the lane head with those
+  merged into the review lane too, never the other way) goes out **in one message**: `Agent`
+  calls in Claude Code (mixed: background Bash calls); in Codex, back-to-back `spawn_agent`
+  calls, or one `xargs -P` line for `codex-task.sh`. Its worktree starts from the lane head with those
   dependencies; record that SHA as the unit's `base`. Serial dispatch of independent units
   is the main failure this skill exists to prevent.
 - Concurrency: every independent unit, up to `max_parallel` (default 8, builders and
@@ -157,8 +157,8 @@ lines, move it to `.orchestratore/log/<date>.md`). After each write and before e
 - **Stop** (user asks, context or runtime exhausted, or a deploy still running): let running
   builders report, write `status: parked` and `next:` (for a deploy: the recorded check
   command on that SHA), release the lock (§1). A stopped run stays `parked`, never `done`.
-- **Done:** no deploy running; every unit `in production`, `merged` with `pipeline: none`,
-  waiting for the user, or parked with evidence. Final report (§9), `status: done`, unlock.
+- **Done:** no deploy running; every unit `in production`, `merged` (`pipeline: none`),
+  waiting or parked with evidence. Final report (§9), `status: done`, unlock.
 
 ## 8. Questions
 

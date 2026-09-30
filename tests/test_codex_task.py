@@ -21,6 +21,9 @@ FAKE_CODEX = textwrap.dedent("""\
       case "$1" in -C) dir="$2"; shift ;; -o) out="$2"; shift ;; esac
       shift
     done
+    if [ -n "${FAKE_CODEX_MODEL:-}" ]; then
+      printf -- '--------\nworkdir: %s\nmodel: %s\nprovider: openai\n--------\n' "$dir" "$FAKE_CODEX_MODEL"
+    fi
     case "$FAKE_CODEX_ACTION" in
       write) echo "fixed" > "$dir/fix.txt" ;;
       modify) echo "tampered" >> "$dir/README" ;;
@@ -62,8 +65,9 @@ class CodexTaskTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def run_task(self, *args: str, action: str = "", exit_code: int = 0):
-        env = dict(self.env, FAKE_CODEX_ACTION=action, FAKE_CODEX_EXIT=str(exit_code))
+    def run_task(self, *args: str, action: str = "", exit_code: int = 0, model: str = ""):
+        env = dict(self.env, FAKE_CODEX_ACTION=action, FAKE_CODEX_EXIT=str(exit_code),
+                   FAKE_CODEX_MODEL=model)
         return subprocess.run(["bash", str(SCRIPT), *args], capture_output=True,
                               text=True, env=env)
 
@@ -76,6 +80,23 @@ class CodexTaskTest(unittest.TestCase):
         self.assertIn("hash=" + after, proc.stdout)
         self.assertEqual(git(self.repo, "status", "--porcelain"), "")
         self.assertEqual(self.args_file.with_suffix(".args.stdin").read_text(), "# U-1\nFix it.\n")
+
+    def test_reports_the_model_codex_actually_ran(self) -> None:
+        proc = self.run_task("build", str(self.repo), str(self.brief), action="write", model="gpt-a")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("U-1 model=gpt-a", proc.stdout)
+
+    def test_model_comes_from_this_run_not_an_earlier_one(self) -> None:
+        self.run_task("build", str(self.repo), str(self.brief), action="write", model="gpt-a")
+        proc = self.run_task("verify", str(self.repo), str(self.brief), model="gpt-b")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("U-1 model=gpt-b", proc.stdout)
+        self.assertNotIn("model=gpt-a", proc.stdout)
+
+    def test_model_unknown_without_a_header(self) -> None:
+        proc = self.run_task("build", str(self.repo), str(self.brief), action="write")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("U-1 model=unknown", proc.stdout)
 
     def test_build_passes_model_effort_and_sandbox(self) -> None:
         proc = self.run_task("--model", "m-1", "--effort", "high", "--sandbox",
