@@ -87,11 +87,14 @@ class CodexTaskTest(unittest.TestCase):
         self.assertIn("U-1 model=gpt-a", proc.stdout)
 
     def test_model_comes_from_this_run_not_an_earlier_one(self) -> None:
-        self.run_task("build", str(self.repo), str(self.brief), action="write", model="gpt-a")
-        proc = self.run_task("verify", str(self.repo), str(self.brief), model="gpt-b")
+        # Both runs append to the same U-1.build.log: only this run's header counts.
+        self.run_task("build", str(self.repo), str(self.brief), exit_code=1, model="gpt-a")
+        proc = self.run_task("build", str(self.repo), str(self.brief), action="write")
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertIn("U-1 model=gpt-b", proc.stdout)
+        self.assertIn("U-1 model=unknown", proc.stdout)
         self.assertNotIn("model=gpt-a", proc.stdout)
+        self.assertEqual(self.brief.with_name("U-1.build.log").read_text().count("=== exit"), 2)
+
 
     def test_model_unknown_without_a_header(self) -> None:
         proc = self.run_task("build", str(self.repo), str(self.brief), action="write")

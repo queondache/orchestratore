@@ -78,7 +78,7 @@ START="$(wc -c < "$LOG" | tr -d ' ')"
 "$@" < "$BRIEF" >> "$LOG" 2>&1
 STATUS=$?
 printf '=== exit %s\n' "$STATUS" >> "$LOG"
-RAN_MODEL="$(tail -c +"$((START + 1))" "$LOG" | sed -n 's/^model: //p' | head -n 1)"
+RAN_MODEL="$(tail -c +"$((START + 1))" "$LOG" | tr -d '\r' | sed -n 's/^model: //p' | head -n 1)"
 echo "$ID model=${RAN_MODEL:-unknown}"
 echo "$ID log=$LOG"
 echo "$ID last=$LAST"

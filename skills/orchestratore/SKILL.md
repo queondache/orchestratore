@@ -112,7 +112,7 @@ Do not wait for the wave to finish.
 3. **KO** → send the verifier's findings back to the **same** builder as one bounded
    correction (`SendMessage` / `followup_task`, or a new run on the same worktree).
 4. Second KO → new approach: a new builder (fresh sub-agent) on a different model of the
-   same runtime, with all findings and a different hypothesis. Third KO on the unit, whatever
+   same runtime (mixed: a Claude builder), with all findings and a different hypothesis. Third KO on the unit, whatever
    the findings → `parked` with the evidence and the condition to resume; free the slot, keep
    going. Count KOs in the `KO` column: a new finding does not reset it, and a review round on
    a group of units counts one KO for each unit in the group. Dependents of a parked unit are
@@ -190,7 +190,7 @@ Next: <one action>
 
 | Thought | Reality |
 |---|---|
-| "I'll plan each unit first, then launch one by one" | The brief is the plan. One message, all units. |
+| "I'll plan each unit first, then launch one by one" | The brief is the plan. One message, all independent units. |
 | "Wait for all builders, then review" | Verify each on arrival. |
 | "The builder says tests pass" | Only the verifier's commands count. |
 | "Same model can verify, it's faster" | Different model, always. |

@@ -91,8 +91,8 @@ check "skill: resume migrates an old-format page" skill_says 'An old-format page
 check "skill: mixed mode row in the engines table" grep -q '^| \*\*Mixed\*\* (Claude Code) |' "$ROOT/skills/orchestratore/SKILL.md"
 check "engines: mixed section exists" grep -q '^## Mixed: Claude Code coordinates, Codex builds' "$ROOT/skills/orchestratore/references/engines.md"
 check "engines: mixed preflight checks codex login" grep -q 'codex login status' "$ROOT/skills/orchestratore/references/engines.md"
-check "engines: mixed dispatch is one background Bash per unit" grep -q 'run_in_background: true' "$ROOT/skills/orchestratore/references/engines.md"
-check "engines: mixed records the model that ran" grep -q 'model=' "$ROOT/skills/orchestratore/references/engines.md"
+check "engines: mixed dispatch is one background Bash per unit" grep -q 'one Bash call per unit' "$ROOT/skills/orchestratore/references/engines.md"
+check "engines: mixed records the model that ran" grep -q 'Write the `model=` value in the' "$ROOT/skills/orchestratore/references/engines.md"
 check "engines: mixed falls back to Claude builders" grep -q 'send its queued and correction work to Claude builders' "$ROOT/skills/orchestratore/references/engines.md"
 check "config template has engines.mode" grep -q '^mode = "single"' "$ROOT/templates/config.toml"
 check "config template parses as TOML" python3 -c "import sys

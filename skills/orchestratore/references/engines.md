@@ -115,7 +115,8 @@ coordinator. Builder and verifier then differ by runtime, not only by model.
 1. **Preflight (§1):** `command -v codex` and `codex login status` both exit 0. Otherwise
    write under `## Decisions` "mixed unavailable: <reason>" and run single-runtime.
 2. **Worktrees:** create each one yourself (section Worktrees above); no `isolation`.
-3. **Brief file:** `.orchestratore/briefs/<ID>.codex.md` = body of `<plugin>/agents/builder.md`
+3. **Brief file:** `.orchestratore/briefs/codex/<ID>.md` (the file name is the unit ID the script
+   prints: `<ID> hash=`) = body of `<plugin>/agents/builder.md`
    + `workdir: <abs worktree path>` + the unit brief. Brief commands must work offline under
    `workspace-write` (no network); if they cannot, say so in the brief or set
    `codex_sandbox = "danger-full-access"` in a trusted repo.
@@ -124,7 +125,7 @@ coordinator. Builder and verifier then differ by runtime, not only by model.
 
    ```bash
    bash <plugin>/bin/codex-task.sh --model "<codex_builder>" --effort <codex_effort> \
-     --sandbox <codex_sandbox> build .orchestratore/worktrees/<ID> .orchestratore/briefs/<ID>.codex.md
+     --sandbox <codex_sandbox> build .orchestratore/worktrees/<ID> .orchestratore/briefs/codex/<ID>.md
    ```
 
    Never one `xargs -P` line here: it reports only when the whole wave ends.
@@ -135,7 +136,8 @@ coordinator. Builder and verifier then differ by runtime, not only by model.
 6. **Verify:** `Agent(orchestratore:verifier, model=<claude_verifier>)` on the hash, as in the
    Claude Code section.
 7. **KO:** first KO → a new `codex-task.sh build` on the same worktree with
-   `<ID>.fix1.codex.md` = the brief + the verifier's findings. Second KO → new approach on the
+   `.orchestratore/briefs/codex-fix1/<ID>.md` = the brief + the verifier's findings.
+   Second KO → new approach on the
    other runtime: `Agent(orchestratore:builder, model=<claude_builder>)` on the same worktree
    with all findings (verifier stays `<claude_verifier>`, which must differ). Third KO → parked.
 8. **Codex unavailable** (exit 69, quota, auth or credit): mark it `unavailable` in `RUN.md`,
@@ -145,6 +147,6 @@ coordinator. Builder and verifier then differ by runtime, not only by model.
 ## Failures
 
 Quota, authentication or credit errors on a model: retry the unit once on another model of the
-same runtime, keeping builder and verifier different. Runtime exhausted: `status: parked`,
+same runtime (mixed mode: Mixed step 8), keeping builder and verifier different. Runtime exhausted: `status: parked`,
 report, stop. Do not retry a model that failed for credit or quota until the user says it is
 restored.
