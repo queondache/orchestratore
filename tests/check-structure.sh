@@ -64,6 +64,9 @@ check "session hook silent when the run is done" bash -c "cd '$TMP' && [ -z \"\$
 # Scripts
 check "codex-task.sh parses" bash -n "$ROOT/bin/codex-task.sh"
 check "merge-gate.py parses" python3 -c "import ast; ast.parse(open('$ROOT/bin/merge-gate.py').read())"
+check "verdict-check.py parses" python3 -c "import ast; ast.parse(open('$ROOT/bin/verdict-check.py').read())"
+check "verdict-check.py is executable" test -x "$ROOT/bin/verdict-check.py"
+check "verifier agent and verify.md share the verdict format" bash -c "for f in '$ROOT/agents/verifier.md' '$ROOT/skills/orchestratore/references/verify.md'; do grep -q '^result: OK | KO | BLOCKED\$' \"\$f\" && grep -q '^blocked: ' \"\$f\" && grep -q '\[ran | ran expect-fail | ci <run url or id> | reused <what>\]' \"\$f\" || exit 1; done"
 check "run-check.py parses" python3 -c "import ast; ast.parse(open('$ROOT/bin/run-check.py').read())"
 check "scripts are executable" bash -c "test -x '$ROOT/bin/codex-task.sh' && test -x '$ROOT/bin/merge-gate.py' && test -x '$ROOT/bin/run-check.py' && test -x '$ROOT/hooks/session-state.sh'"
 
@@ -87,6 +90,8 @@ check "skill: KO count survives new findings and group reviews" skill_says 'coun
 check "skill: run-check after each RUN.md write and before each merge" skill_says 'After each write and before each merge run `python3 <plugin>/bin/run-check.py`'
 check "skill: goal recorded at start" skill_says 'run-check.py --record-goal'
 check "skill: resume migrates an old-format page" skill_says 'An old-format page'
+check "skill: only a verdict accepted by verdict-check moves a unit" skill_says 'Only a verdict that `bin/verdict-check.py --hash <hash>` accepts moves a unit'
+check "skill: BLOCKED is not a KO" skill_says '**BLOCKED** (proof cannot run here) is not a KO'
 # Mixed mode: Claude Code coordinates, Codex builds, Claude verifies.
 check "skill: mixed mode row in the engines table" grep -q '^| \*\*Mixed\*\* (Claude Code) |' "$ROOT/skills/orchestratore/SKILL.md"
 check "engines: mixed section exists" grep -q '^## Mixed: Claude Code coordinates, Codex builds' "$ROOT/skills/orchestratore/references/engines.md"

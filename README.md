@@ -21,6 +21,7 @@ Orchestratore removes each of those:
 | Verify on arrival | A different model checks hash, scope, commands and a class-specific proof (for a FIX: the new test must fail without the fix). |
 | Correct or park | A KO goes back to the same builder once; then a new approach; then the unit is parked with evidence. The run keeps going. |
 | Gate the merge | `bin/merge-gate.py` merges only tier 1-2 changes fully inside an explicit allowlist, with required CI checks green on the exact verified SHA. Everything else waits for you. |
+| Accept only proven verdicts | `bin/verdict-check.py` accepts a verdict only if its facts support it: exact hash, exit codes, each proof tagged as run now, from CI on that hash, or reused (never enough for OK). A proof that cannot run is `BLOCKED`, not a failure. |
 | Keep the run on target | `bin/run-check.py` checks after every write that `RUN.md` is still one page: one header, the recorded goal unchanged, at most 3 KO per unit, the Log last and short. The session hook shows its problems. |
 | Codex builds, Claude checks | With `mode = "mixed"` a Claude Code coordinator sends each unit to Codex through `bin/codex-task.sh` and verifies it with a Claude verifier; the model that really ran is recorded. |
 

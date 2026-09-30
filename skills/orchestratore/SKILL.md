@@ -105,19 +105,20 @@ builders); runtime exhausted → park the run (§7). Never simulate an agent you
 Do not wait for the wave to finish.
 
 1. Builder report arrives → start its verifier at once ([verify](references/verify.md)). Only
-   the verdict, with commands and exit codes, moves a unit; the builder's report is a claim.
-   A verdict without them is not a KO: rerun once on another model; malformed again →
-   `parked` "unverifiable" (no correction round).
-2. **OK** → unit `verified`; queue it for integration.
-3. **KO** → send the verifier's findings back to the **same** builder as one bounded
-   correction (`SendMessage` / `followup_task`, or a new run on the same worktree).
-4. Second KO → new approach: a new builder (fresh sub-agent) on a different model of the
-   same runtime (mixed: a Claude builder), with all findings and a different hypothesis. Third KO on the unit, whatever
-   the findings → `parked` with the evidence and the condition to resume; free the slot, keep
-   going. Count KOs in the `KO` column: a new finding does not reset it, and a review round on
+   a verdict that `bin/verdict-check.py --hash <hash>` accepts moves a unit; the builder's
+   report is a claim. Rejected: not a KO, rerun once on another model; rejected again →
+   `parked` "unverifiable". **BLOCKED** (proof cannot run here) is not a KO: give it the means
+   (the project's checks on that exact hash) or set `waiting` with what is missing.
+2. **OK** → `verified`, queued for integration. **KO** → the verifier's findings go back to
+   the **same** builder as one bounded correction (`SendMessage` / `followup_task`, or a new
+   run on the same worktree).
+3. Second KO → new approach: a new builder (fresh sub-agent) on a different model of the same
+   runtime (mixed: a Claude builder), with all findings and a different hypothesis. Third KO
+   on the unit, whatever the findings → `parked` with the evidence and the condition to
+   resume; free the slot, keep going. Count KOs in the `KO` column: a new finding does not reset it, and a review round on
    a group of units counts one KO for each unit in the group. Dependents of a parked unit are
    parked too ("blocked by <ID>") and resume with it. A red gate never stops the run.
-5. A blocker needing the user → record the question (§8); continue with units not depending on it.
+4. A blocker needing the user → record the question (§8); continue with units not depending on it.
 
 Write every state change to `RUN.md` at once. The header and the Units table are the current
 state: overwrite them in place (`next:` always the true next action) and never add a second
@@ -192,8 +193,7 @@ Next: <one action>
 |---|---|
 | "I'll plan each unit first, then launch one by one" | The brief is the plan. One message, all independent units. |
 | "Wait for all builders, then review" | Verify each on arrival. |
-| "The builder says tests pass" | Only the verifier's commands count. |
-| "Same model can verify, it's faster" | Different model, always. |
+| "The builder says tests pass" / "same model can verify" | Only a different-model verifier's commands count. |
 | "This red gate blocks the run" | It blocks one unit. Park it, continue. |
 | "I'll fix the conflict myself" | Send it back to the builder. |
 | "New finding, one more round" | Third KO parks the unit. Count, don't judge. |
