@@ -23,6 +23,7 @@ Orchestratore removes each of those:
 | Gate the merge | `bin/merge-gate.py` merges only tier 1-2 changes fully inside an explicit allowlist, with required CI checks green on the exact verified SHA. Everything else waits for you. |
 | Accept only proven verdicts | `bin/verdict-check.py` accepts a verdict only if its facts support it: exact hash, exit codes, each proof tagged as run now, from CI on that hash, or reused (never enough for OK). A proof that cannot run is `BLOCKED`, not a failure. |
 | Keep the run on target | `bin/run-check.py` checks after every write that `RUN.md` is still one page: one header, the recorded goal unchanged, at most 3 KO per unit, the Log last and short. The session hook shows its problems. |
+| Diagnose before giving up | After a unit's third failed check, a fresh read-only agent says whether the cause is the code, the test, the request or the environment, with one proposal; a contradictory request becomes a question for the user. |
 | Codex builds, Claude checks | With `mode = "mixed"` a Claude Code coordinator sends each unit to Codex through `bin/codex-task.sh` and verifies it with a Claude verifier; the model that really ran is recorded. |
 
 ## Install

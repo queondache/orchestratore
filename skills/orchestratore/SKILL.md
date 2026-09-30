@@ -39,13 +39,12 @@ Brief format: the `brief` skill.
    `pipeline:` with a read-only check: `gh run list --commit <sha> --workflow <deploy
    workflow>` for GitHub Actions, `gh api repos/<owner>/<repo>/commits/<sha>/status` for hosts
    that post commit statuses. `pipeline: none` if nothing deploys (CI that only tests is not).
-5. Pick the engine (§3), check you can write `.git` by creating the first worktree, and
-   write `.orchestratore/RUN.md` from `<plugin>/templates/RUN.md`, with `goal:` = the user's
-   request in one sentence (only the user changes it), then run `python3
-   <plugin>/bin/run-check.py --record-goal`. Add `.orchestratore/` to
-   the file printed by `git rev-parse --git-path info/exclude`, so run files never get
-   committed. If git writes are blocked, release the lock and tell the user how to relaunch
-   with write access.
+5. Pick the engine (§3), check you can write `.git` by creating the first worktree, and write
+   `.orchestratore/RUN.md` from `<plugin>/templates/RUN.md`, with `goal:` = the user's request
+   in one sentence (only the user changes it), then run `python3 <plugin>/bin/run-check.py
+   --record-goal`. Add `.orchestratore/` to the file printed by `git rev-parse --git-path
+   info/exclude`, so run files never get committed. If git writes are blocked, release the lock
+   and tell the user how to relaunch with write access.
 
 **Defaults, written, not asked:** unattended; commit + push + PR automatic; auto-merge only
 through §6; verification on every delivery; stop when every unit is done or parked. Change a
@@ -85,13 +84,13 @@ builders); runtime exhausted → park the run (§7). Never simulate an agent you
   exit 1, merges excluded, and always the tier 3 review PR). A unit whose dependencies sit on
   a blocked lane stays `queued`, noted "blocked by PR #n"; an independent unit opens the next
   lane from the base (`orch/<run>-2`, `orch/<run>-review-2`, ...). Never stack onto it.
-- Every unit whose dependencies are integrated (merged into its lane branch, §6; a PR merge
-  is not needed while the lane is not blocked; a tier 3 unit's tier 1-2 dependencies are
-  merged into the review lane too, never the other way) goes out **in one message**: `Agent`
-  calls in Claude Code (mixed: background Bash calls); in Codex, back-to-back `spawn_agent`
-  calls, or one `xargs -P` line for `codex-task.sh`. Its worktree starts from the lane head with those
-  dependencies; record that SHA as the unit's `base`. Serial dispatch of independent units
-  is the main failure this skill exists to prevent.
+- Every unit whose dependencies are integrated (merged into its lane branch, §6; a PR merge is
+  not needed while the lane is not blocked; a tier 3 unit's tier 1-2 dependencies are merged
+  into the review lane too, never the other way) goes out **in one message**: `Agent` calls in
+  Claude Code (mixed: background Bash calls); in Codex, back-to-back `spawn_agent` calls, or
+  one `xargs -P` line for `codex-task.sh`. Its worktree starts from the lane head with those
+  dependencies; record that SHA as the unit's `base`. Serial dispatch of independent units is
+  the main failure this skill exists to prevent.
 - Concurrency: every independent unit, up to `max_parallel` (default 8, builders and
   verifiers together, native agents and `codex-task.sh` processes alike) and the engine's slot
   limit, keeping one slot free for verifiers (Codex, 3 slots: 2 builders + 1 verifier). An
@@ -104,20 +103,21 @@ builders); runtime exhausted → park the run (§7). Never simulate an agent you
 
 Do not wait for the wave to finish.
 
-1. Builder report arrives → start its verifier at once ([verify](references/verify.md)). Only
-   a verdict that `bin/verdict-check.py --hash <hash>` accepts moves a unit; the builder's
-   report is a claim. Rejected: not a KO, rerun once on another model; rejected again →
-   `parked` "unverifiable". **BLOCKED** (proof cannot run here) is not a KO: give it the means
-   (the project's checks on that exact hash) or set `waiting` with what is missing.
-2. **OK** → `verified`, queued for integration. **KO** → the verifier's findings go back to
-   the **same** builder as one bounded correction (`SendMessage` / `followup_task`, or a new
-   run on the same worktree).
-3. Second KO → new approach: a new builder (fresh sub-agent) on a different model of the same
-   runtime (mixed: a Claude builder), with all findings and a different hypothesis. Third KO
-   on the unit, whatever the findings → `parked` with the evidence and the condition to
-   resume; free the slot, keep going. Count KOs in the `KO` column: a new finding does not reset it, and a review round on
-   a group of units counts one KO for each unit in the group. Dependents of a parked unit are
-   parked too ("blocked by <ID>") and resume with it. A red gate never stops the run.
+1. Builder report arrives → start its verifier at once ([verify](references/verify.md)). Only a
+   verdict that `bin/verdict-check.py --hash <hash>` accepts moves a unit; the builder's report
+   is a claim. Rejected: not a KO, rerun once on another model; rejected again → `parked`
+   "unverifiable". **BLOCKED** (proof cannot run here) is not a KO: give it the means (the
+   project's checks on that exact hash) or set `waiting` with what is missing.
+2. **OK** → `verified`, queued for integration. **KO** → its findings go back to the **same**
+   builder as one bounded correction (`SendMessage` / `followup_task` / a rerun in place).
+3. Second KO → a fresh builder on another model of the same runtime (mixed: Claude), all
+   findings, a different hypothesis. Third KO on the unit, whatever the findings: send
+   `orchestratore:diagnostician` (Codex: a sub-agent with its body; a model no builder used)
+   with the brief, the three verdicts and each hash, then `parked` with its DIAGNOSIS; `cause:
+   brief` → its question goes under `## Questions for the user`. Free the slot, keep going.
+   `KO` column: a new finding does not reset it; a review round counts one KO for each unit in
+   the group. Dependents of a parked unit are parked too ("blocked by <ID>") and resume with
+   it. A red gate never stops the run.
 4. A blocker needing the user → record the question (§8); continue with units not depending on it.
 
 Write every state change to `RUN.md` at once. The header and the Units table are the current
@@ -144,9 +144,9 @@ lines, move it to `.orchestratore/log/<date>.md`). After each write and before e
 6. After a merge, the post-merge check in [merge](references/merge.md): `in production` only
    when the recorded deploy is green on the merge SHA; one bounded fix-forward on red;
    `pipeline: none` → stays `merged`. You never trigger a deploy yourself.
-7. Update the project's own progress files if it has them (`ROADMAP.md`, changelog).
-   Dispatch never waits for steps 4-6 on a lane that is not blocked (§4); the post-merge
-   check runs alongside.
+7. Update the project's own progress files if it has them (`ROADMAP.md`, changelog). Dispatch
+   never waits for steps 4-6 on a lane that is not blocked (§4); the post-merge check runs
+   alongside.
 
 ## 7. Resume and stop
 
@@ -196,5 +196,5 @@ Next: <one action>
 | "The builder says tests pass" / "same model can verify" | Only a different-model verifier's commands count. |
 | "This red gate blocks the run" | It blocks one unit. Park it, continue. |
 | "I'll fix the conflict myself" | Send it back to the builder. |
-| "New finding, one more round" | Third KO parks the unit. Count, don't judge. |
+| "New finding, one more round" | Third KO: diagnose, then park. Count, don't judge. |
 | "Add a fresh section for this resume" | Overwrite the header; one Log line. |
