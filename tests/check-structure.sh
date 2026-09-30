@@ -36,10 +36,12 @@ check "orchestratore SKILL.md <= 200 lines" bash -c "[ \$(wc -l < '$ROOT/skills/
 check "brief SKILL.md <= 120 lines" bash -c "[ \$(wc -l < '$ROOT/skills/brief/SKILL.md') -le 120 ]"
 
 # Agents
-for a in builder verifier; do
+for a in builder verifier diagnostician; do
   f="$ROOT/agents/$a.md"
   check "agent $a: name, model, tools" bash -c "grep -q '^name: $a\$' '$f' && grep -q '^model: ' '$f' && grep -q '^tools: ' '$f'"
 done
+check "diagnostician is read-only" bash -c "! grep -qE '^tools:.*(Write|Edit)' '$ROOT/agents/diagnostician.md'"
+check "diagnostician returns the fixed diagnosis format" bash -c "grep -q '^DIAGNOSIS <ID>' '$ROOT/agents/diagnostician.md' && grep -q '^cause: code | test | brief | environment' '$ROOT/agents/diagnostician.md' && grep -q '^question: ' '$ROOT/agents/diagnostician.md'"
 check "verifier is read-only" bash -c "! grep -qE '^tools:.*(Write|Edit)' '$ROOT/agents/verifier.md'"
 check "builder and verifier default to different models" bash -c "[ \"\$(sed -n 's/^model: //p' '$ROOT/agents/builder.md')\" != \"\$(sed -n 's/^model: //p' '$ROOT/agents/verifier.md')\" ]"
 
@@ -92,6 +94,8 @@ check "skill: goal recorded at start" skill_says 'run-check.py --record-goal'
 check "skill: resume migrates an old-format page" skill_says 'An old-format page'
 check "skill: only a verdict accepted by verdict-check moves a unit" skill_says 'Only a verdict that `bin/verdict-check.py --hash <hash>` accepts moves a unit'
 check "skill: BLOCKED is not a KO" skill_says '**BLOCKED** (proof cannot run here) is not a KO'
+check "skill: third KO gets a diagnosis before the unit waits" skill_says 'send `orchestratore:diagnostician`'
+check "skill: a brief diagnosis becomes a question for the user" skill_says '`cause: brief`'
 # Mixed mode: Claude Code coordinates, Codex builds, Claude verifies.
 check "skill: mixed mode row in the engines table" grep -q '^| \*\*Mixed\*\* (Claude Code) |' "$ROOT/skills/orchestratore/SKILL.md"
 check "engines: mixed section exists" grep -q '^## Mixed: Claude Code coordinates, Codex builds' "$ROOT/skills/orchestratore/references/engines.md"

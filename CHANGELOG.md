@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.2 — 2026-09-30
+
+### Added
+- `agents/diagnostician.md`: at a unit's third KO, before it is parked, a fresh read-only
+  agent on a model none of its builders used reads the brief, the three verdicts and each
+  attempt's hash and returns a fixed `DIAGNOSIS`: `cause: code | test | brief | environment`,
+  up to three pieces of evidence, the pattern the three KOs share, one proposal and at most
+  one question. The unit is parked with the diagnosis as its evidence; `cause: brief` puts the
+  question under `## Questions for the user`. No fourth build attempt. Claude Code, Codex and
+  mixed paths documented.
+
 ## 0.9.1 — 2026-09-30
 
 Ideas adopted (no code copied) from VerifyAgentHQ/verify-agent (Apache-2.0: evidence

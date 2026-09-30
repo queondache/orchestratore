@@ -88,7 +88,9 @@ whichever agent reports first; send a correction with
 `followup_task(target=<ID>, message=<findings>)`. A model change needs a new sub-agent:
 `followup_task` keeps the old model. Verifiers are spawned the same way with
 `<plugin>/agents/verifier.md` and `model=<codex_verifier>`. If a builder could not commit
-(sandbox), commit its worktree yourself before verifying.
+(sandbox), commit its worktree yourself before verifying. At a unit's third KO the
+diagnostician is spawned the same way with `<plugin>/agents/diagnostician.md`, the brief, the
+three verdicts and each attempt's hash, on a model none of the unit's builders used.
 
 **Waves larger than the slot limit**: run each unit as its own Codex process. One line
 dispatches them in parallel and prints `<ID> hash=<sha>` as each finishes:
@@ -140,7 +142,9 @@ coordinator. Builder and verifier then differ by runtime, not only by model.
    `.orchestratore/briefs/codex-fix1/<ID>.md` = the brief + the verifier's findings.
    Second KO → new approach on the
    other runtime: `Agent(orchestratore:builder, model=<claude_builder>)` on the same worktree
-   with all findings (verifier stays `<claude_verifier>`, which must differ). Third KO → parked.
+   with all findings (verifier stays `<claude_verifier>`, which must differ). Third KO →
+   `Agent(orchestratore:diagnostician, model=<claude_verifier>)` with the brief, the three
+   verdicts and each attempt's hash, then parked with its DIAGNOSIS (SKILL.md §5).
 8. **Codex unavailable** (exit 69, quota, auth or credit): mark it `unavailable` in `RUN.md`,
    send its queued and correction work to Claude builders, and do not call Codex again until
    the user says it is restored.
