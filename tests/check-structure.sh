@@ -57,13 +57,15 @@ check "session hook reports an active run" bash -c "cd '$TMP' && bash '$ROOT/hoo
 check "session hook surfaces the run goal" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'goal: fix the login bugs'"
 mkdir "$TMP/.orchestratore/coordinator.lock"; printf 'session: s1\n' > "$TMP/.orchestratore/coordinator.lock/owner"
 check "session hook shows the coordinator lock owner" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'coordinator lock: session: s1'"
+check "session hook surfaces RUN.md check problems" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'RUN.md check: '"
 printf 'status: done\n' > "$TMP/.orchestratore/RUN.md"
 check "session hook silent when the run is done" bash -c "cd '$TMP' && [ -z \"\$(bash '$ROOT/hooks/session-state.sh')\" ]"
 
 # Scripts
 check "codex-task.sh parses" bash -n "$ROOT/bin/codex-task.sh"
 check "merge-gate.py parses" python3 -c "import ast; ast.parse(open('$ROOT/bin/merge-gate.py').read())"
-check "scripts are executable" bash -c "test -x '$ROOT/bin/codex-task.sh' && test -x '$ROOT/bin/merge-gate.py' && test -x '$ROOT/hooks/session-state.sh'"
+check "run-check.py parses" python3 -c "import ast; ast.parse(open('$ROOT/bin/run-check.py').read())"
+check "scripts are executable" bash -c "test -x '$ROOT/bin/codex-task.sh' && test -x '$ROOT/bin/merge-gate.py' && test -x '$ROOT/bin/run-check.py' && test -x '$ROOT/hooks/session-state.sh'"
 
 # Templates
 check "RUN template has the fields the hook reads" bash -c "grep -q '^status: ' '$ROOT/templates/RUN.md' && grep -q '^next: ' '$ROOT/templates/RUN.md' && grep -q '^goal: ' '$ROOT/templates/RUN.md'"
@@ -82,6 +84,9 @@ check "skill: never stack onto a blocked lane; independents open the next lane" 
 check "skill: merge and deploy details live in references/merge.md" test -f "$ROOT/skills/orchestratore/references/merge.md"
 check "skill: one PR per wave, never growing across waves" skill_says 'never let one PR grow across waves'
 check "skill: KO count survives new findings and group reviews" skill_says 'counts one KO for each unit in the group'
+check "skill: run-check after each RUN.md write and before each merge" skill_says 'After each write and before each merge run `python3 <plugin>/bin/run-check.py`'
+check "skill: goal recorded at start" skill_says 'run-check.py --record-goal'
+check "skill: resume migrates an old-format page" skill_says 'An old-format page'
 check "config template parses as TOML" python3 -c "import sys
 try:
     import tomllib

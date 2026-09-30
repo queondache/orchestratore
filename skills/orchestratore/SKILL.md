@@ -41,7 +41,8 @@ Brief format: the `brief` skill.
    that post commit statuses. `pipeline: none` if nothing deploys (CI that only tests is not).
 5. Pick the engine (§3), check you can write `.git` by creating the first worktree, and
    write `.orchestratore/RUN.md` from `<plugin>/templates/RUN.md`, with `goal:` = the user's
-   request in one sentence (only the user changes it). Add `.orchestratore/` to
+   request in one sentence (only the user changes it), then run `python3
+   <plugin>/bin/run-check.py --record-goal`. Add `.orchestratore/` to
    the file printed by `git rev-parse --git-path info/exclude`, so run files never get
    committed. If git writes are blocked, release the lock and tell the user how to relaunch
    with write access.
@@ -58,9 +59,8 @@ will wait on a PR, and open one PR per wave: never let one PR grow across waves.
    parallel; each returns at most 10 lines: files, entry points, test command. Do not explore
    more than the briefs need.
 3. Classify and split with the `brief` skill: FIX / BUILD / CHECK, risk tier, one owner per
-   file per wave, shared interfaces first. Units that depend on another unit go in a later
-   wave and inherit its tier if higher (a unit built on a tier 3 unit is tier 3). When the
-   tier is uncertain, take the higher one and log it under `## Decisions`.
+   file per wave, shared interfaces first. Dependent units go in a later wave and inherit a
+   higher tier (built on tier 3 = tier 3); an uncertain tier → the higher one, logged.
 4. Write every brief to `.orchestratore/briefs/<ID>.md` and add one row per unit to `RUN.md`.
 
 The plan is the set of briefs: no separate strategy stage, no per-unit plan.
@@ -121,8 +121,9 @@ Do not wait for the wave to finish.
 
 Write every state change to `RUN.md` at once. The header and the Units table are the current
 state: overwrite them in place (`next:` always the true next action) and never add a second
-header or a new block on top. History is one plain sentence per event, appended under `## Log`;
-past 100 lines, move it to `.orchestratore/log/<date>.md` and leave the link.
+header or a new block on top. History: one plain sentence per event under `## Log` (past 100
+lines, move it to `.orchestratore/log/<date>.md`). After each write and before each merge run
+`python3 <plugin>/bin/run-check.py`: exit 1 → fix `RUN.md` before anything else.
 
 ## 6. Integrate and merge
 
@@ -148,27 +149,26 @@ past 100 lines, move it to `.orchestratore/log/<date>.md` and leave the link.
 
 ## 7. Resume and stop
 
-- **Resume** (after the lock in §1): read `goal:`, `next:` and the Units table, then
-  `git worktree list` and the branches; trust only what git shows. Set `status: active`, finish verifications of delivered units,
-  then dispatch.
-- **Stop** (user asks, context running out, runtime exhausted, or a deploy still running
-  when you must stop): let running builders reach their report, write `status: parked` and
-  `next:` in `RUN.md` (for a deploy: the recorded check command on that SHA), release the
-  lock (§1). A stopped run stays `parked`, never `done`.
+- **Resume** (after the lock in §1): run `bin/run-check.py`. An old-format page (several
+  headers, no Units table) moves to `.orchestratore/log/<date>-RUN.md`; a fresh page from the
+  template carries over goal (from its objective, else ask the user), units and `next:`. Read
+  `goal:`, `next:`, the Units table, `git worktree list` and the branches; trust only git.
+  Set `status: active`, finish verifications of delivered units, then dispatch.
+- **Stop** (user asks, context or runtime exhausted, or a deploy still running): let running
+  builders report, write `status: parked` and `next:` (for a deploy: the recorded check
+  command on that SHA), release the lock (§1). A stopped run stays `parked`, never `done`.
 - **Done:** no deploy running; every unit `in production`, `merged` with `pipeline: none`,
   waiting for the user, or parked with evidence. Final report (§9), `status: done`, unlock.
 
 ## 8. Questions
 
 Ask the user only about product behaviour, scope, or an action outside the authorised
-perimeter. Technical, reversible choices (names, file layout, test shape, a library already
-in use) you decide and log under `## Decisions` in `RUN.md`. Ask one question at a time, the
-smallest that unblocks, recommended option first: `AskUserQuestion` in Claude Code, a plain
-question that ends the turn in Codex. Silence is never an answer.
+perimeter. Technical, reversible choices (names, layout, test shape, a library in use) you
+decide and log under `## Decisions`. One question at a time, the smallest that unblocks,
+recommended option first: `AskUserQuestion` in Claude Code, a plain question that ends the
+turn in Codex. Silence is never an answer.
 
-## 9. Report
-
-After each merge and at the end:
+## 9. Report (after each merge and at the end)
 
 ```text
 In production: <units, deploy green on sha> | Merged, no deploy observed / deploy pending: <units>
@@ -182,8 +182,8 @@ Next: <one action>
 
 - Never: force-push, `reset --hard`, deleting branches that are not yours, destructive or bulk
   production data changes, new logins, tokens or secrets, raising any budget or spend limit.
-- Builders never push, open PRs or merge; only you do, and merge only through §6.
-- Worktrees, prompts and hooks guard against mistakes, not against a hostile agent.
+- Builders never push, open PRs or merge; only you do, and merge only through §6. Worktrees,
+  prompts and hooks guard against mistakes, not against a hostile agent.
 
 ## Red flags
 
