@@ -13,6 +13,10 @@ blocked verdict distinct from failure).
   `ran`/`ci` evidence, no scope violation, no findings. JSON, exit 0/1/2. The coordinator acts
   only on an accepted verdict; exit code and tag must close the command line, and a text with
   two verdicts or duplicate `result:`/`hash:` lines is rejected.
+- `[ran expect-fail]`: a run that must fail (the FIX oracle with the fix undone); OK needs it
+  non-zero. Tolerant where unambiguous: bulleted commands under `commands:`, words between
+  the exit code and the tag, notes after the tag, `exit non-zero`. Tested on six verdicts
+  written by real verifier agents (fixtures in `tests/fixtures/verdicts/`).
 - Verdict result `BLOCKED` with a `blocked:` line: the proof cannot run here (missing
   database, service, memory, credentials). Not a KO, does not count against the unit; the
   coordinator provides the means (the project's checks on the exact hash) or sets `waiting`.

@@ -33,7 +33,7 @@ each FIX source, the tests for each BUILD criterion, the evidence for each CHECK
 3. Undo the production change in `<tmp>` using `git diff --name-status <base> <hash>` on
    non-test files: modified (M) and deleted (D) → `git checkout <base> -- <file>`; added (A)
    → delete; renamed (R) → delete the new path and `git checkout <base> -- <old path>`.
-4. Run the new test again: it must **fail on its assertion**. A setup, import or runner error
+4. Run the new test again: it must **fail on its assertion** (tag this line `[ran expect-fail]`). A setup, import or runner error
    is not a red oracle: fix the environment or answer `BLOCKED` with what is missing.
 5. `git worktree remove --force <tmp>`.
 
@@ -50,14 +50,23 @@ VERDICT <ID> <hash>
 result: OK | KO | BLOCKED
 hash: <full output of git rev-parse HEAD>
 scope: <paths outside write-only | none>
-commands: <command> → exit <code> [ran | ci <run url or id> | reused <what>]   (one line each)
+commands: <command> → exit <code> [ran | ran expect-fail | ci <run url or id> | reused <what>]   (one line each)
 proof: <oracle red: yes/no | criteria covered: n/m | checklist: n/m>
 findings: <max 3, each with file:line and what is wrong | none>
 blocked: <what is missing to run the proof | none>
 ```
 
+One command per `commands:` line, exit code and tag right after it, notes after the tag:
+
+```text
+commands: npm test -- cart.spec.ts → exit 0 [ran]
+commands: npm test -- cart.spec.ts (fix undone) → exit 1 [ran expect-fail]
+commands: backend checks on this hash → exit 0 [ci https://github.com/o/r/actions/runs/123]
+```
+
 Provenance of every command line: `[ran]` = run by the verifier in this session on this
-hash; `[ci <ref>]` = the project's own checks on this exact hash; `[reused <what>]` = an
+hash; `[ran expect-fail]` = a run that must fail (the FIX oracle with the fix undone: its
+non-zero exit is the proof); `[ci <ref>] = the project's own checks on this exact hash; `[reused <what>]` = an
 earlier result. OK rests only on `ran` and `ci`; reused evidence may support a KO, never an
 OK. **BLOCKED** = the proof cannot run here (missing database, service, memory, credentials):
 say what is missing in `blocked:`; it is not a KO and does not count against the unit.

@@ -1,0 +1,10 @@
+VERDICT A 55d0865acc6e090d920ff7f8b1dadcfe6902f44a
+result: OK
+hash: 55d0865acc6e090d920ff7f8b1dadcfe6902f44a
+scope: none
+commands:
+- python3 -m unittest tests.test_fix → exit 0 [ran]
+- python3 -m unittest tests.test_fix (throwaway worktree, calc.py reverted to base) → exit 1 [ran expect-fail]
+proof: oracle red: yes (AssertionError: 0.0 != 180 at tests/test_fix.py:5)
+findings: none
+blocked: none

@@ -1,0 +1,10 @@
+VERDICT C fb94b1a65776ea9afc0ceff04330342bcd022ef1
+result: BLOCKED
+hash: fb94b1a65776ea9afc0ceff04330342bcd022ef1
+scope: none
+commands: psql -h localhost -p 59999 -d shop_test -c 'select 1' → exit 2 [ran]
+commands: python3 -m unittest tests.test_fix → exit 0 [ran] (run separately; the brief chains it with && after psql, so the brief command as written did not reach it)
+commands: python3 -m unittest tests.test_fix with calc.py reverted to base → exit non-zero (AssertionError: 0.0 != 180) [ran expect-fail]
+proof: oracle red: yes (test_fix.py:5 fails on assertion with base calc.py; passes with fix)
+findings: none
+blocked: brief command requires a Postgres at localhost:59999 (db shop_test); connection refused (::1 and 127.0.0.1). Required gate cannot reach exit 0 here.

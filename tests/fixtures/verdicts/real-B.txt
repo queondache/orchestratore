@@ -1,0 +1,9 @@
+VERDICT B 4c691f662f187bfa9ecbc02325d0aba8ceb56f75
+result: KO
+hash: 4c691f662f187bfa9ecbc02325d0aba8ceb56f75
+scope: none
+commands: python3 -m unittest tests.test_fix → exit 0 [ran]
+commands: python3 -m unittest tests.test_fix (calc.py reverted to base) → exit 0, expected non-zero [ran expect-fail]
+proof: oracle red: no (KO: no oracle)
+findings: tests/test_fix.py:5 assertion `discount(100, 50) >= 0 or True` is always true; test passes on base, so it proves nothing. Must assert discount(100, 50) == 50.
+blocked: none

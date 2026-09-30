@@ -135,6 +135,32 @@ class VerdictCheckTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("exit 1", problems(out))
 
+    def test_expected_failure_of_the_oracle_supports_ok(self):
+        # FIX proof: the new test must fail once the fix is undone. That red run is the proof.
+        red = OK.replace("[ci https://github.com/o/r/actions/runs/1]\n",
+                         "[ci https://github.com/o/r/actions/runs/1]\n"
+                         "commands: fix undone, npm test -- login.spec.ts → exit 1 [ran expect-fail]\n")
+        code, out = check(red, "--hash", H)
+        self.assertEqual(code, 0, out)
+
+    def test_expected_failure_that_passes_is_not_ok(self):
+        green = OK.replace("[ci https://github.com/o/r/actions/runs/1]\n",
+                           "[ci https://github.com/o/r/actions/runs/1]\n"
+                           "commands: fix undone, npm test → exit 0 [ran expect-fail]\n")
+        code, out = check(green)
+        self.assertEqual(code, 1)
+        self.assertIn("expected to fail", problems(out))
+
+    def test_unknown_qualifier_on_ran_is_rejected(self):
+        code, out = check(OK.replace("→ exit 0 [ran]", "→ exit 0 [ran mostly]"))
+        self.assertEqual(code, 1)
+        self.assertIn("qualifier", problems(out))
+
+    def test_expect_fail_only_on_ran(self):
+        code, out = check(OK.replace("[ci https://github.com/o/r/actions/runs/1]",
+                                     "[reused expect-fail]").replace("→ exit 0 [reused", "→ exit 1 [reused"))
+        self.assertEqual(code, 1)
+
     def test_two_commands_on_one_line_are_rejected(self):
         code, out = check(OK.replace("npm test -- login.spec.ts → exit 0 [ran]",
                                      "npm test → exit 1 [ran]; npm run lint → exit 0 [ran]"))
@@ -177,6 +203,53 @@ class VerdictCheckTest(unittest.TestCase):
         proc = subprocess.run([sys.executable, str(SCRIPT), "--verdict", "/nonexistent/v.txt"],
                               capture_output=True, text=True)
         self.assertEqual(proc.returncode, 2)
+
+
+class RealVerdictsTest(unittest.TestCase):
+    """Verdicts written by real verifier agents on scratch FIX units: all three are correct."""
+    FIX = ROOT / "tests" / "fixtures" / "verdicts"
+
+    def run_fixture(self, name):
+        hash_ = (self.FIX / f"{name}.hash").read_text().strip()
+        proc = subprocess.run([sys.executable, str(SCRIPT), "--verdict", str(self.FIX / f"{name}.txt"),
+                               "--hash", hash_], capture_output=True, text=True)
+        return proc.returncode, json.loads(proc.stdout)
+
+    def test_real_ok_with_bulleted_commands(self):
+        code, out = self.run_fixture("real-A")
+        self.assertEqual((code, out["result"]), (0, "OK"), out)
+
+    def test_real_ko_with_words_between_exit_and_tag(self):
+        code, out = self.run_fixture("real-B")
+        self.assertEqual((code, out["result"]), (0, "KO"), out)
+
+    def test_real_blocked_with_notes_after_tag_and_exit_non_zero(self):
+        code, out = self.run_fixture("real-C")
+        self.assertEqual((code, out["result"]), (0, "BLOCKED"), out)
+
+
+    def test_second_round_real_verdicts(self):
+        for name, expected in (("real2-A", "OK"), ("real2-B", "KO"), ("real2-C", "BLOCKED")):
+            code, out = self.run_fixture(name)
+            self.assertEqual((code, out["result"]), (0, expected), (name, out))
+
+
+class TolerantFormatTest(unittest.TestCase):
+    def test_notes_after_the_tag_are_allowed(self):
+        code, out = check(OK.replace("→ exit 0 [ran]", "→ exit 0 [ran] (12 tests)"), "--hash", H)
+        self.assertEqual(code, 0, out)
+
+    def test_exit_non_zero_counts_as_a_failure(self):
+        code, out = check(OK.replace("→ exit 0 [ran]", "→ exit non-zero [ran]"))
+        self.assertEqual(code, 1)
+        self.assertIn("failing", problems(out))
+
+    def test_bulleted_commands_are_read(self):
+        bulleted = OK.replace("commands: npm test -- login.spec.ts → exit 0 [ran]\n",
+                              "commands:\n- npm test -- login.spec.ts → exit 1 [ran]\n")
+        code, out = check(bulleted)
+        self.assertEqual(code, 1)
+        self.assertIn("exit 1", problems(out))
 
 
 if __name__ == "__main__":

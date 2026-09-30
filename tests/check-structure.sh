@@ -66,7 +66,7 @@ check "codex-task.sh parses" bash -n "$ROOT/bin/codex-task.sh"
 check "merge-gate.py parses" python3 -c "import ast; ast.parse(open('$ROOT/bin/merge-gate.py').read())"
 check "verdict-check.py parses" python3 -c "import ast; ast.parse(open('$ROOT/bin/verdict-check.py').read())"
 check "verdict-check.py is executable" test -x "$ROOT/bin/verdict-check.py"
-check "verifier agent and verify.md share the verdict format" bash -c "for f in '$ROOT/agents/verifier.md' '$ROOT/skills/orchestratore/references/verify.md'; do grep -q '^result: OK | KO | BLOCKED\$' \"\$f\" && grep -q '^blocked: ' \"\$f\" && grep -q '\[ran | ci <run url or id> | reused <what>\]' \"\$f\" || exit 1; done"
+check "verifier agent and verify.md share the verdict format" bash -c "for f in '$ROOT/agents/verifier.md' '$ROOT/skills/orchestratore/references/verify.md'; do grep -q '^result: OK | KO | BLOCKED\$' \"\$f\" && grep -q '^blocked: ' \"\$f\" && grep -q '\[ran | ran expect-fail | ci <run url or id> | reused <what>\]' \"\$f\" || exit 1; done"
 check "run-check.py parses" python3 -c "import ast; ast.parse(open('$ROOT/bin/run-check.py').read())"
 check "scripts are executable" bash -c "test -x '$ROOT/bin/codex-task.sh' && test -x '$ROOT/bin/merge-gate.py' && test -x '$ROOT/bin/run-check.py' && test -x '$ROOT/hooks/session-state.sh'"
 

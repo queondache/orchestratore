@@ -9,9 +9,11 @@ turn a failing command or a reused proof into an OK.
     hash prefixes and, with --hash, equals the delivered hash;
   * `result:` is OK, KO or BLOCKED;
   * every `commands:` line has `→ exit <n>` (or `->`) and a provenance tag:
-    `[ran]` (run by the verifier on this hash), `[ci <run url or id>]` (the
-    project's checks on this exact hash) or `[reused <what>]`;
-  * OK: at least one command, every exit 0, only `ran` / `ci` evidence,
+    `[ran]` (run by the verifier on this hash), `[ran expect-fail]` (a run that
+    must fail, e.g. the FIX oracle with the fix undone), `[ci <run url or id>]`
+    (the project's checks on this exact hash) or `[reused <what>]`;
+  * OK: at least one command, every exit 0 except `expect-fail` runs, which
+    must be non-zero; only `ran` / `ci` evidence,
     `scope: none`, `findings: none`, `blocked: none` or absent;
   * KO: `findings:` names what is wrong;
   * BLOCKED: `blocked:` says what is missing to run the proof. It is not a KO.
@@ -30,11 +32,15 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 RESULTS = {"OK", "KO", "BLOCKED"}
-# Exit code and provenance tag must close the line, so text inside the command
-# (e.g. `echo '-> exit 0'`) can never stand in for the real result.
-COMMAND_RE = re.compile(r"(?:→|->)\s*exit\s+(-?\d+)\s*(\[[^\]]*\])?\s*$")
-ANY_EXIT_RE = re.compile(r"(?:→|->)\s*exit\s+-?\d+")
-TAG_RE = re.compile(r"^\[(ran|ci|reused)(?:\s+([^\]]*))?\]$")
+# One `→ exit <code>` per command line, so text inside the command (e.g.
+# `echo '-> exit 0'`) can never stand in for the real result. After the code,
+# short words may precede the provenance tag and notes may follow it: real
+# verifiers write "exit 0, expected non-zero [ran expect-fail]" or
+# "exit 0 [ran] (12 tests)".
+EXIT_RE = re.compile(r"(?:→|->)\s*exit\s+(-?\d+|non-?zero)\b", re.IGNORECASE)
+TAG_AFTER_RE = re.compile(r"^[^\[]*\[([^\]]*)\]")
+TAG_RE = re.compile(r"^(ran|ci|reused)(?:\s+(.*))?$")
+FIELD_RE = re.compile(r"^[a-z]+:")
 
 
 def field(lines: List[str], name: str) -> Optional[str]:
@@ -79,34 +85,51 @@ def evaluate(text: str, delivered: Optional[str]) -> Dict[str, object]:
     if result not in RESULTS:
         problems.append(f"result {result!r} is not one of OK, KO, BLOCKED")
 
-    commands = [line[len("commands:"):].strip() for line in lines if line.startswith("commands:")]
+    commands: List[str] = []
+    in_list = False
+    for line in lines:
+        if line.startswith("commands:"):
+            rest = line[len("commands:"):].strip()
+            in_list = not rest
+            if rest:
+                commands.append(rest)
+        elif in_list and line[:2] in {"- ", "* "}:
+            commands.append(line[2:].strip())
+        elif in_list and (FIELD_RE.match(line) or line):
+            in_list = False
     evidence = []
     for cmd in commands:
-        if len(ANY_EXIT_RE.findall(cmd)) > 1:
+        exits = EXIT_RE.findall(cmd)
+        if len(exits) > 1:
             problems.append(f"one command per line: two exit codes in {cmd!r}")
             continue
-        m = COMMAND_RE.search(cmd)
-        if not m:
-            if ANY_EXIT_RE.search(cmd):
-                problems.append(f"command must end with `→ exit <code> [provenance]`: {cmd!r}")
-            else:
-                problems.append(f"command without `→ exit <code>`: {cmd!r}")
+        if not exits:
+            problems.append(f"command without `→ exit <code>`: {cmd!r}")
             continue
-        code = int(m.group(1))
-        tag = TAG_RE.match(m.group(2) or "")
+        m = EXIT_RE.search(cmd)
+        code = int(m.group(1)) if m.group(1).lstrip("-").isdigit() else 1
+        after = TAG_AFTER_RE.match(cmd[m.end():])
+        tag = TAG_RE.match(after.group(1).strip()) if after else None
         if not tag:
             problems.append(f"command without provenance [ran|ci <ref>|reused <what>]: {cmd!r}")
             continue
         kind, ref = tag.group(1), (tag.group(2) or "").strip()
         if kind in {"ci", "reused"} and not ref:
             problems.append(f"[{kind}] needs a reference (run url or id, or what was reused): {cmd!r}")
-        evidence.append((cmd, code, kind))
+        expect_fail = kind == "ran" and ref == "expect-fail"
+        if kind == "ran" and ref and not expect_fail:
+            problems.append(f"unknown qualifier {ref!r} on [ran] (only `expect-fail`): {cmd!r}")
+        evidence.append((cmd, code, kind, expect_fail))
 
     scope, findings, blocked = field(lines, "scope"), field(lines, "findings"), field(lines, "blocked")
     if result == "OK":
         if not commands:
             problems.append("OK needs at least one command with its exit code")
-        for cmd, code, kind in evidence:
+        for cmd, code, kind, expect_fail in evidence:
+            if expect_fail:
+                if code == 0:
+                    problems.append(f"expected to fail but exited 0 (the oracle is not red): {cmd!r}")
+                continue
             if code != 0:
                 problems.append(f"OK with a failing command (exit {code}): {cmd!r}")
             if kind == "reused":

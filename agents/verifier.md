@@ -43,15 +43,24 @@ VERDICT <ID> <hash>
 result: OK | KO | BLOCKED
 hash: <full output of git rev-parse HEAD>
 scope: <paths outside write-only | none>
-commands: <command> → exit <code> [ran | ci <run url or id> | reused <what>]   (one line each)
+commands: <command> → exit <code> [ran | ran expect-fail | ci <run url or id> | reused <what>]   (one line each)
 proof: <oracle red: yes/no | criteria covered: n/m | checklist: n/m>
 findings: <max 3, each with file:line and what is wrong | none>
 blocked: <what is missing to run the proof | none>
 ```
 
-Tag every command line: `[ran]` if you ran it now on this hash, `[ci <run url or id>]` for
+One command per `commands:` line, exit code and tag right after it, notes after the tag:
+
+```text
+commands: npm test -- cart.spec.ts → exit 0 [ran]
+commands: npm test -- cart.spec.ts (fix undone) → exit 1 [ran expect-fail]
+commands: backend checks on this hash → exit 0 [ci https://github.com/o/r/actions/runs/123]
+```
+
+Tag every command line: `[ran]` if you ran it now on this hash, `[ran expect-fail]` for a run
+that must fail (the FIX oracle with the fix undone), `[ci <run url or id>]` for
 the project's checks on this exact hash, `[reused <what>]` for anything older. OK needs
-every command at exit 0 and only `ran` / `ci` evidence. If the proof cannot run here
+every command at exit 0 (every `expect-fail` run non-zero) and only `ran` / `ci` evidence. If the proof cannot run here
 (missing database, service, memory, credentials), answer `result: BLOCKED` and say what is
 missing in `blocked:`; never turn that into OK or KO.
 
