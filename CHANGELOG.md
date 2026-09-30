@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.1 — 2026-09-30
+
+Ideas adopted (no code copied) from VerifyAgentHQ/verify-agent (Apache-2.0: evidence
+provenance, deterministic policy separate from evidence) and agtktID/skill-verify (MIT: a
+blocked verdict distinct from failure).
+
+### Added
+- `bin/verdict-check.py`: deterministic acceptance of a verdict. Full 40-hex hash equal to
+  the delivered one; result OK, KO or BLOCKED; every command with `→ exit <n>` and a
+  provenance tag `[ran]`, `[ci <ref>]` or `[reused <what>]`; OK only with every exit 0, only
+  `ran`/`ci` evidence, no scope violation, no findings. JSON, exit 0/1/2. The coordinator acts
+  only on an accepted verdict.
+- Verdict result `BLOCKED` with a `blocked:` line: the proof cannot run here (missing
+  database, service, memory, credentials). Not a KO, does not count against the unit; the
+  coordinator provides the means (the project's checks on the exact hash) or sets `waiting`.
+
 ## 0.9.0 — 2026-09-30
 
 Brings back "Claude Code coordinates, Codex builds" (default design up to 0.6, dropped in

@@ -47,16 +47,24 @@ Exactly this, nothing else:
 
 ```text
 VERDICT <ID> <hash>
-result: OK | KO
-hash: <output of git rev-parse HEAD>
+result: OK | KO | BLOCKED
+hash: <full output of git rev-parse HEAD>
 scope: <paths outside write-only | none>
-commands: <command> → exit <code>   (one line each)
+commands: <command> → exit <code> [ran | ci <run url or id> | reused <what>]   (one line each)
 proof: <oracle red: yes/no | criteria covered: n/m | checklist: n/m>
 findings: <max 3, each with file:line and what is wrong | none>
+blocked: <what is missing to run the proof | none>
 ```
 
-A verdict without command lines and exit codes is not a verdict and not a KO: rerun it once
-with another model.
+Provenance of every command line: `[ran]` = run by the verifier in this session on this
+hash; `[ci <ref>]` = the project's own checks on this exact hash; `[reused <what>]` = an
+earlier result. OK rests only on `ran` and `ci`; reused evidence may support a KO, never an
+OK. **BLOCKED** = the proof cannot run here (missing database, service, memory, credentials):
+say what is missing in `blocked:`; it is not a KO and does not count against the unit.
+
+The coordinator acts only on a verdict that `python3 <plugin>/bin/verdict-check.py --hash
+<delivered hash>` accepts (exit 0). A rejected verdict is not a verdict and not a KO: rerun
+it once with another model.
 `KO: no oracle` and `KO: out of scope` are full KOs, never "OK with notes".
 
 ## Model choice
