@@ -82,6 +82,9 @@ def evaluate(text: str, delivered: Optional[str]) -> Dict[str, object]:
     commands = [line[len("commands:"):].strip() for line in lines if line.startswith("commands:")]
     evidence = []
     for cmd in commands:
+        if len(ANY_EXIT_RE.findall(cmd)) > 1:
+            problems.append(f"one command per line: two exit codes in {cmd!r}")
+            continue
         m = COMMAND_RE.search(cmd)
         if not m:
             if ANY_EXIT_RE.search(cmd):

@@ -135,6 +135,12 @@ class VerdictCheckTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("exit 1", problems(out))
 
+    def test_two_commands_on_one_line_are_rejected(self):
+        code, out = check(OK.replace("npm test -- login.spec.ts → exit 0 [ran]",
+                                     "npm test → exit 1 [ran]; npm run lint → exit 0 [ran]"))
+        self.assertEqual(code, 1)
+        self.assertIn("one command per line", problems(out))
+
     def test_two_verdicts_in_one_text_are_rejected(self):
         ko = OK.replace("result: OK", "result: KO").replace("findings: none", "findings: src/a.ts:1 bug")
         code, out = check(OK + "\nCorrection:\n" + ko)
