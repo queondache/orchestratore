@@ -118,6 +118,15 @@ shipped_grep() { # shipped_grep <perl-regex>: prints matches, succeeds if there 
 }
 check "no absolute user paths or personal names in shipped files" shipped_grep '/Users/|/home/[a-z]|andreapesce|~/Dev|\bAndrea\b'
 check "no Italian leftovers in shipped files" shipped_grep '(?i)\b(della|degli|perché|quando|milestone meno|cervello|verificatore)\b'
+# Claude models: opus for the complex work (coordinate, verify, diagnose), sonnet builds.
+agent_model() { grep -qx "model: $2" "$ROOT/agents/$1.md"; }
+check "agents: builder runs on sonnet" agent_model builder sonnet
+check "agents: verifier runs on opus" agent_model verifier opus
+check "agents: diagnostician runs on opus" agent_model diagnostician opus
+check "config: claude builder sonnet, verifier opus" bash -c "grep -qx 'claude_builder = \"sonnet\"' '$ROOT/templates/config.toml' && grep -qx 'claude_verifier = \"opus\"' '$ROOT/templates/config.toml'"
+check "skill: opus for complex work, sonnet for the rest" skill_says '**opus** for the complex work (coordinating, verifying, diagnosing), **sonnet** for the rest'
+check "engines: coordinator session runs on opus" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'Run the coordinator session on **opus**'"
+check "no fable or haiku in shipped files" shipped_grep '(?i)\b(fable|haiku)\b'
 check "no TODO/TBD in shipped files" shipped_grep '\bTODO\b|\bTBD\b'
 check "0.6 controller is gone" bash -c "! test -e '$ROOT/controller' && ! test -e '$ROOT/bin/orchestratore-controller'"
 

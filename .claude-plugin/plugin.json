@@ -1,6 +1,6 @@
 {
   "name": "orchestratore",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "Multi-agent coordinator for Claude Code and Codex: plan once, dispatch independent units in parallel, verify each delivery with a different model, merge only through a deterministic gate.",
   "author": {
     "name": "Andrea Pesce",

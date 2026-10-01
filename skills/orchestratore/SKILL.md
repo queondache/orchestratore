@@ -74,9 +74,10 @@ a Claude Code coordinator has Codex build and Claude verify. Commands: [engines]
 | **Codex** | native sub-agents (`spawn_agent`) in worktrees you create; waves larger than the slot limit via `codex-task.sh` | sub-agents on a different model |
 | **Mixed** (Claude Code) | one background `codex-task.sh build` per unit in worktrees you create; record its `model=` | `orchestratore:verifier` (Claude) |
 
-Record builder and verifier models in `RUN.md`; always different. Quota, auth or credit
-failure: retry once on another model of the same runtime (mixed: Codex down → Claude
-builders); runtime exhausted → park the run (§7). Never simulate an agent you do not have.
+Builder and verifier models differ; record both in `RUN.md`. Claude models: **opus** for the
+complex work (coordinating, verifying, diagnosing), **sonnet** for the rest (building); no other.
+Quota, auth or credit failure: retry once (Codex: another model; Claude Code: a fresh agent;
+mixed: Claude builders); runtime exhausted → park the run (§7). Never fake a missing agent.
 
 ## 4. Dispatch the wave
 
@@ -110,14 +111,13 @@ Do not wait for the wave to finish.
    project's checks on that exact hash) or set `waiting` with what is missing.
 2. **OK** → `verified`, queued for integration. **KO** → its findings go back to the **same**
    builder as one bounded correction (`SendMessage` / `followup_task` / a rerun in place).
-3. Second KO → a fresh builder on another model of the same runtime (mixed: Claude), all
-   findings, a different hypothesis. Third KO on the unit, whatever the findings: send
-   `orchestratore:diagnostician` (Codex: a sub-agent with its body; a model no builder used)
-   with the brief, the three verdicts and each hash, then `parked` with its DIAGNOSIS; `cause:
-   brief` → its question goes under `## Questions for the user`. Free the slot, keep going.
-   `KO` column: a new finding does not reset it; a review round counts one KO for each unit in
-   the group. Dependents of a parked unit are parked too ("blocked by <ID>") and resume with
-   it. A red gate never stops the run.
+3. Second KO → a fresh builder (Codex: another model; mixed: Claude), all findings, a different
+   hypothesis. Third KO on the unit, whatever the findings: send `orchestratore:diagnostician`
+   (Codex: a sub-agent with its body; a model no builder used) with the brief, the three
+   verdicts and each hash, then `parked` with its DIAGNOSIS; `cause: brief` → its question goes
+   under `## Questions for the user`. Free the slot, keep going. `KO` column: a new finding does
+   not reset it; a review round counts one KO for each unit in the group. Dependents of a parked
+   unit are parked too ("blocked by <ID>") and resume with it. A red gate never stops the run.
 4. A blocker needing the user → record the question (§8); continue with units not depending on it.
 
 Write every state change to `RUN.md` at once. The header and the Units table are the current

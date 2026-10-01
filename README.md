@@ -57,6 +57,8 @@ The main keys:
 
 - `[engines] max_parallel` — concurrent builders (default 8), capped by the runtime's slots.
 - `[models]` — builder and verifier model per runtime (they must differ).
+  In Claude Code only two models: opus for the complex work (coordinator, verifier,
+  diagnostician), sonnet builds. Start the coordinator session on opus.
 - `[merge] auto_merge_globs` — the paths allowed to auto-merge. **Empty by default: nothing
   auto-merges until you list paths.** `sensitive_globs` adds to the built-in list (schema,
   migrations, auth, payments, tenancy, personal/health data, secrets, permissions, deletion).
