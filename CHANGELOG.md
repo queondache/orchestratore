@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.3 — 2026-10-01
+
+### Changed
+- Claude models fixed to two: **opus** for the complex work (coordinator session, verifiers,
+  final lane pass, diagnostician), **sonnet** for building. No other Claude model, not even as
+  a fallback. In Claude Code a second KO goes to a fresh sonnet builder (verifier stays opus);
+  a quota failure retries once in a fresh agent on the same model.
+- Structure checks: agent and config models pinned, and no other Claude model name in shipped
+  files.
+
 ## 0.9.2 — 2026-09-30
 
 ### Added

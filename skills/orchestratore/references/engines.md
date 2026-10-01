@@ -27,6 +27,12 @@ codex_sandbox = "workspace-write"   # for codex-task.sh: read-only | workspace-w
 In Codex with empty model keys, pick two different models from your session's list and write
 both in `RUN.md` before the first dispatch.
 
+**Claude models.** Two only: **opus** for the complex work, **sonnet** for the rest. Run the
+coordinator session on **opus** (`/model opus` before `/orchestra start`; on another model, say
+so once and write it under `## Decisions`). Verifiers, the final lane pass and the
+diagnostician run on opus; builders on sonnet. No other Claude model, not even as a fallback:
+a builder on opus would leave no stronger model to verify it.
+
 ## Worktrees
 
 Every builder writes in its own worktree on its own branch, created from the unit's base
@@ -62,7 +68,9 @@ Agent(subagent_type="orchestratore:verifier", model=<claude_verifier>,
       prompt="worktree: <path>  hash: <sha>  base: <unit base sha>\n" + <brief content>)
 ```
 
-A correction goes back to the same builder with `SendMessage` to its agent ID. If the plugin
+A correction goes back to the same builder with `SendMessage` to its agent ID. The second KO
+goes to a fresh sonnet builder (new agent, all findings, a different hypothesis): the verifier
+stays opus. If the plugin
 agents are not available, use `general-purpose` and paste the body of
 `<plugin>/agents/builder.md` or `verifier.md` at the top of the prompt.
 
@@ -151,7 +159,8 @@ coordinator. Builder and verifier then differ by runtime, not only by model.
 
 ## Failures
 
-Quota, authentication or credit errors on a model: retry the unit once on another model of the
-same runtime (mixed mode: Mixed step 8), keeping builder and verifier different. Runtime exhausted: `status: parked`,
+Quota, authentication or credit errors on a model: retry the unit once, keeping builder and
+verifier different. Claude Code: the same model in a fresh agent, never a third model. Codex:
+another model of the session. Mixed mode: Mixed step 8. Runtime exhausted: `status: parked`,
 report, stop. Do not retry a model that failed for credit or quota until the user says it is
 restored.

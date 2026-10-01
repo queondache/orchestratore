@@ -7,6 +7,7 @@ mode = "single"          # "mixed": a Claude Code coordinator has Codex build an
 
 [models]
 # Use the names your runtime exposes. Builder and verifier must differ.
+# Claude: opus for the complex work (coordinator, verifier, diagnostician), sonnet builds.
 claude_builder = "sonnet"
 claude_verifier = "opus"
 codex_builder = ""       # "" = the coordinator picks from the models the session lists
