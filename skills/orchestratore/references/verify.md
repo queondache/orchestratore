@@ -73,7 +73,7 @@ say what is missing in `blocked:`; it is not a KO and does not count against the
 
 The coordinator acts only on a verdict that `python3 <plugin>/bin/verdict-check.py --hash
 <delivered hash>` accepts (exit 0). A rejected verdict is not a verdict and not a KO: rerun
-it once with another model.
+it once (Claude Code: a fresh opus verifier, never the builder's model; Codex: another model).
 `KO: no oracle` and `KO: out of scope` are full KOs, never "OK with notes".
 
 ## Model choice

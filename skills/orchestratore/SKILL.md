@@ -104,11 +104,11 @@ mixed: Claude builders); runtime exhausted → park the run (§7). Never fake a 
 
 Do not wait for the wave to finish.
 
-1. Builder report arrives → start its verifier at once ([verify](references/verify.md)). Only a
-   verdict that `bin/verdict-check.py --hash <hash>` accepts moves a unit; the builder's report
-   is a claim. Rejected: not a KO, rerun once on another model; rejected again → `parked`
-   "unverifiable". **BLOCKED** (proof cannot run here) is not a KO: give it the means (the
-   project's checks on that exact hash) or set `waiting` with what is missing.
+1. Builder reports → start its verifier at once ([verify](references/verify.md)). Only a verdict
+   that `bin/verdict-check.py --hash <hash>` accepts moves a unit; the builder's report is a
+   claim. Rejected: not a KO, rerun once (Claude Code: a fresh opus verifier; Codex: another
+   model); rejected again → `parked` "unverifiable". **BLOCKED** (proof cannot run here) is not
+   a KO: give it the means (project checks on that hash) or `waiting` with what is missing.
 2. **OK** → `verified`, queued for integration. **KO** → its findings go back to the **same**
    builder as one bounded correction (`SendMessage` / `followup_task` / a rerun in place).
 3. Second KO → a fresh builder (Codex: another model; mixed: Claude), all findings, a different

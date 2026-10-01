@@ -159,8 +159,8 @@ coordinator. Builder and verifier then differ by runtime, not only by model.
 
 ## Failures
 
-Quota, authentication or credit errors on a model: retry the unit once on another model of the
-same runtime (Claude Code: the same model in a fresh agent, never a third model; mixed mode:
-Mixed step 8), keeping builder and verifier different. Runtime exhausted: `status: parked`,
+Quota, authentication or credit errors on a model: retry the unit once, keeping builder and
+verifier different. Claude Code: the same model in a fresh agent, never a third model. Codex:
+another model of the session. Mixed mode: Mixed step 8. Runtime exhausted: `status: parked`,
 report, stop. Do not retry a model that failed for credit or quota until the user says it is
 restored.
