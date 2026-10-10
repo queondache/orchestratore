@@ -152,7 +152,9 @@ def evaluate(run_path: Path, record_goal: bool) -> Dict[str, object]:
                         "(if they did, rerun with --record-goal)")
 
     pipelines = field_lines(lines, "pipeline")
-    deploys = bool(pipelines) and not pipelines[0].lower().startswith(("none", "<"))
+    # Only an explicit `pipeline: none` makes `merged` final; a missing line or the
+    # template placeholder may hide a deploy still to confirm.
+    deploys = not (len(pipelines) == 1 and pipelines[0].lower().split()[:1] == ["none"])
     check_units(lines, problems, statuses[0] if len(statuses) == 1 else "", deploys)
     check_log(lines, problems)
     result: Dict[str, object] = {"ok": not problems, "run": str(run_path), "goal": goal,

@@ -97,7 +97,7 @@ class RunCheckTest(unittest.TestCase):
         self.assertIn("U-3", problems(out))
 
     def test_done_with_every_unit_merged_or_in_production_passes(self):
-        text = (VALID.replace("status: active", "status: done")
+        text = (VALID.replace("status: active", "status: done\npipeline: none")
                 .replace("| verifying | 9876fed | | 0 |", "| in production | 9876fed | OK opus | 0 |")
                 .replace("| U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 3 |\n", ""))
         code, out = run(text)
@@ -110,6 +110,14 @@ class RunCheckTest(unittest.TestCase):
         code, out = run(text)
         self.assertEqual(code, 1)
         self.assertIn("U-1", problems(out))
+
+    def test_done_with_merged_unit_and_missing_or_placeholder_pipeline_fails(self):
+        base = (VALID.replace("| verifying | 9876fed | | 0 |", "| in production | 9876fed | OK opus | 0 |")
+                .replace("| U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 3 |\n", ""))
+        for header in ("status: done", "status: done\npipeline: <post-merge deploy found at start | none>"):
+            code, out = run(base.replace("status: active", header))
+            self.assertEqual(code, 1, header)
+            self.assertIn("U-1", problems(out))
 
     def test_done_with_merged_unit_and_no_pipeline_passes(self):
         text = (VALID.replace("status: active", "status: done\npipeline: none")

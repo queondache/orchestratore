@@ -32,14 +32,20 @@ each FIX source, the tests for each BUILD criterion, the evidence for each CHECK
    dependencies back, each that exists: `ln -s <worktree>/node_modules <tmp>/node_modules`
    (same for `.venv`, `venv`). Install there only if the project has nothing installed. Tool
    caches written through the link (e.g. `node_modules/.cache`) land in the reviewed worktree
-   as untracked files, which is allowed. In `<tmp>`, run the new test: it must **pass**.
-   This proves the environment works.
+   as untracked files, which is allowed. **Do not link** dependencies that point back into
+   the reviewed code: an editable install (`grep -rl "<worktree>"` finds a `.pth` or
+   `__editable__` file in the venv) or a workspace package (a symlink in `node_modules`
+   resolving inside `<worktree>`). Then install in `<tmp>` instead (`npm ci`, `uv sync`,
+   `pip install -e .`): otherwise the test imports the reviewed code, not the copy. In
+   `<tmp>`, run the new test: it must **pass**. This proves the environment works.
 2. Undo the production change in `<tmp>` using `git -C <worktree> diff --name-status <base>
    <hash>` on non-test files: modified (M) and deleted (D) → `git -C <worktree> archive
    <base> -- <file> | tar -x -C <tmp>` (recreates folders and file modes); added (A) →
    delete; renamed (R) → delete the new path and extract the old one from `<base>` the same way.
 3. Run the new test again: it must **fail on its assertion** (tag this line `[ran expect-fail]`). A setup, import or runner error
-   is not a red oracle: fix the environment or answer `BLOCKED` with what is missing.
+   is not a red oracle: fix the environment or answer `BLOCKED` with what is missing. If it
+   still passes while dependencies are linked, repeat steps 1-3 once with them installed in
+   `<tmp>` before answering `KO: no oracle`: a link can hide an editable install.
 4. `rm -rf <tmp>`, always, also on KO or BLOCKED.
 
 The final pass on a lane head (SKILL.md §6) runs the full gate (build, test, lint) instead of
