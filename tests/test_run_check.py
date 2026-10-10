@@ -103,6 +103,21 @@ class RunCheckTest(unittest.TestCase):
         code, out = run(text)
         self.assertEqual(code, 0, out)
 
+    def test_done_with_merged_unit_but_a_deploy_pipeline_fails(self):
+        text = (VALID.replace("status: active", "status: done\npipeline: vercel   check: gh api x")
+                .replace("| verifying | 9876fed | | 0 |", "| in production | 9876fed | OK opus | 0 |")
+                .replace("| U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 3 |\n", ""))
+        code, out = run(text)
+        self.assertEqual(code, 1)
+        self.assertIn("U-1", problems(out))
+
+    def test_done_with_merged_unit_and_no_pipeline_passes(self):
+        text = (VALID.replace("status: active", "status: done\npipeline: none")
+                .replace("| verifying | 9876fed | | 0 |", "| merged | 9876fed | OK opus | 0 |")
+                .replace("| U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 3 |\n", ""))
+        code, out = run(text)
+        self.assertEqual(code, 0, out)
+
     def test_third_ko_must_be_parked(self):
         code, out = run(VALID.replace("| parked | 1111111 | KO opus | 3 |", "| building | 1111111 | KO opus | 3 |"))
         self.assertEqual(code, 1)

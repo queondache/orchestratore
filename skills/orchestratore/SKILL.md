@@ -65,7 +65,7 @@ say once that every unit waits on a PR, one PR per wave: never let one PR grow a
 ## 3. Engines
 
 By default the whole run stays on your runtime. **Mixed** (`mode = "mixed"` or the user asks):
-a Claude Code coordinator has Codex build and Claude verify. Commands: [engines](references/engines.md).
+a Claude Code coordinator has Codex build and verify (opus: tier 3, final). Commands: [engines](references/engines.md).
 
 | Runtime | Builders | Verifiers |
 |---|---|---|

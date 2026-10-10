@@ -3,7 +3,7 @@
 
 [engines]
 max_parallel = 0         # 0 = no cap: the coordinator sends every ready unit, within the runtime's slots
-mode = "single"          # "mixed": a Claude Code coordinator has Codex build and Claude verify
+mode = "single"          # "mixed": a Claude Code coordinator has Codex build; checks as in [models]
 
 [models]
 # Use the names your runtime exposes. Builder and verifier must differ.
@@ -13,7 +13,7 @@ claude_builder = "sonnet"
 claude_verifier = "opus"
 codex_builder = ""       # "" = the coordinator picks from the models the session lists
 codex_verifier = ""      # strongest model: tier 3 and final lane pass; must differ from codex_builder
-codex_unit_verifier = "" # economical model for tier 1-2 unit checks; "" = cheapest the Codex CLI lists
+codex_unit_verifier = "" # economical model for tier 1-2 unit checks; "" = the coordinator picks one
 codex_effort = "medium"
 codex_sandbox = "workspace-write"   # codex-task.sh: read-only | workspace-write | danger-full-access
 

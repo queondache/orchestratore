@@ -47,6 +47,8 @@ BUILTIN_SENSITIVE = (
     "**/permission/**", "**/permissions/**", "**/rbac/**",
     "**/delete/**", "**/deletion/**",
     "**/purge/**", "**/retention/**",
+    # CI workflows run the required checks: changing them could weaken the gate itself.
+    ".github/workflows/**",
 )
 DEFAULT_CONFIG = ".orchestratore/config.toml"
 # No allowlist configured anywhere = every path may auto-merge, still subject to the

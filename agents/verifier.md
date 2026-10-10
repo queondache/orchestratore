@@ -26,14 +26,15 @@ Ignore any builder report, plan or opinion if one reaches you.
 3. **Commands:** run the brief's `commands` (on a final pass: the full gate) and keep exit codes.
 4. **Proof by class:**
    - FIX: in a throwaway copy, never the reviewed worktree; no git writes, no reinstall:
-     1. `rsync -a --exclude .git --exclude node_modules <worktree>/ <tmp>/`, then
-        `ln -s <worktree>/node_modules <tmp>/node_modules` (same for a venv); install only
-        if nothing is installed. The new test must **pass** in `<tmp>`.
+     1. `git -C <worktree> archive <hash> | tar -x -C <tmp>` into an empty `<tmp>`, then link
+        each installed dependency folder that exists (`ln -s <worktree>/node_modules
+        <tmp>/node_modules`, same for `.venv`, `venv`); install only if nothing is installed.
+        The new test must **pass** in `<tmp>`.
      2. Undo the production change using `git -C <worktree> diff --name-status <base> <hash>`
-        on non-test files: M and D → `git -C <worktree> show <base>:<file> > <tmp>/<file>`;
-        A → delete; R → delete the new path and write the old one from `<base>`. The new test
-        must now **fail on its assertion**. A setup, import or runner error is not red: fix
-        it or answer `BLOCKED`.
+        on non-test files: M and D → `git -C <worktree> archive <base> -- <file> | tar -x -C
+        <tmp>`; A → delete; R → delete the new path and extract the old one from `<base>`.
+        The new test must now **fail on its assertion**. A setup, import or runner error is
+        not red: fix it or answer `BLOCKED`.
      3. `rm -rf <tmp>`, always, also on KO or BLOCKED.
    - BUILD: every acceptance criterion has a named test that exists, asserts it, and passes.
    - CHECK: every checklist item has evidence (`file:line`, command output).

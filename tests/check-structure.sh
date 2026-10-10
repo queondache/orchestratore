@@ -139,7 +139,9 @@ check "skill: no fixed number of agents" skill_says 'no fixed number; you decide
 check "config: max_parallel defaults to no cap" grep -q '^max_parallel = 0 ' "$ROOT/templates/config.toml"
 check "skill: done only when the goal is reached" skill_says '**Done** only when the goal is reached'
 check "config: auto-merge default everything outside sensitive" grep -qx 'auto_merge_globs = \["\*\*"\]' "$ROOT/templates/config.toml"
-check "verify: FIX oracle in a throwaway copy, no reinstall" bash -c "grep -q 'rsync -a --exclude .git --exclude node_modules' '$ROOT/skills/orchestratore/references/verify.md' && grep -q 'rsync -a --exclude .git --exclude node_modules' '$ROOT/agents/verifier.md'"
+check "verify: FIX oracle in a throwaway copy of the exact hash, no reinstall" bash -c "grep -q 'git -C <worktree> archive <hash> |' '$ROOT/skills/orchestratore/references/verify.md' && grep -q 'git -C <worktree> archive <hash> |' '$ROOT/agents/verifier.md'"
+check "engines: unit verify never runs without an explicit model" grep -q 'Never call `codex-task.sh verify` without `--model`' "$ROOT/skills/orchestratore/references/engines.md"
+check "no Claude verifier left in mixed-mode wording" bash -c "! grep -rn 'Claude verif' '$ROOT/skills' '$ROOT/templates' '$ROOT/README.md'"
 check "engines: worktrees removed once merged into the lane or parked" grep -q 'as soon as its branch is merged into its' "$ROOT/skills/orchestratore/references/engines.md"
 check "no fable or haiku in shipped files" shipped_grep '(?i)\b(fable|haiku)\b'
 check "no TODO/TBD in shipped files" shipped_grep '\bTODO\b|\bTBD\b'

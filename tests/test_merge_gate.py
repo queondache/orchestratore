@@ -201,6 +201,12 @@ class MergeGateTest(unittest.TestCase):
         self.assert_config_result(proc, 1, lambda out: self.assertTrue(
             any("turned off" in r for r in out["reasons"])))
 
+    def test_ci_workflow_change_is_sensitive(self) -> None:
+        self.set_files(".github/workflows/ci.yml")
+        code, out = self.run_gate("--allow", ".github/**")
+        self.assertEqual(code, 1)
+        self.assertEqual(out["sensitive_paths"], [".github/workflows/ci.yml"])
+
     def test_generic_user_session_role_paths_are_not_sensitive(self) -> None:
         self.set_files("src/sessions/schedule.ts", "src/users/profile.tsx", "src/roles/list.ts")
         code, out = self.run_gate()

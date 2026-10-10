@@ -27,15 +27,17 @@ each FIX source, the tests for each BUILD criterion, the evidence for each CHECK
 
 **FIX oracle steps** (a plain copy: no new worktree, no git writes, no reinstall):
 
-1. Copy the reviewed worktree without `.git` and without installed dependencies, then link
-   those back: `rsync -a --exclude .git --exclude node_modules <worktree>/ <tmp>/` and
-   `ln -s <worktree>/node_modules <tmp>/node_modules` (same for a venv). Install there only
-   if the project has nothing installed. In `<tmp>`, run the new test: it must **pass**.
+1. Extract the tree at `<hash>` into an empty `<tmp>`: `git -C <worktree> archive <hash> |
+   tar -x -C <tmp>` (tracked files only, exactly that commit). Link the installed
+   dependencies back, each that exists: `ln -s <worktree>/node_modules <tmp>/node_modules`
+   (same for `.venv`, `venv`). Install there only if the project has nothing installed. Tool
+   caches written through the link (e.g. `node_modules/.cache`) land in the reviewed worktree
+   as untracked files, which is allowed. In `<tmp>`, run the new test: it must **pass**.
    This proves the environment works.
 2. Undo the production change in `<tmp>` using `git -C <worktree> diff --name-status <base>
-   <hash>` on non-test files: modified (M) and deleted (D) → `git -C <worktree> show
-   <base>:<file> > <tmp>/<file>`; added (A) → delete; renamed (R) → delete the new path and
-   write the old one from `<base>` the same way.
+   <hash>` on non-test files: modified (M) and deleted (D) → `git -C <worktree> archive
+   <base> -- <file> | tar -x -C <tmp>` (recreates folders and file modes); added (A) →
+   delete; renamed (R) → delete the new path and extract the old one from `<base>` the same way.
 3. Run the new test again: it must **fail on its assertion** (tag this line `[ran expect-fail]`). A setup, import or runner error
    is not a red oracle: fix the environment or answer `BLOCKED` with what is missing.
 4. `rm -rf <tmp>`, always, also on KO or BLOCKED.
@@ -85,7 +87,7 @@ model (never the builder's model); rejected again → the unit is `parked` "unve
 - Always a different model from the builder. The proof is the commands the verifier ran and
   `verdict-check.py`, not the model's opinion, so a unit's verifier may be a cheaper model.
 - **Unit verifier** (tier 1-2): an economical Codex model via `codex-task.sh verify`
-  ([engines](engines.md)); Codex unavailable → the Claude verifier on opus.
+  ([engines](engines.md)); Codex unavailable → `orchestratore:verifier` on opus.
 - **Strong verifier** (opus in Claude Code, the strongest listed model in Codex): every
   tier 3 unit, the final pass on each lane head, and the diagnostician.
 - Record builder and verifier model per unit in `RUN.md`; report only models the runtime

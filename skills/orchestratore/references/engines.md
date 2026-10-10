@@ -2,7 +2,7 @@
 
 By default the run stays on the runtime that hosts the coordinator: Claude Code sub-agents in
 Claude Code, Codex sub-agents in Codex. **Mixed mode** (Claude Code coordinator, Codex
-builders, Claude verifiers) is described below. Record the runtime and both models in `RUN.md`.
+builders, verifiers as in "Who verifies") is described below. Record the runtime and both models in `RUN.md`.
 
 ## Configuration
 
@@ -13,14 +13,14 @@ never hardcodes them.
 ```toml
 [engines]
 max_parallel = 0              # 0 = no cap; the runtime's slots still apply
-mode = "single"               # "mixed": Claude Code coordinates, Codex builds, Claude verifies
+mode = "single"               # "mixed": Claude Code coordinates, Codex builds
 
 [models]
 claude_builder = "sonnet"
 claude_verifier = "opus"      # must differ from claude_builder
 codex_builder = ""            # "" = pick from the models your Codex session lists
 codex_verifier = ""           # strongest model: tier 3 and final lane pass; must differ from codex_builder
-codex_unit_verifier = ""      # economical model for tier 1-2 unit checks; "" = cheapest the Codex CLI lists
+codex_unit_verifier = ""      # economical model for tier 1-2 unit checks; "" = the coordinator picks one
 codex_effort = "medium"
 codex_sandbox = "workspace-write"   # for codex-task.sh: read-only | workspace-write | danger-full-access
 ```
@@ -36,7 +36,11 @@ so once and write it under `## Decisions`). Builders run on sonnet. No other Cla
 (`codex_unit_verifier`, low effort), in every runtime, different from the unit's builder
 model. Opus (Codex runtime: the strongest listed model) only for tier 3 units, the final pass
 on each lane head and the diagnostician. Codex CLI not installed or not logged in → unit
-verification falls back to opus; write it under `## Decisions`.
+verification falls back to opus; write it under `## Decisions`. With `codex_unit_verifier`
+empty, pick an economical model by name from the models your Codex CLI offers, different from
+every builder model of the run (a builder's `model=` included), and write it in `RUN.md`
+before the first check. Never call `codex-task.sh verify` without `--model`: the Codex default
+may be the builder's own model.
 
 **Unit verify command** (Claude Code and mixed: one background Bash call per delivered unit):
 
@@ -136,7 +140,8 @@ printf '%s\n' U-1 U-2 U-3 U-4 U-5 | xargs -P <free> -I{} \
 builders and verifiers already running, keeping one for verification. The script refuses a dirty worktree, commits the builder's changes itself and never pushes.
 After a failed run, retry the same unit with `--resume` so its own leftover changes are kept.
 Verify each delivered hash with a sub-agent as above, or with `codex-task.sh --model
-<codex_verifier> verify <worktree> <verify-brief.md>`, where the brief file holds
+<codex_unit_verifier> verify <worktree> <verify-brief.md>` (tier 3 and the final lane pass:
+`<codex_verifier>`), where the brief file holds
 `agents/verifier.md`, the hash and the unit brief (a verify run that changes tracked files
 exits 3). Its verdict is `<ID>.verify.last.md`: pass it to `bin/verdict-check.py --verdict
 <file> --hash <hash>` before acting on it, like every verdict. These processes need the Codex CLI logged in; they share the session's credit.
@@ -144,7 +149,7 @@ exits 3). Its verdict is `<ID>.verify.last.md`: pass it to `bin/verdict-check.py
 ## Mixed: Claude Code coordinates, Codex builds
 
 Use it when `mode = "mixed"` or the user asks for Codex builders, only with a Claude Code
-coordinator. Builder and verifier then differ by runtime, not only by model.
+coordinator. Tier 1-2 checks run on another Codex model; tier 3 and the final lane pass on opus.
 
 1. **Preflight (§1):** `command -v codex` and `codex login status` both exit 0. Otherwise
    write under `## Decisions` "mixed unavailable: <reason>" and run single-runtime.
