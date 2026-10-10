@@ -28,8 +28,11 @@ python3 <plugin>/bin/merge-gate.py --pr <n> --sha <sha> --tier <max tier> --merg
   counting it merged.
 - Exit 1 = the PR waits for the user. Write the reasons in `RUN.md` and do not work around
   them. That lane is now blocked (skill §4) until the user acts.
-- Use `--no-required-checks-ok` only when the base has no required checks and the full gate
-  passed on this exact SHA.
+- A private repository on a free GitHub plan cannot require checks: the gate then counts
+  every check reported on the PR (each passed or skipped, at least one passed).
+- No required checks and no checks on the PR: the final verifier's full gate on this exact
+  SHA is the quality proof. When that verdict is `OK`, pass `--no-required-checks-ok`; this
+  is the rule, not a loophole. Without that verdict, never pass it.
 
 ## Post-merge check
 

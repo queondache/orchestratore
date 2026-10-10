@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.10.1 — 2026-10-10
+
+Why: the first run coordinated by Codex, on a private test repository, verified all its work
+and still could not merge.
+
+### Fixed
+- **Merge gate on private repositories without branch protection.** On a free GitHub plan the
+  protection and rules APIs answer 403 ("Upgrade to GitHub Pro…") and the gate stopped with
+  an error, so nothing ever merged on those repositories. Now no check can be required
+  there, so every check reported on the PR counts (each passed or skipped, at least one
+  passed); with no checks at all, the final verifier's full gate on the exact SHA plus
+  `--no-required-checks-ok` is the proof, as before. Other protection errors still stop.
+- **`--no-required-checks-ok` is the rule, not a loophole.** `merge.md` says to pass it when
+  there are no checks anywhere and the final verdict on that SHA is `OK`; the Codex
+  coordinator had refused to.
+- **Unit branches no longer collide with the lane.** Units now branch as
+  `orch-unit/<run>/<ID>`: git cannot hold the lane `orch/<run>` next to `orch/<run>/<ID>`.
+
 ## 0.10.0 — 2026-10-10
 
 Why: runs burned credits, never reached production and never closed their goal.

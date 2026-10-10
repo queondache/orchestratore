@@ -10,7 +10,8 @@ human? The answer is "yes" only when every condition holds:
   * no changed path matches a built-in or configured sensitive glob;
   * the base branch has required status checks and all of them passed
     (or --no-required-checks-ok is given, after the full local gate ran on
-    the exact SHA).
+    the exact SHA). On a plan without branch protection (a private repository
+    on a free plan) every check on the PR counts as required.
 
 Any uncertainty is a "no". With --merge, a "yes" is executed through
 `gh pr merge --squash --match-head-commit <sha>`, so GitHub itself rejects the
@@ -137,11 +138,22 @@ def gh_json_pages(path: str) -> List[Any]:
     raise GateError("unexpected response from %s" % path)
 
 
-def required_checks(slug: str, base: str) -> List[str] | None:
-    """Required check names from branch protection and rulesets; None when none."""
+# GitHub answers 403 with this text when the plan has no branch protection for the
+# repository (a private repository on a free plan): no check can be required there.
+PLAN_WITHOUT_PROTECTION = ("upgrade to github pro", "make this repository public")
+
+
+PLAN_LIMITED = "plan-limited"
+
+
+def required_checks(slug: str, base: str) -> List[str] | None | str:
+    """Required check names from branch protection and rulesets; None when none;
+    PLAN_LIMITED when the plan cannot protect the branch at all."""
     names = set()
     code, out, err = gh(["api", "repos/%s/branches/%s/protection/required_status_checks"
                          % (slug, base)], None, allow_fail=True)
+    if code != 0 and any(text in err.lower() for text in PLAN_WITHOUT_PROTECTION):
+        return PLAN_LIMITED
     if code == 0:
         data = json.loads(out)
         names.update(data.get("contexts") or [])
@@ -204,7 +216,33 @@ def evaluate(args: argparse.Namespace) -> Dict[str, Any]:
 
     required = required_checks(slug, pr.get("baseRefName", ""))
     check_states: Dict[str, str] = {}
-    if required is None:
+    if required == PLAN_LIMITED:
+        # Nothing can be required on this plan, so every check reported on the PR counts:
+        # each one passed or was skipped, at least one passed. No checks at all is the
+        # same as no required checks.
+        code, out, _ = gh(["pr", "checks", str(args.pr), "--json", "name,bucket"],
+                          args.repo, allow_fail=True)
+        try:
+            runs = [(c["name"], c["bucket"]) for c in json.loads(out or "[]")]
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            raise GateError("cannot parse PR checks") from exc
+        required = sorted({name for name, _ in runs}) or None
+        if required is None:
+            if not args.no_required_checks_ok:
+                reasons.append("no checks on this PR and the plan cannot require any "
+                               "(pass --no-required-checks-ok only after the full local gate "
+                               "ran on this sha)")
+        else:
+            if code != 0:
+                reasons.append("gh pr checks exited %d" % code)
+            for name in required:
+                states = [bucket for check, bucket in runs if check == name]
+                check_states[name] = ",".join(states)
+                if any(state not in ("pass", "skipping") for state in states):
+                    reasons.append("check %s is %s" % (name, check_states[name]))
+            if not any(bucket == "pass" for _, bucket in runs):
+                reasons.append("no check on this PR passed")
+    elif required is None:
         if not args.no_required_checks_ok:
             reasons.append("base branch has no required checks "
                            "(pass --no-required-checks-ok only after the full local gate ran on this sha)")
