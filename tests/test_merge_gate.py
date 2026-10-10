@@ -57,6 +57,11 @@ FAKE_GH = textwrap.dedent("""\
                 sys.stderr.write("gh: HTTP 502\\n")
                 sys.exit(1)
             emit("files.json")
+        elif os.path.exists(os.path.join(d, "plan403.flag")) and (
+                path.endswith("/required_status_checks") or "/rules/branches/" in path):
+            sys.stderr.write("gh: Upgrade to GitHub Pro or make this repository public "
+                             "to enable this feature. (HTTP 403)\\n")
+            sys.exit(1)
         elif path.endswith("/required_status_checks"):
             emit("protection.json")
         elif "/rules/branches/" in path:
@@ -66,6 +71,8 @@ FAKE_GH = textwrap.dedent("""\
             sys.exit(3)
     elif args[:2] == ["pr", "checks"]:
         emit("checks.json")
+        if os.path.exists(os.path.join(d, "checks.stderr")):
+            sys.stderr.write(open(os.path.join(d, "checks.stderr")).read())
         code = os.path.join(d, "checks.exit")
         sys.exit(int(open(code).read()) if os.path.exists(code) else 0)
     elif args[:2] == ["pr", "merge"]:
@@ -374,6 +381,83 @@ class MergeGateTest(unittest.TestCase):
         code, out = self.run_gate()
         self.assertEqual(code, 1)
         self.assertTrue(any("skipping" in r for r in out["reasons"]))
+
+    def plan_limited(self) -> None:
+        (self.dir / "plan403.flag").touch()
+        (self.dir / "protection.json").unlink()
+
+    def test_plan_without_protection_counts_every_pr_check(self) -> None:
+        self.plan_limited()
+        self.write("checks.json", [{"name": "ci", "bucket": "pass"},
+                                   {"name": "e2e", "bucket": "skipping"}])
+        code, out = self.run_gate()
+        self.assertEqual(code, 1, out)
+        self.assertTrue(any("no-required-checks-ok" in r for r in out["reasons"]))
+        code, out = self.run_gate("--no-required-checks-ok")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out["required_checks"], ["ci", "e2e"])
+        checks_calls = [c for c in self.calls() if c[:2] == ["pr", "checks"]]
+        self.assertTrue(checks_calls and all("--required" not in c for c in checks_calls))
+
+    def test_plan_without_protection_failing_pr_check_blocks(self) -> None:
+        self.plan_limited()
+        self.write("checks.json", [{"name": "ci", "bucket": "pass"},
+                                   {"name": "lint", "bucket": "fail"}])
+        (self.dir / "checks.exit").write_text("1")
+        code, out = self.run_gate("--no-required-checks-ok")
+        self.assertEqual(code, 1)
+        self.assertTrue(any("lint" in r for r in out["reasons"]))
+
+    def test_plan_without_protection_pending_pr_check_blocks(self) -> None:
+        self.plan_limited()
+        self.write("checks.json", [{"name": "ci", "bucket": "pending"}])
+        (self.dir / "checks.exit").write_text("8")
+        code, out = self.run_gate("--no-required-checks-ok")
+        self.assertEqual(code, 1)
+
+    def test_plan_without_protection_only_skipped_checks_blocks(self) -> None:
+        self.plan_limited()
+        self.write("checks.json", [{"name": "ci", "bucket": "skipping"}])
+        code, out = self.run_gate("--no-required-checks-ok")
+        self.assertEqual(code, 1)
+        self.assertTrue(any("none passed" in r for r in out["reasons"]))
+
+    def test_plan_without_protection_and_no_checks_needs_the_flag(self) -> None:
+        self.plan_limited()
+        (self.dir / "checks.json").write_text("")
+        (self.dir / "checks.exit").write_text("1")
+        (self.dir / "checks.stderr").write_text("no checks reported on the 'x' branch")
+        code, out = self.run_gate()
+        self.assertEqual(code, 1)
+        self.assertTrue(any("no-required-checks-ok" in r for r in out["reasons"]))
+        code, out = self.run_gate("--no-required-checks-ok")
+        self.assertEqual(code, 0, out)
+
+    def test_plan_without_protection_unreadable_checks_is_an_error(self) -> None:
+        self.plan_limited()
+        (self.dir / "checks.json").write_text("")
+        (self.dir / "checks.exit").write_text("1")
+        (self.dir / "checks.stderr").write_text("error connecting to api.github.com (HTTP 502)")
+        code, out = self.run_gate("--no-required-checks-ok")
+        self.assertEqual(code, 2, out)
+        self.assertFalse(out["merge"])
+
+    def test_plan_without_protection_failed_call_with_empty_list_is_an_error(self) -> None:
+        self.plan_limited()
+        self.write("checks.json", [])
+        (self.dir / "checks.exit").write_text("1")
+        (self.dir / "checks.stderr").write_text("HTTP 502")
+        code, out = self.run_gate("--no-required-checks-ok")
+        self.assertEqual(code, 2, out)
+
+    def test_other_protection_error_is_still_an_error(self) -> None:
+        (self.dir / "protection.json").unlink()
+        fake = self.dir / "bin" / "gh"
+        fake.write_text(fake.read_text().replace(
+            'emit("protection.json")',
+            'sys.stderr.write("gh: Bad credentials (HTTP 401)\\n"); sys.exit(1)'))
+        code, out = self.run_gate()
+        self.assertEqual(code, 2)
 
     def test_repo_flag_is_forwarded_to_every_pr_call(self) -> None:
         self.run_gate("--repo", "owner/repo", "--merge")

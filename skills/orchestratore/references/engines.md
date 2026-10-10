@@ -60,8 +60,11 @@ Every builder writes in its own worktree on its own branch, created from the uni
 (the run base, or the integration head that contains the unit's dependencies):
 
 ```bash
-git worktree add -b orch/<run>/<ID> .orchestratore/worktrees/<ID> <base-sha>
+git worktree add -b orch-unit/<run>/<ID> .orchestratore/worktrees/<ID> <base-sha>
 ```
+
+Unit branches live under `orch-unit/`, never below the lane name: git cannot hold both
+`orch/<run>` (the lane) and a branch inside `orch/<run>/`.
 
 Remove a unit's worktree with `git worktree remove` as soon as its branch is merged into its
 lane or the unit is parked: the branch keeps the commits, the disk gets its space back. Before

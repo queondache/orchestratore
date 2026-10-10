@@ -10,7 +10,9 @@ human? The answer is "yes" only when every condition holds:
   * no changed path matches a built-in or configured sensitive glob;
   * the base branch has required status checks and all of them passed
     (or --no-required-checks-ok is given, after the full local gate ran on
-    the exact SHA).
+    the exact SHA). On a plan without branch protection (a private repository
+    on a free plan) --no-required-checks-ok is always needed and every check
+    reported on the PR must also have passed or been skipped.
 
 Any uncertainty is a "no". With --merge, a "yes" is executed through
 `gh pr merge --squash --match-head-commit <sha>`, so GitHub itself rejects the
@@ -137,11 +139,22 @@ def gh_json_pages(path: str) -> List[Any]:
     raise GateError("unexpected response from %s" % path)
 
 
-def required_checks(slug: str, base: str) -> List[str] | None:
-    """Required check names from branch protection and rulesets; None when none."""
+# GitHub answers 403 with this text when the plan has no branch protection for the
+# repository (a private repository on a free plan): no check can be required there.
+PLAN_WITHOUT_PROTECTION = ("upgrade to github pro", "make this repository public")
+
+
+PLAN_LIMITED = "plan-limited"
+
+
+def required_checks(slug: str, base: str) -> List[str] | None | str:
+    """Required check names from branch protection and rulesets; None when none;
+    PLAN_LIMITED when the plan cannot protect the branch at all."""
     names = set()
     code, out, err = gh(["api", "repos/%s/branches/%s/protection/required_status_checks"
                          % (slug, base)], None, allow_fail=True)
+    if code != 0 and any(text in err.lower() for text in PLAN_WITHOUT_PROTECTION):
+        return PLAN_LIMITED
     if code == 0:
         data = json.loads(out)
         names.update(data.get("contexts") or [])
@@ -204,7 +217,37 @@ def evaluate(args: argparse.Namespace) -> Dict[str, Any]:
 
     required = required_checks(slug, pr.get("baseRefName", ""))
     check_states: Dict[str, str] = {}
-    if required is None:
+    if required == PLAN_LIMITED:
+        # Nothing can be required on this plan: a check that has not registered yet would
+        # simply be missing. So the full local gate on this sha is always needed, and on
+        # top of it every check reported on the PR must have passed or been skipped.
+        if not args.no_required_checks_ok:
+            reasons.append("the plan cannot require checks "
+                           "(pass --no-required-checks-ok only after the full local gate "
+                           "ran on this sha)")
+        code, out, err = gh(["pr", "checks", str(args.pr), "--json", "name,bucket"],
+                            args.repo, allow_fail=True)
+        if code != 0 and not out.strip():
+            out = "[]"
+        try:
+            runs = [(c["name"], c["bucket"]) for c in json.loads(out)]
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            raise GateError("cannot parse PR checks") from exc
+        # A failed call with no checks counts as "none" only when gh says exactly that.
+        if code != 0 and not runs and "no checks reported" not in err.lower():
+            raise GateError("cannot read PR checks: %s" % err.strip())
+        required = sorted({name for name, _ in runs}) or None
+        if required is not None:
+            if code != 0:
+                reasons.append("gh pr checks exited %d" % code)
+            for name in required:
+                states = [bucket for check, bucket in runs if check == name]
+                check_states[name] = ",".join(states)
+                if any(state not in ("pass", "skipping") for state in states):
+                    reasons.append("check %s is %s" % (name, check_states[name]))
+            if not any(bucket == "pass" for _, bucket in runs):
+                reasons.append("checks reported on this PR, none passed")
+    elif required is None:
         if not args.no_required_checks_ok:
             reasons.append("base branch has no required checks "
                            "(pass --no-required-checks-ok only after the full local gate ran on this sha)")
