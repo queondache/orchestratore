@@ -26,6 +26,16 @@ Why: runs burned credits, never reached production and never closed their goal.
   installed dependencies linked back: no new git worktree, no git writes, no `npm ci`.
 - **Done means the goal is reached.** `status: done` only when every unit is merged or in
   production; otherwise the run stays parked with what unblocks it. `run-check.py` enforces it.
+- **More context for every agent.** A run context `.orchestratore/CONTEXT.md` (stack, how to
+  run one test, repo rules quoted from `CLAUDE.md`/`AGENTS.md`, directory map, glossary,
+  traps) is written once and sent in front of every brief, to builders and verifiers. The
+  brief gains `spec` (expected behaviour quoted from its source), `code` (the lines the change
+  hinges on, pasted), `pattern` (an existing example to imitate) and `pitfalls`; `read first`
+  goes up to 8 entries and a brief may run 40-100 lines.
+- **FIX oracle hardening.** Dependencies that point back into the reviewed code (editable
+  installs, workspace links) are installed fresh inside the copy, never into an existing
+  environment; Python runs without writing bytecode; a still-green oracle with linked
+  dependencies is retried once installed before `KO: no oracle`.
 - **Disk.** Unit worktrees are removed once merged into their lane or parked; leftovers are
   pruned before each wave. The builder stops early (`blocked`) when the brief lacks a fact,
   instead of searching the repo; `maxTurns` 80 → 50.

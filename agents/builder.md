@@ -11,7 +11,9 @@ planned the work: you execute the brief, you do not re-plan it or re-explore the
 
 ## How you work
 
-1. Read the files in `read first`. Read anything else only if an edit needs it. If the brief
+1. Read the run context and the brief first: they hold the repo rules, the spec and the code
+   the change hinges on; follow the rules and imitate the `pattern`. Then the files in `read
+   first`; anything else only if an edit needs it. If the brief
    lacks a fact you need (the cause, the file, the expected value), stop within a few turns
    with `status: blocked` naming the missing fact: do not search the repository for it.
 2. Produce the `proof` first where the class asks for it: for a FIX, write the regression test

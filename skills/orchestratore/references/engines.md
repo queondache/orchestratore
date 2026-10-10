@@ -50,7 +50,7 @@ bash <plugin>/bin/codex-task.sh --model "<codex_unit_verifier>" --effort low \
 ```
 
 The verify brief = body of `<plugin>/agents/verifier.md` + `worktree: <path>  hash: <sha>
-base: <unit base sha>` + the unit brief. Its verdict is
+base: <unit base sha>` + `.orchestratore/CONTEXT.md` + the unit brief. Its verdict is
 `.orchestratore/briefs/verify/<ID>.verify.last.md`; pass it to `bin/verdict-check.py
 --verdict <file> --hash <sha>` like every verdict.
 
@@ -77,7 +77,7 @@ Builders, all in **one message**, `run_in_background: true`:
 
 ```text
 Agent(subagent_type="orchestratore:builder", model=<claude_builder>,
-      isolation="worktree", description="<ID>", prompt=<brief content>)
+      isolation="worktree", description="<ID>", prompt=<CONTEXT.md> + <brief content>)
 ```
 
 `isolation: "worktree"` creates the worktree from the current checkout, so use it only for
@@ -90,7 +90,8 @@ tier 3, a final lane pass, or Codex unavailable:
 
 ```text
 Agent(subagent_type="orchestratore:verifier", model=<claude_verifier>,
-      prompt="worktree: <path>  hash: <sha>  base: <unit base sha>\n" + <brief content>)
+      prompt="worktree: <path>  hash: <sha>  base: <unit base sha>\n" + <CONTEXT.md>
+             + <brief content>)
 ```
 
 A correction goes back to the same builder with `SendMessage` to its agent ID. The second KO
@@ -109,7 +110,7 @@ share your directory, so create the worktree first and put it in the message:
 spawn_agent(task_name="<ID>", fork_turns="none", model=<codex_builder>,
             reasoning_effort=<codex_effort>,
             message=<body of <plugin>/agents/builder.md> + "workdir: <abs worktree path>\n"
-                    + <brief content>)
+                    + <CONTEXT.md> + <brief content>)
 ```
 
 `fork_turns="none"` is required for the model and effort overrides to apply and keeps the
@@ -142,7 +143,7 @@ After a failed run, retry the same unit with `--resume` so its own leftover chan
 Verify each delivered hash with a sub-agent as above, or with `codex-task.sh --model
 <codex_unit_verifier> verify <worktree> <verify-brief.md>` (tier 3 and the final lane pass:
 `<codex_verifier>`), where the brief file holds
-`agents/verifier.md`, the hash and the unit brief (a verify run that changes tracked files
+`agents/verifier.md`, the hash, `CONTEXT.md` and the unit brief (a verify run that changes tracked files
 exits 3). Its verdict is `<ID>.verify.last.md`: pass it to `bin/verdict-check.py --verdict
 <file> --hash <hash>` before acting on it, like every verdict. These processes need the Codex CLI logged in; they share the session's credit.
 
@@ -156,7 +157,7 @@ coordinator. Tier 1-2 checks run on another Codex model; tier 3 and the final la
 2. **Worktrees:** create each one yourself (section Worktrees above); no `isolation`.
 3. **Brief file:** `.orchestratore/briefs/codex/<ID>.md` (the file name is the unit ID the script
    prints: `<ID> hash=`) = body of `<plugin>/agents/builder.md`
-   + `workdir: <abs worktree path>` + the unit brief. Brief commands must work offline under
+   + `workdir: <abs worktree path>` + `.orchestratore/CONTEXT.md` + the unit brief. Brief commands must work offline under
    `workspace-write` (no network); if they cannot, say so in the brief or set
    `codex_sandbox = "danger-full-access"` in a trusted repo.
 4. **Dispatch:** one Bash call per unit, all in **one message**, each with

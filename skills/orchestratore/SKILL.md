@@ -51,10 +51,12 @@ say once that every unit waits on a PR, one PR per wave: never let one PR grow a
 
 1. Write `.orchestratore/SPEC.md`: the goal and, per unit the user asked for, the expected
    behaviour with its source (`SPEC.md`, `ROADMAP.md`, the bug list: file and line). A
-   behaviour no source states is a question (§8), never a guess.
+   behaviour no source states is a question (§8), never a guess. Then the **run context**
+   `.orchestratore/CONTEXT.md` (`brief` skill): stack, one-test command, repo rules, map.
 2. Locate every unit before writing its brief: read the code yourself, or send read-only
    explorers in parallel, as many as the units need. Each returns files with line ranges,
-   the cause if visible, and the targeted test command it ran on the base with its exit code.
+   the cause if visible, a similar test to imitate, and the targeted test command it ran on
+   the base with its exit code.
 3. Classify and split with the `brief` skill: FIX / BUILD / CHECK, risk tier, one owner per
    file per wave, shared interfaces first. Dependent units go in a later wave and inherit a
    higher tier (built on tier 3 = tier 3); an uncertain tier → the higher one, logged.
@@ -95,9 +97,9 @@ mixed: Claude builders); runtime exhausted → park the run (§7). Never fake a 
 - Concurrency: no fixed number; you decide. Send every ready independent unit, capped only
   by the engine's slot limit and `max_parallel` if the user set one, keeping one slot free
   for verifiers (Codex, 3 slots: 2 builders + 1 verifier). Never split a unit to fill a slot.
-- Each builder gets the brief and its worktree path (in Codex also the body of
-  `agents/builder.md`). Not your plan, not other units' briefs. Brief commands are targeted
-  tests only; exclusive-resource commands run only in §6.
+- Each builder gets `CONTEXT.md`, its brief and its worktree path (in Codex also the body of
+  `agents/builder.md`); verifiers get `CONTEXT.md` too. Not your plan, not other units'
+  briefs. Brief commands are targeted tests only; exclusive-resource commands only in §6.
 
 ## 5. Handle each result as it arrives
 
@@ -164,11 +166,9 @@ lines, move it to `.orchestratore/log/<date>.md`). After each write and before e
 
 ## 8. Questions
 
-Ask the user only about product behaviour, scope, or an action outside the authorised
-perimeter. Technical, reversible choices (names, layout, test shape, a library in use) you
-decide and log under `## Decisions`. One question at a time, the smallest that unblocks,
-recommended option first: `AskUserQuestion` in Claude Code, a plain question that ends the
-turn in Codex. Silence is never an answer.
+Ask only about product behaviour, scope, or an action outside the authorised perimeter;
+technical, reversible choices you decide and log under `## Decisions`. One question at a
+time, recommended option first (`AskUserQuestion`; Codex: a question that ends the turn).
 
 ## 9. Report (after each merge and at the end)
 
@@ -184,8 +184,8 @@ Next: <one action>
 
 - Never: force-push, `reset --hard`, deleting branches that are not yours, destructive or bulk
   production data changes, new logins, tokens or secrets, raising any budget or spend limit.
-- Builders never push, open PRs or merge; only you do, and merge only through §6. Worktrees,
-  prompts and hooks guard against mistakes, not against a hostile agent.
+- Builders never push, open PRs or merge; only you, through §6. Worktrees and hooks guard
+  against mistakes, not against a hostile agent.
 
 ## Red flags
 

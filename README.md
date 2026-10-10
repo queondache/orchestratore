@@ -16,7 +16,7 @@ Orchestratore removes each of those:
 
 | Step | What happens |
 |---|---|
-| Plan once | The coordinator writes a run spec and one precise brief per unit (FIX, BUILD or CHECK) with the cause, files, constraints and the proof required. A brief that fails the ready check never reaches a builder. |
+| Plan once | The coordinator writes a run spec, a run context (stack, repo rules, how to run one test) and one precise brief per unit (FIX, BUILD or CHECK) with the quoted spec, the cause, the code it hinges on, an example to imitate and the proof required. A brief that fails the ready check never reaches a builder. |
 | Dispatch | All ready independent units go out in one message, each in its own git worktree. No fixed agent count: the coordinator sends as many as the runtime's slots allow. |
 | Verify on arrival | A different model checks hash, scope, commands and a class-specific proof (for a FIX: the new test must fail without the fix). Tier 1-2 units: an economical Codex model; tier 3 and the final pass: opus. |
 | Correct or park | A KO goes back to the same builder once; then a new approach; then the unit is parked with evidence. The run keeps going. |

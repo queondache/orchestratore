@@ -1,6 +1,7 @@
 # Verify: what counts as proof
 
-The verifier receives only: worktree path, hash, the unit's base SHA, the unit brief. Never
+The verifier receives only: worktree path, hash, the unit's base SHA, the run context
+(`.orchestratore/CONTEXT.md`) and the unit brief. Never
 the builder's report, reasoning or opinion. It runs on a different model from the builder.
 
 ## Checks by class
@@ -35,9 +36,13 @@ each FIX source, the tests for each BUILD criterion, the evidence for each CHECK
    as untracked files, which is allowed. **Do not link** dependencies that point back into
    the reviewed code: an editable install (`grep -rl "<worktree>"` finds a `.pth` or
    `__editable__` file in the venv) or a workspace package (a symlink in `node_modules`
-   resolving inside `<worktree>`). Then install in `<tmp>` instead (`npm ci`, `uv sync`,
-   `pip install -e .`): otherwise the test imports the reviewed code, not the copy. In
-   `<tmp>`, run the new test: it must **pass**. This proves the environment works.
+   resolving inside `<worktree>` but outside `<worktree>/node_modules`; `.bin` and `.pnpm`
+   links do not count). Then install in `<tmp>` instead, into a fresh environment created
+   inside `<tmp>` (`npm ci`; `uv venv <tmp>/.venv` then `uv sync`, or `python3 -m venv
+   <tmp>/.venv` then `<tmp>/.venv/bin/pip install -e .`), never into the reviewed worktree's
+   or an already active environment: otherwise the test imports the reviewed code, not the
+   copy. Run Python tests with `PYTHONDONTWRITEBYTECODE=1`, so no stale `.pyc` survives the
+   undo. In `<tmp>`, run the new test: it must **pass**. This proves the environment works.
 2. Undo the production change in `<tmp>` using `git -C <worktree> diff --name-status <base>
    <hash>` on non-test files: modified (M) and deleted (D) → `git -C <worktree> archive
    <base> -- <file> | tar -x -C <tmp>` (recreates folders and file modes); added (A) →

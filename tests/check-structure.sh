@@ -33,7 +33,7 @@ for dir in "$ROOT"/skills/*/; do
   check "skill $name: relative links resolve" bash -c "cd '$dir' && grep -o '](references/[^)]*)' SKILL.md | sed 's/](//;s/)\$//' | while read -r l; do test -f \"\$l\" || exit 1; done"
 done
 check "orchestratore SKILL.md <= 200 lines" bash -c "[ \$(wc -l < '$ROOT/skills/orchestratore/SKILL.md') -le 200 ]"
-check "brief SKILL.md <= 120 lines" bash -c "[ \$(wc -l < '$ROOT/skills/brief/SKILL.md') -le 120 ]"
+check "brief SKILL.md <= 160 lines" bash -c "[ \$(wc -l < '$ROOT/skills/brief/SKILL.md') -le 160 ]"
 
 # Agents
 for a in builder verifier diagnostician; do
@@ -134,7 +134,12 @@ check "verify: rejected verdict reruns once on the same verifier model" bash -c 
 # 0.10.0: spec and ready tickets before dispatch, no fixed agent cap, done = goal reached.
 check "skill: spec and precise tickets before any builder" skill_says 'a spec and precise tickets before any builder starts'
 check "skill: a brief failing the ready check does not go out" skill_says 'A brief that fails does not go out'
-check "brief: ready check section" grep -q '^## 4. Ready check' "$ROOT/skills/brief/SKILL.md"
+check "brief: ready check section" grep -q '^## 5. Ready check' "$ROOT/skills/brief/SKILL.md"
+check "brief: run context section" grep -q '^## 3. Run context' "$ROOT/skills/brief/SKILL.md"
+check "brief: template carries spec, code, pattern, pitfalls" bash -c "for f in spec code pattern pitfalls; do grep -q \"^\$f: \" '$ROOT/skills/brief/SKILL.md' || exit 1; done"
+check "skill: builders and verifiers get the run context" skill_says 'Each builder gets `CONTEXT.md`, its brief'
+check "engines: every dispatch prompt carries CONTEXT.md" bash -c "[ \$(grep -c 'CONTEXT.md' '$ROOT/skills/orchestratore/references/engines.md') -ge 6 ]"
+check "verify: fresh environment in the copy, no stale bytecode" bash -c "grep -q 'PYTHONDONTWRITEBYTECODE=1' '$ROOT/skills/orchestratore/references/verify.md' && grep -q 'PYTHONDONTWRITEBYTECODE=1' '$ROOT/agents/verifier.md'"
 check "skill: no fixed number of agents" skill_says 'no fixed number; you decide'
 check "config: max_parallel defaults to no cap" grep -q '^max_parallel = 0 ' "$ROOT/templates/config.toml"
 check "skill: done only when the goal is reached" skill_says '**Done** only when the goal is reached'

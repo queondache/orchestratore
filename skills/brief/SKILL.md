@@ -39,19 +39,37 @@ on a tier 3 unit is tier 3 too.
 - **Independent causes, independent units.** Ten tickets with one root cause are one unit.
 - Do not split work under ~30 minutes or confined to one file: coordination costs more.
 
-## 3. Write the brief
+## 3. Run context (once per run)
 
-Fill every field, in this order. Point to files instead of pasting them; keep it under
-40 lines.
+`.orchestratore/CONTEXT.md`, at most 60 lines, written before the first brief and sent in
+front of every brief, to builders and verifiers alike:
+
+- stack and versions; how to run one test file; env vars or services the tests need;
+- the repo rules builders must obey, quoted from `CLAUDE.md` / `AGENTS.md` (comment language,
+  naming, error logging, dependency policy);
+- a map of the directories this run touches, one line each;
+- glossary: words with a local meaning (e.g. "session" = one occurrence of a class);
+- known traps: exclusive resources, slow suites, generated files never to edit.
+
+## 4. Write the brief
+
+Fill every field, in this order. Context is cheaper than a builder's search: quote the spec,
+paste the few lines the change hinges on, name an existing example to copy, point to the
+rest. Aim for 40-100 lines; do not repeat what `CONTEXT.md` already says.
 
 ```markdown
 # <ID> — <one-line goal>
 class: FIX | BUILD | CHECK        tier: 1 | 2 | 3
 goal: <observable outcome: what a user or test sees when this is done>
-known: <facts already established: error text, repro steps, cause if found, spec rule>
-read first: <path:lines — why>   (at most 5 entries)
+spec: <the expected behaviour quoted from its source, with path:line | the user's words>
+known: <facts already established: error text, repro steps, cause at file:line, data shapes>
+code: |
+  <the lines the change hinges on, each block headed `path:start-end`; at most ~40 lines>
+pattern: <an existing file or test to imitate, path:lines — how this repo does it | none>
+read first: <path:lines — why>   (at most 8 entries)
 write only: <paths or globs this unit owns>
 do not touch: <neighbouring areas, public interfaces, dependencies>
+pitfalls: <traps already known: other callers, env vars a test needs, flaky fixtures | none>
 proof: <the failing test to write | acceptance criteria as tests | checklist items>
 commands: <targeted test command, no shared database/port/browser>; full gate runs later
 done when: <proof passes + commands exit 0 + diff confined to write-only paths>
@@ -66,7 +84,7 @@ Do not ask the user: if blocked, stop and put the blocker in the report.
 Stop when `done when` holds. No refactors, renames or dependencies outside the goal.
 ```
 
-## 4. Ready check (before the brief goes out)
+## 5. Ready check (before the brief goes out)
 
 A brief goes out only when every line holds. Otherwise complete it, or turn the gap into a
 question for the user; never send it hoping the builder will fill it in.
@@ -74,6 +92,9 @@ question for the user; never send it hoping the builder will fill it in.
 - `goal` is observable: a value, a screen state, a test result. Not "improve" or "fix".
 - `known` holds what the builder would otherwise hunt for: error text, repro, and for a FIX
   the cause at `file:line` (cause unknown → a diagnosis unit first, §1).
+- `CONTEXT.md` exists for the run; `spec` quotes its source or the user's words.
+- `code` holds the lines the change hinges on; `pattern` names an existing example when the
+  repo has one (a similar test, a sibling component).
 - `read first` paths and line ranges exist on the base.
 - `proof` names each test and what it asserts; a BUILD has one test per acceptance criterion.
 - `commands` were run on the base and behave as expected (the targeted suite runs).
@@ -87,10 +108,19 @@ question for the user; never send it hoping the builder will fill it in.
 # B-3 — Checkout total ignores the discount on free shipping orders
 class: FIX        tier: 2
 goal: an order with code SAVE10 and free shipping shows total = subtotal × 0.9
+spec: SPEC.md:88 "Discount codes apply to the subtotal, whatever the shipping method"
 known: repro: cart 50€, SAVE10 → shows 50€. Cause: applyDiscount() returns early when shipping == 0
+code: |
+  src/cart/total.ts:52-56
+    export function applyDiscount(cart: Cart, code: Discount): number {
+      if (cart.shipping === 0) return cart.subtotal;   // the early return
+      return cart.subtotal * (1 - code.rate);
+    }
+pattern: tests/cart/total.test.ts:10-24 — "applies discount with paid shipping": copy its setup
 read first: src/cart/total.ts:40-72 — applyDiscount; tests/cart/total.test.ts — existing cases
 write only: src/cart/total.ts, tests/cart/total.test.ts
 do not touch: src/cart/shipping.ts, the Discount type
+pitfalls: applyDiscount is also called by src/invoice/print.ts:31; keep its signature
 proof: test "applies discount when shipping is free" fails on base, passes after
 commands: npm test -- tests/cart/total.test.ts
 done when: proof passes, command exits 0, diff only in the two files
@@ -102,7 +132,8 @@ report: status | worktree + branch | hash | files | command → exit code | bloc
 | Mistake | Fix |
 |---|---|
 | Brief asks the agent to "investigate and plan" a known fix | Put the cause in `known`; the agent edits |
-| Pasting whole files or the full spec | `read first` with path and line range |
+| Pasting whole files or the full spec | Paste only the hinge lines in `code`; the rest in `read first` |
+| No example of how this repo writes tests | `pattern` with a sibling test to copy |
 | Two briefs writing the same file in one wave | Merge them, or sequence them |
 | `proof` says "add tests" | Name the test and what it must show |
 | Report asks for a narrative | Six fixed lines; details stay in the log |
