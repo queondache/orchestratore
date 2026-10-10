@@ -33,20 +33,25 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 # Paths that always need a human: schema, auth, payments, tenancy, personal
 # data, secrets, permissions, deletion. A project can add more, never remove.
+# Generic names (user, session, role) are left out on purpose: in a booking app
+# a "session" is a class, not a login. Projects that mean auth add them.
 BUILTIN_SENSITIVE = (
     "**/schema", "**/schema.*", "**/schema/**",
     "**/migration", "**/migrations", "**/migration/**", "**/migrations/**",
-    "**/auth/**", "**/authentication/**", "**/session/**", "**/sessions/**",
+    "**/auth/**", "**/authentication/**", "**/login/**", "**/oauth/**",
     "**/payment/**", "**/payments/**", "**/billing/**",
     "**/tenant/**", "**/tenants/**", "**/tenancy/**", "**/multitenancy/**",
     "**/pii/**", "**/patient/**", "**/patients/**", "**/health/**",
     "**/secret/**", "**/secrets/**", "**/*secret*", "**/*credential*",
     "**/*.pem", "**/*.key", "**/.env", "**/.env.*",
-    "**/permission/**", "**/permissions/**", "**/role/**", "**/roles/**",
-    "**/user/**", "**/users/**", "**/delete/**", "**/deletion/**",
+    "**/permission/**", "**/permissions/**", "**/rbac/**",
+    "**/delete/**", "**/deletion/**",
     "**/purge/**", "**/retention/**",
 )
 DEFAULT_CONFIG = ".orchestratore/config.toml"
+# No allowlist configured anywhere = every path may auto-merge, still subject to the
+# sensitive paths, tier 1-2 and required checks. An explicit empty list turns it off.
+DEFAULT_ALLOW = ("**",)
 
 
 class GateError(Exception):
@@ -77,7 +82,7 @@ def matches(path: str, pattern: str) -> bool:
 
 
 def read_config(path: Path) -> Dict[str, List[str]]:
-    """Read [merge] auto_merge_globs / sensitive_globs; missing file = empty.
+    """Read [merge] auto_merge_globs / sensitive_globs; missing file or key = absent.
 
     Needs a real TOML parser (Python 3.11+ tomllib, or the tomli package): a
     half-parsed config could silently drop sensitive globs, so without one the
@@ -99,7 +104,9 @@ def read_config(path: Path) -> Dict[str, List[str]]:
         raise GateError("invalid TOML in %s: %s" % (path, exc))
     result: Dict[str, List[str]] = {}
     for key in ("auto_merge_globs", "sensitive_globs"):
-        value = section.get(key, [])
+        if key not in section:
+            continue
+        value = section[key]
         if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
             raise GateError("config [merge].%s must be a list of strings" % key)
         result[key] = value
@@ -149,7 +156,11 @@ def required_checks(slug: str, base: str) -> List[str] | None:
 
 def evaluate(args: argparse.Namespace) -> Dict[str, Any]:
     config = read_config(Path(args.config))
-    allow = [canonical_glob(g) for g in config.get("auto_merge_globs", []) + args.allow]
+    if "auto_merge_globs" in config or args.allow:
+        allow_globs = config.get("auto_merge_globs", []) + args.allow
+    else:
+        allow_globs = list(DEFAULT_ALLOW)
+    allow = [canonical_glob(g) for g in allow_globs]
     sensitive = [canonical_glob(g) for g in config.get("sensitive_globs", []) + args.sensitive]
     reasons: List[str] = []
 
@@ -182,7 +193,7 @@ def evaluate(args: argparse.Namespace) -> Dict[str, Any]:
     if sensitive_hits:
         reasons.append("sensitive paths touched: %s" % ", ".join(sensitive_hits))
     if not allow:
-        reasons.append("no auto-merge allowlist configured")
+        reasons.append("auto-merge turned off (auto_merge_globs = [])")
         unclassified = files
     else:
         unclassified = [p for p in files if not any(matches(p, g) for g in allow)]

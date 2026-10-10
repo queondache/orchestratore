@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.10.0 — 2026-10-10
+
+Why: runs burned credits, never reached production and never closed their goal.
+
+### Changed
+- **Auto-merge on by default.** With no `auto_merge_globs` configured, every path outside
+  the sensitive list may merge (tier 1-2, required checks green); `auto_merge_globs = []`
+  turns it off. Before, an empty default made every PR wait.
+- **Sensitive paths narrowed.** Generic `user`, `users`, `session(s)`, `role(s)` are no
+  longer built in (a booking app's sessions are classes, not logins); `login`, `oauth`,
+  `rbac` are added. Projects add their own with `sensitive_globs`.
+- **Spec and precise tickets before any builder.** The coordinator writes
+  `.orchestratore/SPEC.md` with each unit's expected behaviour and its source; explorers are
+  no longer capped at 3 x 10 lines and must report line ranges, the cause and a test command
+  run on the base. A brief goes out only after the `brief` skill's new ready check; ready
+  briefs go out without asking.
+- **No fixed agent count.** `max_parallel` defaults to 0 = no cap; the coordinator sends every
+  ready unit within the runtime's slot limit.
+- **Cheaper verification.** Tier 1-2 units are verified by an economical Codex model
+  (`codex_unit_verifier`, low effort) different from the builder; opus only for tier 3, the
+  final lane pass and the diagnostician, or when Codex is unavailable. A rejected verdict
+  reruns once on the same verifier model with the reasons, then parks.
+- **FIX oracle without reinstall.** It runs in a plain copy of the worktree with the
+  installed dependencies linked back: no new git worktree, no git writes, no `npm ci`.
+- **Done means the goal is reached.** `status: done` only when every unit is merged or in
+  production; otherwise the run stays parked with what unblocks it. `run-check.py` enforces it.
+- **Disk.** Unit worktrees are removed once merged into their lane or parked; leftovers are
+  pruned before each wave. The builder stops early (`blocked`) when the brief lacks a fact,
+  instead of searching the repo; `maxTurns` 80 → 50.
+
 ## 0.9.3 — 2026-10-01
 
 ### Changed

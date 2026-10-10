@@ -66,6 +66,21 @@ Do not ask the user: if blocked, stop and put the blocker in the report.
 Stop when `done when` holds. No refactors, renames or dependencies outside the goal.
 ```
 
+## 4. Ready check (before the brief goes out)
+
+A brief goes out only when every line holds. Otherwise complete it, or turn the gap into a
+question for the user; never send it hoping the builder will fill it in.
+
+- `goal` is observable: a value, a screen state, a test result. Not "improve" or "fix".
+- `known` holds what the builder would otherwise hunt for: error text, repro, and for a FIX
+  the cause at `file:line` (cause unknown → a diagnosis unit first, §1).
+- `read first` paths and line ranges exist on the base.
+- `proof` names each test and what it asserts; a BUILD has one test per acceptance criterion.
+- `commands` were run on the base and behave as expected (the targeted suite runs).
+- `write only` covers every file the change needs; no other unit owns them in this wave.
+- The expected behaviour traces to a spec line or the user's request: no product decision
+  is left to the builder.
+
 ## Example
 
 ```markdown

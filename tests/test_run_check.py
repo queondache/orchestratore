@@ -90,6 +90,19 @@ class RunCheckTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("status", problems(out))
 
+    def test_done_with_a_parked_unit_fails(self):
+        code, out = run(VALID.replace("status: active", "status: done"))
+        self.assertEqual(code, 1)
+        self.assertIn("status is done", problems(out))
+        self.assertIn("U-3", problems(out))
+
+    def test_done_with_every_unit_merged_or_in_production_passes(self):
+        text = (VALID.replace("status: active", "status: done")
+                .replace("| verifying | 9876fed | | 0 |", "| in production | 9876fed | OK opus | 0 |")
+                .replace("| U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 3 |\n", ""))
+        code, out = run(text)
+        self.assertEqual(code, 0, out)
+
     def test_third_ko_must_be_parked(self):
         code, out = run(VALID.replace("| parked | 1111111 | KO opus | 3 |", "| building | 1111111 | KO opus | 3 |"))
         self.assertEqual(code, 1)

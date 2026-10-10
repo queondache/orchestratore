@@ -12,14 +12,15 @@ never hardcodes them.
 
 ```toml
 [engines]
-max_parallel = 8
+max_parallel = 0              # 0 = no cap; the runtime's slots still apply
 mode = "single"               # "mixed": Claude Code coordinates, Codex builds, Claude verifies
 
 [models]
 claude_builder = "sonnet"
 claude_verifier = "opus"      # must differ from claude_builder
 codex_builder = ""            # "" = pick from the models your Codex session lists
-codex_verifier = ""           # must differ from codex_builder
+codex_verifier = ""           # strongest model: tier 3 and final lane pass; must differ from codex_builder
+codex_unit_verifier = ""      # economical model for tier 1-2 unit checks; "" = cheapest the Codex CLI lists
 codex_effort = "medium"
 codex_sandbox = "workspace-write"   # for codex-task.sh: read-only | workspace-write | danger-full-access
 ```
@@ -29,9 +30,25 @@ both in `RUN.md` before the first dispatch.
 
 **Claude models.** Two only: **opus** for the complex work, **sonnet** for the rest. Run the
 coordinator session on **opus** (`/model opus` before `/orchestra start`; on another model, say
-so once and write it under `## Decisions`). Verifiers, the final lane pass and the
-diagnostician run on opus; builders on sonnet. No other Claude model, not even as a fallback:
-a builder on opus would leave no stronger model to verify it.
+so once and write it under `## Decisions`). Builders run on sonnet. No other Claude model.
+
+**Who verifies.** Unit verification (tier 1-2) is the cheap part: an economical Codex model
+(`codex_unit_verifier`, low effort), in every runtime, different from the unit's builder
+model. Opus (Codex runtime: the strongest listed model) only for tier 3 units, the final pass
+on each lane head and the diagnostician. Codex CLI not installed or not logged in → unit
+verification falls back to opus; write it under `## Decisions`.
+
+**Unit verify command** (Claude Code and mixed: one background Bash call per delivered unit):
+
+```bash
+bash <plugin>/bin/codex-task.sh --model "<codex_unit_verifier>" --effort low \
+  verify <worktree> .orchestratore/briefs/verify/<ID>.md
+```
+
+The verify brief = body of `<plugin>/agents/verifier.md` + `worktree: <path>  hash: <sha>
+base: <unit base sha>` + the unit brief. Its verdict is
+`.orchestratore/briefs/verify/<ID>.verify.last.md`; pass it to `bin/verdict-check.py
+--verdict <file> --hash <sha>` like every verdict.
 
 ## Worktrees
 
@@ -42,7 +59,10 @@ Every builder writes in its own worktree on its own branch, created from the uni
 git worktree add -b orch/<run>/<ID> .orchestratore/worktrees/<ID> <base-sha>
 ```
 
-Remove a worktree with `git worktree remove` only after its branch is merged or parked.
+Remove a unit's worktree with `git worktree remove` as soon as its branch is merged into its
+lane or the unit is parked: the branch keeps the commits, the disk gets its space back. Before
+each wave, `git worktree prune` and remove any leftover `.orchestratore/worktrees/*` whose
+unit is no longer building or verifying.
 Creating worktrees and committing need write access to `.git`: if your sandbox denies it,
 stop at §1 and tell the user (Codex: relaunch with a sandbox that allows git writes, e.g.
 `--sandbox danger-full-access` in a trusted repo).
@@ -61,7 +81,8 @@ the first wave. For later waves create the worktree yourself from the lane head 
 pass `workdir: <path>` in the prompt without `isolation`; never check out branches in the
 user's own checkout. The builder reports worktree, branch and hash.
 
-Verifier, the moment a builder reports:
+Verifier, the moment a builder reports: the unit verify command above for tier 1-2; for
+tier 3, a final lane pass, or Codex unavailable:
 
 ```text
 Agent(subagent_type="orchestratore:verifier", model=<claude_verifier>,
@@ -69,8 +90,8 @@ Agent(subagent_type="orchestratore:verifier", model=<claude_verifier>,
 ```
 
 A correction goes back to the same builder with `SendMessage` to its agent ID. The second KO
-goes to a fresh sonnet builder (new agent, all findings, a different hypothesis): the verifier
-stays opus. If the plugin
+goes to a fresh sonnet builder (new agent, all findings, a different hypothesis); the verifier
+stays as above. If the plugin
 agents are not available, use `general-purpose` and paste the body of
 `<plugin>/agents/builder.md` or `verifier.md` at the top of the prompt.
 
@@ -95,7 +116,9 @@ with `wait_agent` and handle
 whichever agent reports first; send a correction with
 `followup_task(target=<ID>, message=<findings>)`. A model change needs a new sub-agent:
 `followup_task` keeps the old model. Verifiers are spawned the same way with
-`<plugin>/agents/verifier.md` and `model=<codex_verifier>`. If a builder could not commit
+`<plugin>/agents/verifier.md`: `model=<codex_unit_verifier>` (economical, not the builder's)
+for tier 1-2 units, `model=<codex_verifier>` (the strongest) for tier 3 and the final lane
+pass. If a builder could not commit
 (sandbox), commit its worktree yourself before verifying. At a unit's third KO the
 diagnostician is spawned the same way with `<plugin>/agents/diagnostician.md`, the brief, the
 three verdicts and each attempt's hash, on a model none of the unit's builders used.
@@ -109,8 +132,8 @@ printf '%s\n' U-1 U-2 U-3 U-4 U-5 | xargs -P <free> -I{} \
   build .orchestratore/worktrees/{} .orchestratore/briefs/{}.md
 ```
 
-`<free>` is `max_parallel` minus the builders and verifiers already running, keeping one
-for verification. The script refuses a dirty worktree, commits the builder's changes itself and never pushes.
+`<free>` is the free slots (the runtime's limit, or `max_parallel` when set) minus the
+builders and verifiers already running, keeping one for verification. The script refuses a dirty worktree, commits the builder's changes itself and never pushes.
 After a failed run, retry the same unit with `--resume` so its own leftover changes are kept.
 Verify each delivered hash with a sub-agent as above, or with `codex-task.sh --model
 <codex_verifier> verify <worktree> <verify-brief.md>`, where the brief file holds
@@ -144,13 +167,14 @@ coordinator. Builder and verifier then differ by runtime, not only by model.
    builder column: it is the model that ran, not the one requested. `model=unknown` → log it.
    Exit 65 (dirty worktree) → inspect; the unit's own leftovers after a failure → rerun with
    `--resume`.
-6. **Verify:** `Agent(orchestratore:verifier, model=<claude_verifier>)` on the hash, as in the
-   Claude Code section, then `bin/verdict-check.py --hash <hash>` on its verdict.
+6. **Verify:** the unit verify command (Who verifies, above) on a Codex model different from
+   the builder's `model=`; tier 3 and the final lane pass: `Agent(orchestratore:verifier,
+   model=<claude_verifier>)`. Then `bin/verdict-check.py --hash <hash>` on the verdict.
 7. **KO:** first KO → a new `codex-task.sh build` on the same worktree with
    `.orchestratore/briefs/codex-fix1/<ID>.md` = the brief + the verifier's findings.
    Second KO → new approach on the
    other runtime: `Agent(orchestratore:builder, model=<claude_builder>)` on the same worktree
-   with all findings (verifier stays `<claude_verifier>`, which must differ). Third KO →
+   with all findings (the verifier stays a model different from it). Third KO →
    `Agent(orchestratore:diagnostician, model=<claude_verifier>)` with the brief, the three
    verdicts and each attempt's hash, then parked with its DIAGNOSIS (SKILL.md §5).
 8. **Codex unavailable** (exit 69, quota, auth or credit): mark it `unavailable` in `RUN.md`,

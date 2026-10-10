@@ -124,10 +124,23 @@ check "agents: builder runs on sonnet" agent_model builder sonnet
 check "agents: verifier runs on opus" agent_model verifier opus
 check "agents: diagnostician runs on opus" agent_model diagnostician opus
 check "config: claude builder sonnet, verifier opus" bash -c "grep -qx 'claude_builder = \"sonnet\"' '$ROOT/templates/config.toml' && grep -qx 'claude_verifier = \"opus\"' '$ROOT/templates/config.toml'"
-check "skill: opus for complex work, sonnet for the rest" skill_says '**opus** for the complex work (coordinating, verifying, diagnosing), **sonnet** for the rest'
+check "skill: opus for complex work, sonnet for the rest" skill_says '**opus** for the complex work (coordinating, final and tier 3 verification, diagnosing), **sonnet** for the rest'
+check "skill: tier 1-2 units get an economical Codex verifier, opus fallback" skill_says 'Tier 1-2 units: an economical Codex verifier; no Codex → opus.'
+check "engines: unit verify command uses codex_unit_verifier" grep -q 'codex-task.sh --model "<codex_unit_verifier>" --effort low' "$ROOT/skills/orchestratore/references/engines.md"
+check "config: codex_unit_verifier key present" grep -q '^codex_unit_verifier = ' "$ROOT/templates/config.toml"
 check "engines: coordinator session runs on opus" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'Run the coordinator session on **opus**'"
-check "skill: rejected verdict rerun stays on opus in Claude Code" skill_says 'rerun once (Claude Code: a fresh opus verifier; Codex: another model)'
-check "verify: rejected verdict rerun stays on opus in Claude Code" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/verify.md' | tr -s ' ' | grep -qF 'rerun it once (Claude Code: a fresh opus verifier, never the builder'"
+check "skill: rejected verdict reruns once on the same verifier model" skill_says 'rerun once with the rejection reasons, same verifier model'
+check "verify: rejected verdict reruns once on the same verifier model" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/verify.md' | tr -s ' ' | grep -qF 'on the same verifier model (never the builder'"
+# 0.10.0: spec and ready tickets before dispatch, no fixed agent cap, done = goal reached.
+check "skill: spec and precise tickets before any builder" skill_says 'a spec and precise tickets before any builder starts'
+check "skill: a brief failing the ready check does not go out" skill_says 'A brief that fails does not go out'
+check "brief: ready check section" grep -q '^## 4. Ready check' "$ROOT/skills/brief/SKILL.md"
+check "skill: no fixed number of agents" skill_says 'no fixed number; you decide'
+check "config: max_parallel defaults to no cap" grep -q '^max_parallel = 0 ' "$ROOT/templates/config.toml"
+check "skill: done only when the goal is reached" skill_says '**Done** only when the goal is reached'
+check "config: auto-merge default everything outside sensitive" grep -qx 'auto_merge_globs = \["\*\*"\]' "$ROOT/templates/config.toml"
+check "verify: FIX oracle in a throwaway copy, no reinstall" bash -c "grep -q 'rsync -a --exclude .git --exclude node_modules' '$ROOT/skills/orchestratore/references/verify.md' && grep -q 'rsync -a --exclude .git --exclude node_modules' '$ROOT/agents/verifier.md'"
+check "engines: worktrees removed once merged into the lane or parked" grep -q 'as soon as its branch is merged into its' "$ROOT/skills/orchestratore/references/engines.md"
 check "no fable or haiku in shipped files" shipped_grep '(?i)\b(fable|haiku)\b'
 check "no TODO/TBD in shipped files" shipped_grep '\bTODO\b|\bTBD\b'
 check "0.6 controller is gone" bash -c "! test -e '$ROOT/controller' && ! test -e '$ROOT/bin/orchestratore-controller'"
