@@ -8,10 +8,11 @@ and still could not merge.
 ### Fixed
 - **Merge gate on private repositories without branch protection.** On a free GitHub plan the
   protection and rules APIs answer 403 ("Upgrade to GitHub Pro…") and the gate stopped with
-  an error, so nothing ever merged on those repositories. Now no check can be required
-  there, so every check reported on the PR counts (each passed or skipped, at least one
-  passed); with no checks at all, the final verifier's full gate on the exact SHA plus
-  `--no-required-checks-ok` is the proof, as before. Other protection errors still stop.
+  an error, so nothing ever merged on those repositories. No check can be required there,
+  so a check that has not registered yet would just be missing: the gate now always needs
+  the final verifier's full gate on the exact SHA (`--no-required-checks-ok`) and, on top,
+  every check reported on the PR passed or skipped. Checks that cannot be read stop the
+  gate, as do other protection errors.
 - **`--no-required-checks-ok` is the rule, not a loophole.** `merge.md` says to pass it when
   there are no checks anywhere and the final verdict on that SHA is `OK`; the Codex
   coordinator had refused to.

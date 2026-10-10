@@ -63,7 +63,7 @@ The main keys:
   Codex model (`codex_unit_verifier`), opus when Codex is not available. Start the
   coordinator session on opus.
 - `[merge] auto_merge_globs` — the paths allowed to auto-merge. **Default `["**"]`:
-  everything outside the sensitive paths, on tier 1-2 with required checks green.** `[]`
+  everything outside the sensitive paths, on tier 1-2 with required checks green (a private repository on a free plan: the final full gate on that SHA plus every check on the PR).** `[]`
   turns auto-merge off. `sensitive_globs` adds to the built-in list (schema, migrations,
   auth, login, payments, tenancy, personal/health data, secrets, permissions, deletion).
 

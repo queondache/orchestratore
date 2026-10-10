@@ -11,7 +11,8 @@ human? The answer is "yes" only when every condition holds:
   * the base branch has required status checks and all of them passed
     (or --no-required-checks-ok is given, after the full local gate ran on
     the exact SHA). On a plan without branch protection (a private repository
-    on a free plan) every check on the PR counts as required.
+    on a free plan) --no-required-checks-ok is always needed and every check
+    reported on the PR must also have passed or been skipped.
 
 Any uncertainty is a "no". With --merge, a "yes" is executed through
 `gh pr merge --squash --match-head-commit <sha>`, so GitHub itself rejects the
@@ -217,22 +218,25 @@ def evaluate(args: argparse.Namespace) -> Dict[str, Any]:
     required = required_checks(slug, pr.get("baseRefName", ""))
     check_states: Dict[str, str] = {}
     if required == PLAN_LIMITED:
-        # Nothing can be required on this plan, so every check reported on the PR counts:
-        # each one passed or was skipped, at least one passed. No checks at all is the
-        # same as no required checks.
-        code, out, _ = gh(["pr", "checks", str(args.pr), "--json", "name,bucket"],
-                          args.repo, allow_fail=True)
+        # Nothing can be required on this plan: a check that has not registered yet would
+        # simply be missing. So the full local gate on this sha is always needed, and on
+        # top of it every check reported on the PR must have passed or been skipped.
+        if not args.no_required_checks_ok:
+            reasons.append("the plan cannot require checks "
+                           "(pass --no-required-checks-ok only after the full local gate "
+                           "ran on this sha)")
+        code, out, err = gh(["pr", "checks", str(args.pr), "--json", "name,bucket"],
+                            args.repo, allow_fail=True)
+        if code != 0 and not out.strip():
+            if "no checks reported" not in err.lower():
+                raise GateError("cannot read PR checks: %s" % err.strip())
+            out = "[]"
         try:
-            runs = [(c["name"], c["bucket"]) for c in json.loads(out or "[]")]
+            runs = [(c["name"], c["bucket"]) for c in json.loads(out)]
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             raise GateError("cannot parse PR checks") from exc
         required = sorted({name for name, _ in runs}) or None
-        if required is None:
-            if not args.no_required_checks_ok:
-                reasons.append("no checks on this PR and the plan cannot require any "
-                               "(pass --no-required-checks-ok only after the full local gate "
-                               "ran on this sha)")
-        else:
+        if required is not None:
             if code != 0:
                 reasons.append("gh pr checks exited %d" % code)
             for name in required:
@@ -241,7 +245,7 @@ def evaluate(args: argparse.Namespace) -> Dict[str, Any]:
                 if any(state not in ("pass", "skipping") for state in states):
                     reasons.append("check %s is %s" % (name, check_states[name]))
             if not any(bucket == "pass" for _, bucket in runs):
-                reasons.append("no check on this PR passed")
+                reasons.append("checks reported on this PR, none passed")
     elif required is None:
         if not args.no_required_checks_ok:
             reasons.append("base branch has no required checks "
