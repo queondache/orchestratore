@@ -228,13 +228,14 @@ def evaluate(args: argparse.Namespace) -> Dict[str, Any]:
         code, out, err = gh(["pr", "checks", str(args.pr), "--json", "name,bucket"],
                             args.repo, allow_fail=True)
         if code != 0 and not out.strip():
-            if "no checks reported" not in err.lower():
-                raise GateError("cannot read PR checks: %s" % err.strip())
             out = "[]"
         try:
             runs = [(c["name"], c["bucket"]) for c in json.loads(out)]
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             raise GateError("cannot parse PR checks") from exc
+        # A failed call with no checks counts as "none" only when gh says exactly that.
+        if code != 0 and not runs and "no checks reported" not in err.lower():
+            raise GateError("cannot read PR checks: %s" % err.strip())
         required = sorted({name for name, _ in runs}) or None
         if required is not None:
             if code != 0:

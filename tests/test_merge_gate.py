@@ -442,6 +442,14 @@ class MergeGateTest(unittest.TestCase):
         self.assertEqual(code, 2, out)
         self.assertFalse(out["merge"])
 
+    def test_plan_without_protection_failed_call_with_empty_list_is_an_error(self) -> None:
+        self.plan_limited()
+        self.write("checks.json", [])
+        (self.dir / "checks.exit").write_text("1")
+        (self.dir / "checks.stderr").write_text("HTTP 502")
+        code, out = self.run_gate("--no-required-checks-ok")
+        self.assertEqual(code, 2, out)
+
     def test_other_protection_error_is_still_an_error(self) -> None:
         (self.dir / "protection.json").unlink()
         fake = self.dir / "bin" / "gh"
