@@ -137,8 +137,21 @@ check "skill: a brief failing the ready check does not go out" skill_says 'A bri
 check "brief: ready check section" grep -q '^## 5. Ready check' "$ROOT/skills/brief/SKILL.md"
 check "brief: run context section" grep -q '^## 3. Run context' "$ROOT/skills/brief/SKILL.md"
 check "brief: template carries spec, code, pattern, pitfalls" bash -c "for f in spec code pattern pitfalls; do grep -q \"^\$f: \" '$ROOT/skills/brief/SKILL.md' || exit 1; done"
-check "skill: builders and verifiers get the run context" skill_says 'Each builder gets `CONTEXT.md`, its brief'
-check "engines: every dispatch prompt carries CONTEXT.md" bash -c "[ \$(grep -c 'CONTEXT.md' '$ROOT/skills/orchestratore/references/engines.md') -ge 6 ]"
+check "skill: every agent started gets the run context" skill_says 'Every agent you start (builder, fresh builder, verifier, diagnostician) gets `CONTEXT.md` first'
+check "skill: silence is never an answer" skill_says 'Silence is never an answer.'
+check "skill: the smallest question that unblocks" skill_says 'the smallest that unblocks'
+engines_says() { tr '\n' ' ' < "$ROOT/skills/orchestratore/references/engines.md" | tr -s ' ' | grep -qF "$1"; }
+check "engines: unit verify brief carries CONTEXT.md" engines_says 'base: <unit base sha>` + `.orchestratore/CONTEXT.md` + the unit brief'
+check "engines: Claude Code builder prompt carries CONTEXT.md" engines_says 'prompt=<CONTEXT.md> + <brief content>)'
+check "engines: Claude Code verifier prompt carries CONTEXT.md" engines_says 'base: <unit base sha>\n" + <CONTEXT.md> + <brief content>)'
+check "engines: Codex spawn_agent message carries CONTEXT.md" engines_says '+ <CONTEXT.md> + <brief content>)'
+check "engines: Codex batch verify brief carries CONTEXT.md" engines_says 'the hash, `CONTEXT.md` and the unit brief'
+check "engines: mixed build brief carries CONTEXT.md" engines_says '+ `.orchestratore/CONTEXT.md` + the unit brief. Brief commands'
+check "engines: mixed first-KO correction carries CONTEXT.md" engines_says 'codex-fix1/<ID>.md` = the builder body + `workdir:` + `CONTEXT.md` +'
+check "engines: fresh builder at second KO carries CONTEXT.md" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'new agent: \`CONTEXT.md\`, the brief, all findings' && tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'with \`CONTEXT.md\`, the brief and all findings'"
+check "engines: diagnostician gets CONTEXT.md on every runtime" bash -c "[ \$(tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -oF 'diagnostician' | wc -l) -ge 2 ] && tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'diagnostician.md\`, \`CONTEXT.md\`,' && grep -q 'run context (\`CONTEXT.md\`), the unit brief' '$ROOT/agents/diagnostician.md'"
+check "engines: repo rules reach Codex sub-agents through CONTEXT.md" engines_says 'the repository rules reach it through `CONTEXT.md` in the message'
+
 check "verify: fresh environment in the copy, no stale bytecode" bash -c "grep -q 'PYTHONDONTWRITEBYTECODE=1' '$ROOT/skills/orchestratore/references/verify.md' && grep -q 'PYTHONDONTWRITEBYTECODE=1' '$ROOT/agents/verifier.md'"
 check "skill: no fixed number of agents" skill_says 'no fixed number; you decide'
 check "config: max_parallel defaults to no cap" grep -q '^max_parallel = 0 ' "$ROOT/templates/config.toml"

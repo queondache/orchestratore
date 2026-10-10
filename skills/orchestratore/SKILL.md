@@ -97,9 +97,9 @@ mixed: Claude builders); runtime exhausted → park the run (§7). Never fake a 
 - Concurrency: no fixed number; you decide. Send every ready independent unit, capped only
   by the engine's slot limit and `max_parallel` if the user set one, keeping one slot free
   for verifiers (Codex, 3 slots: 2 builders + 1 verifier). Never split a unit to fill a slot.
-- Each builder gets `CONTEXT.md`, its brief and its worktree path (in Codex also the body of
-  `agents/builder.md`); verifiers get `CONTEXT.md` too. Not your plan, not other units'
-  briefs. Brief commands are targeted tests only; exclusive-resource commands only in §6.
+- Every agent you start (builder, fresh builder, verifier, diagnostician) gets `CONTEXT.md`
+  first; a builder then its brief and worktree path (Codex: also `agents/builder.md`). Not
+  your plan, not other units' briefs. Brief commands: targeted tests only (exclusive: §6).
 
 ## 5. Handle each result as it arrives
 
@@ -167,8 +167,9 @@ lines, move it to `.orchestratore/log/<date>.md`). After each write and before e
 ## 8. Questions
 
 Ask only about product behaviour, scope, or an action outside the authorised perimeter;
-technical, reversible choices you decide and log under `## Decisions`. One question at a
-time, recommended option first (`AskUserQuestion`; Codex: a question that ends the turn).
+technical, reversible choices (names, layout, test shape) you decide and log under
+`## Decisions`. One question at a time, the smallest that unblocks, recommended option first
+(`AskUserQuestion`; Codex: a question that ends the turn). Silence is never an answer.
 
 ## 9. Report (after each merge and at the end)
 
@@ -196,5 +197,4 @@ Next: <one action>
 | "Wait for all builders, then review" | Verify each on arrival. |
 | "The builder says tests pass" / "same model can verify" | Only a different-model verifier's commands count. |
 | "This red gate blocks the run" | It blocks one unit. Park it, continue. |
-| "I'll fix the conflict myself" | Send it back to the builder. |
 | "New finding, one more round" | Third KO: diagnose, then park. Count, don't judge. |

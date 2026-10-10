@@ -95,7 +95,8 @@ Agent(subagent_type="orchestratore:verifier", model=<claude_verifier>,
 ```
 
 A correction goes back to the same builder with `SendMessage` to its agent ID. The second KO
-goes to a fresh sonnet builder (new agent, all findings, a different hypothesis); the verifier
+goes to a fresh sonnet builder (new agent: `CONTEXT.md`, the brief, all findings, a different
+hypothesis); the verifier
 stays as above. If the plugin
 agents are not available, use `general-purpose` and paste the body of
 `<plugin>/agents/builder.md` or `verifier.md` at the top of the prompt.
@@ -115,8 +116,9 @@ spawn_agent(task_name="<ID>", fork_turns="none", model=<codex_builder>,
 
 `fork_turns="none"` is required for the model and effort overrides to apply and keeps the
 sub-agent's context clean; this skill is the instruction that authorises the override. Since
-the sub-agent does not inherit your context, put the repository rules it must follow in the
-brief (`do not touch`, `read first`). Issue the `spawn_agent` calls back to back, then wait
+the sub-agent does not inherit your context, the repository rules reach it through
+`CONTEXT.md` in the message; the brief holds only the unit's own limits (`do not touch`).
+Issue the `spawn_agent` calls back to back, then wait
 with `wait_agent` and handle
 whichever agent reports first; send a correction with
 `followup_task(target=<ID>, message=<findings>)`. A model change needs a new sub-agent:
@@ -125,8 +127,8 @@ whichever agent reports first; send a correction with
 for tier 1-2 units, `model=<codex_verifier>` (the strongest) for tier 3 and the final lane
 pass. If a builder could not commit
 (sandbox), commit its worktree yourself before verifying. At a unit's third KO the
-diagnostician is spawned the same way with `<plugin>/agents/diagnostician.md`, the brief, the
-three verdicts and each attempt's hash, on a model none of the unit's builders used.
+diagnostician is spawned the same way with `<plugin>/agents/diagnostician.md`, `CONTEXT.md`,
+the brief, the three verdicts and each attempt's hash, on a model none of the unit's builders used.
 
 **Waves larger than the slot limit**: run each unit as its own Codex process. One line
 dispatches them in parallel and prints `<ID> hash=<sha>` as each finishes:
@@ -177,11 +179,13 @@ coordinator. Tier 1-2 checks run on another Codex model; tier 3 and the final la
    the builder's `model=`; tier 3 and the final lane pass: `Agent(orchestratore:verifier,
    model=<claude_verifier>)`. Then `bin/verdict-check.py --hash <hash>` on the verdict.
 7. **KO:** first KO → a new `codex-task.sh build` on the same worktree with
-   `.orchestratore/briefs/codex-fix1/<ID>.md` = the brief + the verifier's findings.
+   `.orchestratore/briefs/codex-fix1/<ID>.md` = the builder body + `workdir:` + `CONTEXT.md` +
+   the brief + the verifier's findings.
    Second KO → new approach on the
    other runtime: `Agent(orchestratore:builder, model=<claude_builder>)` on the same worktree
-   with all findings (the verifier stays a model different from it). Third KO →
-   `Agent(orchestratore:diagnostician, model=<claude_verifier>)` with the brief, the three
+   with `CONTEXT.md`, the brief and all findings (the verifier stays a model different from
+   it). Third KO → `Agent(orchestratore:diagnostician, model=<claude_verifier>)` with
+   `CONTEXT.md`, the brief, the three
    verdicts and each attempt's hash, then parked with its DIAGNOSIS (SKILL.md §5).
 8. **Codex unavailable** (exit 69, quota, auth or credit): mark it `unavailable` in `RUN.md`,
    send its queued and correction work to Claude builders, and do not call Codex again until

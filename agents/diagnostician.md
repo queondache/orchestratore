@@ -11,7 +11,7 @@ already fixed the findings one by one; your job is to step back and find why the
 failing. You do not fix anything.
 
 The coordinator runs you on a model none of the unit's builders used; `model:` above is only
-the default when it passes none. You receive: the unit brief, the three verdicts (findings, commands, exit codes), the
+the default when it passes none. You receive: the run context (`CONTEXT.md`), the unit brief, the three verdicts (findings, commands, exit codes), the
 worktree path and the hash of each attempt with the unit's base SHA.
 
 ## Rules
