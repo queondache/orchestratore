@@ -175,12 +175,43 @@ class MergeGateTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(out["unclassified_paths"], ["scripts/deploy.sh"])
 
-    def test_empty_allowlist_blocks(self) -> None:
+    def test_no_allowlist_anywhere_allows_everything_but_sensitive(self) -> None:
+        self.set_files("scripts/deploy.sh", "src/app/button.ts")
+        cmd = [sys.executable, str(SCRIPT), "--pr", "7", "--sha", SHA, "--tier", "1",
+               "--config", "/nonexistent"]
+        proc = subprocess.run(cmd, capture_output=True, text=True, env=self.env, cwd=self.dir)
+        out = json.loads(proc.stdout)
+        self.assertEqual(proc.returncode, 0, out)
+        self.assertEqual(out["unclassified_paths"], [])
+
+    def test_default_allowlist_still_blocks_sensitive(self) -> None:
+        self.set_files("src/auth/login.ts")
         cmd = [sys.executable, str(SCRIPT), "--pr", "7", "--sha", SHA, "--tier", "1",
                "--config", "/nonexistent"]
         proc = subprocess.run(cmd, capture_output=True, text=True, env=self.env, cwd=self.dir)
         self.assertEqual(proc.returncode, 1)
-        self.assertTrue(any("allowlist" in r for r in json.loads(proc.stdout)["reasons"]))
+        self.assertEqual(json.loads(proc.stdout)["sensitive_paths"], ["src/auth/login.ts"])
+
+    def test_explicit_empty_allowlist_blocks(self) -> None:
+        cfg = self.dir / "config.toml"
+        cfg.write_text('[merge]\nauto_merge_globs = []\n')
+        cmd = [sys.executable, str(SCRIPT), "--pr", "7", "--sha", SHA, "--tier", "1",
+               "--config", str(cfg)]
+        proc = subprocess.run(cmd, capture_output=True, text=True, env=self.env, cwd=self.dir)
+        self.assert_config_result(proc, 1, lambda out: self.assertTrue(
+            any("turned off" in r for r in out["reasons"])))
+
+    def test_ci_workflow_change_is_sensitive(self) -> None:
+        self.set_files(".github/workflows/ci.yml")
+        code, out = self.run_gate("--allow", ".github/**")
+        self.assertEqual(code, 1)
+        self.assertEqual(out["sensitive_paths"], [".github/workflows/ci.yml"])
+
+    def test_generic_user_session_role_paths_are_not_sensitive(self) -> None:
+        self.set_files("src/sessions/schedule.ts", "src/users/profile.tsx", "src/roles/list.ts")
+        code, out = self.run_gate()
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out["sensitive_paths"], [])
 
     def assert_config_result(self, proc, expect_code, check):
         """Config files need a real TOML parser; without one the gate fails closed."""

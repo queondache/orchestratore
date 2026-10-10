@@ -33,7 +33,7 @@ for dir in "$ROOT"/skills/*/; do
   check "skill $name: relative links resolve" bash -c "cd '$dir' && grep -o '](references/[^)]*)' SKILL.md | sed 's/](//;s/)\$//' | while read -r l; do test -f \"\$l\" || exit 1; done"
 done
 check "orchestratore SKILL.md <= 200 lines" bash -c "[ \$(wc -l < '$ROOT/skills/orchestratore/SKILL.md') -le 200 ]"
-check "brief SKILL.md <= 120 lines" bash -c "[ \$(wc -l < '$ROOT/skills/brief/SKILL.md') -le 120 ]"
+check "brief SKILL.md <= 160 lines" bash -c "[ \$(wc -l < '$ROOT/skills/brief/SKILL.md') -le 160 ]"
 
 # Agents
 for a in builder verifier diagnostician; do
@@ -124,10 +124,44 @@ check "agents: builder runs on sonnet" agent_model builder sonnet
 check "agents: verifier runs on opus" agent_model verifier opus
 check "agents: diagnostician runs on opus" agent_model diagnostician opus
 check "config: claude builder sonnet, verifier opus" bash -c "grep -qx 'claude_builder = \"sonnet\"' '$ROOT/templates/config.toml' && grep -qx 'claude_verifier = \"opus\"' '$ROOT/templates/config.toml'"
-check "skill: opus for complex work, sonnet for the rest" skill_says '**opus** for the complex work (coordinating, verifying, diagnosing), **sonnet** for the rest'
+check "skill: opus for complex work, sonnet for the rest" skill_says '**opus** for the complex work (coordinating, final and tier 3 verification, diagnosing), **sonnet** for the rest'
+check "skill: tier 1-2 units get an economical Codex verifier, opus fallback" skill_says 'Tier 1-2 units: an economical Codex verifier; no Codex → opus.'
+check "engines: unit verify command uses codex_unit_verifier" grep -q 'codex-task.sh --model "<codex_unit_verifier>" --effort low' "$ROOT/skills/orchestratore/references/engines.md"
+check "config: codex_unit_verifier key present" grep -q '^codex_unit_verifier = ' "$ROOT/templates/config.toml"
 check "engines: coordinator session runs on opus" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'Run the coordinator session on **opus**'"
-check "skill: rejected verdict rerun stays on opus in Claude Code" skill_says 'rerun once (Claude Code: a fresh opus verifier; Codex: another model)'
-check "verify: rejected verdict rerun stays on opus in Claude Code" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/verify.md' | tr -s ' ' | grep -qF 'rerun it once (Claude Code: a fresh opus verifier, never the builder'"
+check "skill: rejected verdict reruns once on the same verifier model" skill_says 'rerun once with the rejection reasons, same verifier model'
+check "verify: rejected verdict reruns once on the same verifier model" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/verify.md' | tr -s ' ' | grep -qF 'on the same verifier model (never the builder'"
+# 0.10.0: spec and ready tickets before dispatch, no fixed agent cap, done = goal reached.
+check "skill: spec and precise tickets before any builder" skill_says 'a spec and precise tickets before any builder starts'
+check "skill: a brief failing the ready check does not go out" skill_says 'A brief that fails does not go out'
+check "brief: ready check section" grep -q '^## 5. Ready check' "$ROOT/skills/brief/SKILL.md"
+check "brief: run context section" grep -q '^## 3. Run context' "$ROOT/skills/brief/SKILL.md"
+check "brief: template carries spec, code, pattern, pitfalls" bash -c "for f in spec code pattern pitfalls; do grep -q \"^\$f: \" '$ROOT/skills/brief/SKILL.md' || exit 1; done"
+check "skill: every agent started gets the run context" skill_says 'Every agent you start (builder, fresh builder, verifier, diagnostician) gets `CONTEXT.md` first'
+check "skill: silence is never an answer" skill_says 'Silence is never an answer.'
+check "skill: the smallest question that unblocks" skill_says 'the smallest that unblocks'
+engines_says() { tr '\n' ' ' < "$ROOT/skills/orchestratore/references/engines.md" | tr -s ' ' | grep -qF "$1"; }
+check "engines: unit verify brief carries CONTEXT.md" engines_says 'base: <unit base sha>` + `.orchestratore/CONTEXT.md` + the unit brief'
+check "engines: Claude Code builder prompt carries CONTEXT.md" engines_says 'prompt=<CONTEXT.md> + <brief content>)'
+check "engines: Claude Code verifier prompt carries CONTEXT.md" engines_says 'base: <unit base sha>\n" + <CONTEXT.md> + <brief content>)'
+check "engines: Codex spawn_agent message carries CONTEXT.md" engines_says '+ <CONTEXT.md> + <brief content>)'
+check "engines: Codex batch verify brief carries CONTEXT.md" engines_says 'the hash, `CONTEXT.md` and the unit brief'
+check "engines: mixed build brief carries CONTEXT.md" engines_says '+ `.orchestratore/CONTEXT.md` + the unit brief. Brief commands'
+check "engines: mixed first-KO correction carries CONTEXT.md" engines_says 'codex-fix1/<ID>.md` = the builder body + `workdir:` + `CONTEXT.md` +'
+check "engines: fresh builder at second KO carries CONTEXT.md" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'new agent: \`CONTEXT.md\`, the brief, all findings' && tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'with \`CONTEXT.md\`, the brief and all findings'"
+check "engines: diagnostician gets CONTEXT.md on every runtime" bash -c "[ \$(tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -oF 'diagnostician' | wc -l) -ge 2 ] && tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'diagnostician.md\`, \`CONTEXT.md\`,' && grep -q 'run context (\`CONTEXT.md\`), the unit brief' '$ROOT/agents/diagnostician.md'"
+check "engines: repo rules reach Codex sub-agents through CONTEXT.md" engines_says 'the repository rules reach it through `CONTEXT.md` in the message'
+
+check "verify: fresh environment in the copy, no stale bytecode" bash -c "grep -q 'PYTHONDONTWRITEBYTECODE=1' '$ROOT/skills/orchestratore/references/verify.md' && grep -q 'PYTHONDONTWRITEBYTECODE=1' '$ROOT/agents/verifier.md'"
+check "skill: no fixed number of agents" skill_says 'no fixed number; you decide'
+check "config: max_parallel defaults to no cap" grep -q '^max_parallel = 0 ' "$ROOT/templates/config.toml"
+check "skill: done only when the goal is reached" skill_says '**Done** only when the goal is reached'
+check "config: auto-merge default everything outside sensitive" grep -qx 'auto_merge_globs = \["\*\*"\]' "$ROOT/templates/config.toml"
+check "verify: FIX oracle in a throwaway copy of the exact hash, no reinstall" bash -c "grep -q 'git -C <worktree> archive <hash> |' '$ROOT/skills/orchestratore/references/verify.md' && grep -q 'git -C <worktree> archive <hash> |' '$ROOT/agents/verifier.md'"
+check "verify: never link dependencies that point back into the reviewed worktree" bash -c "grep -q 'Do not link' '$ROOT/skills/orchestratore/references/verify.md' && grep -q 'Never link dependencies that point back' '$ROOT/agents/verifier.md'"
+check "engines: unit verify never runs without an explicit model" grep -q 'Never call `codex-task.sh verify` without `--model`' "$ROOT/skills/orchestratore/references/engines.md"
+check "no Claude verifier left in mixed-mode wording" bash -c "! grep -rn 'Claude verif' '$ROOT/skills' '$ROOT/templates' '$ROOT/README.md'"
+check "engines: worktrees removed once merged into the lane or parked" grep -q 'as soon as its branch is merged into its' "$ROOT/skills/orchestratore/references/engines.md"
 check "no fable or haiku in shipped files" shipped_grep '(?i)\b(fable|haiku)\b'
 check "no TODO/TBD in shipped files" shipped_grep '\bTODO\b|\bTBD\b'
 check "0.6 controller is gone" bash -c "! test -e '$ROOT/controller' && ! test -e '$ROOT/bin/orchestratore-controller'"

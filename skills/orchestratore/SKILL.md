@@ -34,11 +34,8 @@ Brief format: the `brief` skill.
    the user named, else the default branch, at its current SHA.
 4. Find the real gate commands (build, test, lint) from the project files. Write `none` for a
    missing one; never invent it. Commands needing an exclusive resource (shared database,
-   fixed port, browser) run one at a time. Find the post-merge deploy (a `.github/workflows/`
-   job deploying the default branch, `vercel.json`, a Git-connected host) and write it as
-   `pipeline:` with a read-only check: `gh run list --commit <sha> --workflow <deploy
-   workflow>` for GitHub Actions, `gh api repos/<owner>/<repo>/commits/<sha>/status` for hosts
-   that post commit statuses. `pipeline: none` if nothing deploys (CI that only tests is not).
+   fixed port, browser) run one at a time. Record the post-merge deploy as `pipeline:` with
+   its read-only check, as in [merge](references/merge.md), or `pipeline: none`.
 5. Pick the engine (§3), check you can write `.git` by creating the first worktree, and write
    `.orchestratore/RUN.md` from `<plugin>/templates/RUN.md`, with `goal:` = the user's request
    in one sentence (only the user changes it), then run `python3 <plugin>/bin/run-check.py
@@ -46,36 +43,41 @@ Brief format: the `brief` skill.
    info/exclude`, so run files never get committed. If git writes are blocked, release the lock
    and tell the user how to relaunch with write access.
 
-**Defaults, written, not asked:** unattended; commit + push + PR automatic; auto-merge only
-through §6; verification on every delivery; stop when every unit is done or parked. Change a
-default only when the user says so. If the user excludes merges, say once that every unit
-will wait on a PR, and open one PR per wave: never let one PR grow across waves.
+**Defaults, written, not asked:** unattended; commit + push + PR automatic; auto-merge through
+§6; verification on every delivery. Change one only when the user says so. Merges excluded →
+say once that every unit waits on a PR, one PR per wave: never let one PR grow across waves.
 
-## 2. Plan once
+## 2. Plan once: a spec and precise tickets before any builder starts
 
-1. List the units: each bug, fix or milestone the user asked for.
-2. If you do not know where a unit lives in the code, send up to 3 read-only explorers in
-   parallel; each returns at most 10 lines: files, entry points, test command. Do not explore
-   more than the briefs need.
+1. Write `.orchestratore/SPEC.md`: the goal and, per unit the user asked for, the expected
+   behaviour with its source (`SPEC.md`, `ROADMAP.md`, the bug list: file and line). A
+   behaviour no source states is a question (§8), never a guess. Then the **run context**
+   `.orchestratore/CONTEXT.md` (`brief` skill): stack, one-test command, repo rules, map.
+2. Locate every unit before writing its brief: read the code yourself, or send read-only
+   explorers in parallel, as many as the units need. Each returns files with line ranges,
+   the cause if visible, a similar test to imitate, and the targeted test command it ran on
+   the base with its exit code.
 3. Classify and split with the `brief` skill: FIX / BUILD / CHECK, risk tier, one owner per
    file per wave, shared interfaces first. Dependent units go in a later wave and inherit a
    higher tier (built on tier 3 = tier 3); an uncertain tier → the higher one, logged.
-4. Write every brief to `.orchestratore/briefs/<ID>.md` and add one row per unit to `RUN.md`.
-   The plan is the set of briefs: no separate strategy stage, no per-unit plan.
+4. Write every brief to `.orchestratore/briefs/<ID>.md` and run the `brief` skill's **ready
+   check** on it. A brief that fails does not go out: complete it, or its unit waits on a
+   question. Ready briefs go out without asking the user. One row per unit in `RUN.md`.
 
 ## 3. Engines
 
 By default the whole run stays on your runtime. **Mixed** (`mode = "mixed"` or the user asks):
-a Claude Code coordinator has Codex build and Claude verify. Commands: [engines](references/engines.md).
+a Claude Code coordinator has Codex build and verify (opus: tier 3, final). Commands: [engines](references/engines.md).
 
 | Runtime | Builders | Verifiers |
 |---|---|---|
-| **Claude Code** | `Agent` tool, `orchestratore:builder`, `isolation: "worktree"` | `orchestratore:verifier` on a different model |
+| **Claude Code** | `Agent` tool, `orchestratore:builder`, `isolation: "worktree"` | units: economical Codex model (`codex-task.sh verify`); tier 3, final: `orchestratore:verifier` |
 | **Codex** | native sub-agents (`spawn_agent`) in worktrees you create; waves larger than the slot limit via `codex-task.sh` | sub-agents on a different model |
-| **Mixed** (Claude Code) | one background `codex-task.sh build` per unit in worktrees you create; record its `model=` | `orchestratore:verifier` (Claude) |
+| **Mixed** (Claude Code) | one background `codex-task.sh build` per unit in worktrees you create; record its `model=` | as Claude Code, on a Codex model other than the builder's |
 
 Builder and verifier models differ; record both in `RUN.md`. Claude models: **opus** for the
-complex work (coordinating, verifying, diagnosing), **sonnet** for the rest (building); no other.
+complex work (coordinating, final and tier 3 verification, diagnosing), **sonnet** for the
+rest (building); no other. Tier 1-2 units: an economical Codex verifier; no Codex → opus.
 Quota, auth or credit failure: retry once (Codex: another model; Claude Code: a fresh agent;
 mixed: Claude builders); runtime exhausted → park the run (§7). Never fake a missing agent.
 
@@ -92,13 +94,12 @@ mixed: Claude builders); runtime exhausted → park the run (§7). Never fake a 
   one `xargs -P` line for `codex-task.sh`. Its worktree starts from the lane head with those
   dependencies; record that SHA as the unit's `base`. Serial dispatch of independent units is
   the main failure this skill exists to prevent.
-- Concurrency: every independent unit, up to `max_parallel` (default 8, builders and
-  verifiers together, native agents and `codex-task.sh` processes alike) and the engine's slot
-  limit, keeping one slot free for verifiers (Codex, 3 slots: 2 builders + 1 verifier). An
-  idle slot without independent work stays idle; never split a unit to fill it.
-- Each builder gets the brief and its worktree path (in Codex also the body of
-  `agents/builder.md`). Not your plan, not other units' briefs. Brief commands are targeted
-  tests only; exclusive-resource commands run only in §6.
+- Concurrency: no fixed number; you decide. Send every ready independent unit, capped only
+  by the engine's slot limit and `max_parallel` if the user set one, keeping one slot free
+  for verifiers (Codex, 3 slots: 2 builders + 1 verifier). Never split a unit to fill a slot.
+- Every agent you start (builder, fresh builder, verifier, diagnostician) gets `CONTEXT.md`
+  first; a builder then its brief and worktree path (Codex: also `agents/builder.md`). Not
+  your plan, not other units' briefs. Brief commands: targeted tests only (exclusive: §6).
 
 ## 5. Handle each result as it arrives
 
@@ -106,8 +107,8 @@ Do not wait for the wave to finish.
 
 1. Builder reports → start its verifier at once ([verify](references/verify.md)). Only a verdict
    that `bin/verdict-check.py --hash <hash>` accepts moves a unit; the builder's report is a
-   claim. Rejected: not a KO, rerun once (Claude Code: a fresh opus verifier; Codex: another
-   model); rejected again → `parked` "unverifiable". **BLOCKED** (proof cannot run here) is not
+   claim. Rejected: not a KO, rerun once with the rejection reasons, same verifier model;
+   rejected again → `parked` "unverifiable". **BLOCKED** (proof cannot run here) is not
    a KO: give it the means (project checks on that hash) or `waiting` with what is missing.
 2. **OK** → `verified`, queued for integration. **KO** → its findings go back to the **same**
    builder as one bounded correction (`SendMessage` / `followup_task` / a rerun in place).
@@ -131,7 +132,8 @@ lines, move it to `.orchestratore/log/<date>.md`). After each write and before e
 1. Lanes: tier 1-2 units into `orch/<run>`; tier 3 into `orch/<run>-review`, which always
    waits for the user, so tier 3 never holds back the safe ones (numbered when blocked, §4).
 2. Merge verified branches into their lane in dependency order. A conflict goes back to the
-   builder of the later branch as a correction; you do not resolve product code.
+   builder of the later branch as a correction; you do not resolve product code. Once a
+   unit's branch is in its lane, or the unit is parked, remove its worktree (engines).
 3. On each lane head a final verifier pass runs the **full gate once** (exclusive-resource
    commands one at a time), checks each unit's scope as `base...delivered hash` of that unit,
    and checks that the lane diff contains only files from the units' `write only` lists. Any
@@ -153,22 +155,21 @@ lines, move it to `.orchestratore/log/<date>.md`). After each write and before e
 - **Resume** (after the lock in §1): run `bin/run-check.py`. An old-format page (several
   headers, no Units table) moves to `.orchestratore/log/<date>-RUN.md`; a fresh page from the
   template carries over goal (from its objective, else ask the user), units and `next:`, then
-  `--record-goal`. Read `goal:`, `next:`, the Units table, then `git worktree list` and the
-  branches: trust only what git shows.
-  Set `status: active`, finish verifications of delivered units, then dispatch.
+  `--record-goal`. Read `goal:`, `next:`, the Units table, `git worktree list` and the
+  branches: trust only what git shows. Set `status: active`, finish verifications, dispatch.
 - **Stop** (user asks, context or runtime exhausted, or a deploy still running): let running
   builders report, write `status: parked` and `next:` (for a deploy: the recorded check
   command on that SHA), release the lock (§1). A stopped run stays `parked`, never `done`.
-- **Done:** no deploy running; every unit `in production`, `merged` (`pipeline: none`),
-  waiting or parked with evidence. Final report (§9), `status: done`, unlock.
+- **Done** only when the goal is reached: no deploy running, every unit `in production` or
+  `merged` (`pipeline: none`), and `goal:` checked against them in the report. A unit still
+  waiting or parked → `status: parked`, `next:` = what unblocks it; never `done`. Unlock.
 
 ## 8. Questions
 
-Ask the user only about product behaviour, scope, or an action outside the authorised
-perimeter. Technical, reversible choices (names, layout, test shape, a library in use) you
-decide and log under `## Decisions`. One question at a time, the smallest that unblocks,
-recommended option first: `AskUserQuestion` in Claude Code, a plain question that ends the
-turn in Codex. Silence is never an answer.
+Ask only about product behaviour, scope, or an action outside the authorised perimeter;
+technical, reversible choices (names, layout, test shape) you decide and log under
+`## Decisions`. One question at a time, the smallest that unblocks, recommended option first
+(`AskUserQuestion`; Codex: a question that ends the turn). Silence is never an answer.
 
 ## 9. Report (after each merge and at the end)
 
@@ -184,17 +185,16 @@ Next: <one action>
 
 - Never: force-push, `reset --hard`, deleting branches that are not yours, destructive or bulk
   production data changes, new logins, tokens or secrets, raising any budget or spend limit.
-- Builders never push, open PRs or merge; only you do, and merge only through §6. Worktrees,
-  prompts and hooks guard against mistakes, not against a hostile agent.
+- Builders never push, open PRs or merge; only you, through §6. Worktrees and hooks guard
+  against mistakes, not against a hostile agent.
 
 ## Red flags
 
 | Thought | Reality |
 |---|---|
 | "I'll plan each unit first, then launch one by one" | The brief is the plan. One message, all independent units. |
+| "Send it now, the builder will figure it out" | No ready check, no dispatch. A vague ticket burns turns. |
 | "Wait for all builders, then review" | Verify each on arrival. |
 | "The builder says tests pass" / "same model can verify" | Only a different-model verifier's commands count. |
 | "This red gate blocks the run" | It blocks one unit. Park it, continue. |
-| "I'll fix the conflict myself" | Send it back to the builder. |
 | "New finding, one more round" | Third KO: diagnose, then park. Count, don't judge. |
-| "Add a fresh section for this resume" | Overwrite the header; one Log line. |

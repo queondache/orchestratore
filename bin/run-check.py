@@ -9,6 +9,8 @@ RUN.md? The answer is "yes" only when every condition holds:
   * `goal:` is not empty and, once recorded, has not changed;
   * `status:` is active, parked or done;
   * the Units table has a KO column; every KO is 0-3 and a unit at 3 is parked;
+  * `status: done` only when every unit is in production, or merged with
+    `pipeline: none` (the goal is reached); anything else keeps the run parked;
   * `## Log` is the last section and holds at most 100 entries.
 
 With --record-goal a valid goal is written to goal.lock next to RUN.md (at
@@ -32,6 +34,9 @@ SINGLE_FIELDS = ("goal", "status", "updated", "next")
 STATUSES = {"active", "parked", "done"}
 MAX_LOG_ENTRIES = 100
 MAX_KO = 3
+# States in which a unit has reached the goal; only then may the run be `done`.
+# `merged` is final only when nothing deploys (`pipeline: none`).
+FINAL_STATES = ("merged", "in production")
 
 
 def field_lines(lines: List[str], name: str) -> List[str]:
@@ -57,7 +62,8 @@ def table_rows(lines: List[str]) -> List[List[str]]:
     return rows
 
 
-def check_units(lines: List[str], problems: List[str]) -> None:
+def check_units(lines: List[str], problems: List[str], status: str = "",
+                deploys: bool = False) -> None:
     rows = table_rows(lines)
     if not rows:
         problems.append("no Units table under `## Units`")
@@ -71,6 +77,12 @@ def check_units(lines: List[str], problems: List[str]) -> None:
         unit = row[0] if row else "?"
         if unit.startswith("<"):
             continue  # template placeholder row
+        state = row[state_i] if state_i is not None and state_i < len(row) else ""
+        final = ("in production",) if deploys else FINAL_STATES
+        if status == "done" and not state.lower().startswith(final):
+            problems.append(f"unit {unit}: state is {state!r} but status is done; the goal is "
+                            "reached only when every unit is in production (merged with "
+                            "`pipeline: none`): keep the run parked with what unblocks it")
         ko = row[ko_i] if ko_i < len(row) else ""
         if not re.fullmatch(r"\d+", ko):
             problems.append(f"unit {unit}: KO must be a number 0-{MAX_KO}, found {ko!r}")
@@ -78,7 +90,6 @@ def check_units(lines: List[str], problems: List[str]) -> None:
         if int(ko) > MAX_KO:
             problems.append(f"unit {unit}: KO {ko} exceeds {MAX_KO}; it should have been parked at {MAX_KO}")
         elif int(ko) == MAX_KO and state_i is not None:
-            state = row[state_i] if state_i < len(row) else ""
             if not state.lower().startswith("parked"):
                 problems.append(f"unit {unit}: third KO but state is {state!r}, must be parked")
 
@@ -140,7 +151,11 @@ def evaluate(run_path: Path, record_goal: bool) -> Dict[str, object]:
         problems.append("goal changed since it was recorded; only the user changes it "
                         "(if they did, rerun with --record-goal)")
 
-    check_units(lines, problems)
+    pipelines = field_lines(lines, "pipeline")
+    # Only an explicit `pipeline: none` makes `merged` final; a missing line or the
+    # template placeholder may hide a deploy still to confirm.
+    deploys = not (len(pipelines) == 1 and pipelines[0].lower().split()[:1] == ["none"])
+    check_units(lines, problems, statuses[0] if len(statuses) == 1 else "", deploys)
     check_log(lines, problems)
     result: Dict[str, object] = {"ok": not problems, "run": str(run_path), "goal": goal,
                                  "problems": problems}

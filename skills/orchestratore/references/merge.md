@@ -1,6 +1,19 @@
 # Merge gate and post-merge check
 
-Steps 5 and 6 of skill §6. Read this before the first merge of a run.
+Steps 5 and 6 of skill §6, and the deploy found at start (§1). Read this before the first
+merge of a run.
+
+## Find the deploy (at start)
+
+Look for the post-merge deploy: a `.github/workflows/` job deploying the default branch,
+`vercel.json`, a Git-connected host. Write it in `RUN.md` as `pipeline:` with a read-only
+check: `gh run list --commit <sha> --workflow <deploy workflow>` for GitHub Actions, `gh api
+repos/<owner>/<repo>/commits/<sha>/status` for hosts that post commit statuses. `pipeline:
+none` if nothing deploys (CI that only tests is not a deploy).
+
+Auto-merge is on by default: with no `auto_merge_globs` configured, every path outside the
+sensitive list may merge on tier 1-2 with required checks green. `auto_merge_globs = []` in
+`.orchestratore/config.toml` turns it off.
 
 ## Merge gate
 
