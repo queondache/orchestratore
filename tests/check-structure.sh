@@ -62,8 +62,12 @@ check "session hook shows the coordinator lock owner" bash -c "cd '$TMP' && bash
 check "session hook surfaces RUN.md check problems" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'RUN.md check: '"
 mkdir -p "$TMP/.orchestratore/menu"; printf 'status: active\nupdated: now\ngoal: rework the menu\nnext: merge PR 7\n' > "$TMP/.orchestratore/menu/RUN.md"
 check "session hook also finds a run kept in a subfolder" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'next: merge PR 7' && bash '$ROOT/hooks/session-state.sh' | grep -q 'next: verify U-1'"
+check "session hook names the page to resume for a subfolder run" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -qF 'resume .orchestratore/menu/RUN.md'"
 printf 'status: done\nupdated: now\ngoal: old\nnext: none\n' > "$TMP/.orchestratore/menu/RUN.md"
 check "session hook skips a done run in a subfolder" bash -c "cd '$TMP' && ! bash '$ROOT/hooks/session-state.sh' | grep -q 'goal: old'"
+for r in r2 r3 r4; do mkdir -p "$TMP/.orchestratore/$r"; printf 'status: active\nupdated: now\ngoal: g\nnext: n\n' > "$TMP/.orchestratore/$r/RUN.md"; done
+check "session hook counts runs beyond three" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -qF '+1 more runs'"
+for r in r2 r3 r4; do printf 'status: done\n' > "$TMP/.orchestratore/$r/RUN.md"; done
 printf 'status: done\n' > "$TMP/.orchestratore/RUN.md"
 check "session hook silent when the run is done" bash -c "cd '$TMP' && [ -z \"\$(bash '$ROOT/hooks/session-state.sh')\" ]"
 
@@ -155,8 +159,12 @@ check "engines: mixed first-KO correction carries CONTEXT.md" engines_says 'code
 check "engines: fresh builder at second KO carries CONTEXT.md" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'new agent: \`CONTEXT.md\`, the brief, all findings' && tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'with \`CONTEXT.md\`, the brief and all findings'"
 check "engines: diagnostician gets CONTEXT.md on every runtime" bash -c "[ \$(tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -oF 'diagnostician' | wc -l) -ge 2 ] && tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'diagnostician.md\`, \`CONTEXT.md\`,' && grep -q 'run context (\`CONTEXT.md\`), the unit brief' '$ROOT/agents/diagnostician.md'"
 check "engines: repo rules reach Codex sub-agents through CONTEXT.md" engines_says 'the repository rules reach it through `CONTEXT.md` in the message'
-check "skill: ship before building more, two unmerged waves per lane" skill_says 'A lane holds at most two unmerged waves (one in its PR, one built on it)'
-check "skill: a red check not caused by the change becomes a unit, one rerun" skill_says 'becomes a FIX or CHECK unit at once: one rerun, never two.'
+check "skill: ship before building more, two unmerged waves per run" skill_says 'The run holds at most two unmerged tier 1-2 waves, all lanes together (one in its PR, one built on it); the next waits for that merge, on a new lane too.'
+check "skill: unrelated red check is a unit; no rerun of billing/quota/infra" skill_says 'a flaky test gets one rerun, a billing, quota or infrastructure failure none'
+check "skill: dispatch respects the two-wave cap" skill_says 'not blocked (§4), within the two-wave cap'
+check "skill: resume takes a subfolder page" skill_says 'or the `.orchestratore/<run>/RUN.md` the user or the session hook named'
+check "skill: only the user removes a lock" skill_says 'however old: only the user removes it.'
+check "command: resume takes a page" bash -c "grep -qF 'resume** \`[page]\`' '$ROOT/commands/orchestra.md'"
 check "skill: verifier recorded as unit and final, opus only without codex" skill_says '`verifier: <model> (unit), <model> (final)`, opus as `(unit, no codex)`'
 check "skill: lane worktree removed once its PR merges" skill_says "a lane's once its PR merges."
 check "engines: lane worktree removed after merge" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF \"and the lane's worktree once its PR is merged\""

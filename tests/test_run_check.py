@@ -245,6 +245,47 @@ class RunCheckTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("ISO", problems(out))
 
+    def test_narrow_unit_row_outside_the_table_fails(self):
+        text = VALID.replace("## Decisions\n", "## Decisions\n\n| U-8 | BUILD | 3 | src/y.ts | verified |\n")
+        code, out = run(text)
+        self.assertEqual(code, 1)
+        self.assertIn("U-8", problems(out))
+
+    def test_other_tables_in_decisions_pass(self):
+        text = VALID.replace("## Decisions\n", "## Decisions\n\n| a | b | c | d | e | f | g | h | i | j |\n"
+                             "|---|---|---|---|---|---|---|---|---|---|\n| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |\n")
+        code, out = run(text)
+        self.assertEqual(code, 0, problems(out))
+
+    def test_sonnet_or_qualified_opus_unit_verifier_fails(self):
+        for model in ("sonnet", "claude-sonnet", "opus (max)"):
+            code, out = run(VALID.replace("gpt-6-luna (unit)", f"{model} (unit)"))
+            self.assertEqual(code, 1, model)
+
+    def test_verifier_only_read_from_the_header(self):
+        text = VALID.replace("builder: sonnet        verifier: gpt-6-luna (unit), opus (final)\n", "")
+        text = text.replace("18:01 U-1", "builder sonnet verifier: gpt-6-luna (unit), opus (final)\n18:01 U-1")
+        code, out = run(text)
+        self.assertEqual(code, 1)
+        self.assertIn("header", problems(out))
+
+    def test_verifier_after_a_multiline_comment_passes(self):
+        text = VALID.replace("builder: sonnet", "<!-- template:\n  verifier: opus\n-->\nbuilder: sonnet")
+        code, out = run(text)
+        self.assertEqual(code, 0, problems(out))
+
+    def test_updated_without_timezone_fails_and_compact_offset_passes(self):
+        code, out = run(VALID.replace("2026-09-30T18:00:00+02:00", "2026-09-30T18:00:00"))
+        self.assertEqual(code, 1)
+        self.assertIn("timezone", problems(out))
+        code, out = run(VALID.replace("2026-09-30T18:00:00+02:00", "2026-09-30T18:00:00+0200"))
+        self.assertEqual(code, 0, problems(out))
+
+    def test_updated_far_in_the_future_fails(self):
+        code, out = run(VALID, written=VALID_WRITTEN - 2 * 24 * 3600)
+        self.assertEqual(code, 1)
+        self.assertIn("future", problems(out))
+
     def test_missing_run_file_is_an_error(self):
         proc = subprocess.run([sys.executable, str(SCRIPT), "--run", "/nonexistent/RUN.md"],
                               capture_output=True, text=True)

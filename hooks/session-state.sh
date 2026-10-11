@@ -9,12 +9,13 @@ ROOT="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null)" || exit 0
 CHECK="$(cd "$(dirname "$0")/.." && pwd)/bin/run-check.py"
 
 shown=0
+more=0
 for RUN in "$ROOT/.orchestratore/RUN.md" "$ROOT"/.orchestratore/*/RUN.md; do
   [ -f "$RUN" ] || continue
   field() { sed -n "s/^$1: //p" "$RUN" | head -n 1; }
   STATUS="$(field status)"
   [ "$STATUS" = done ] && continue
-  [ "$shown" -ge 3 ] && break
+  if [ "$shown" -ge 3 ]; then more=$((more + 1)); continue; fi
   shown=$((shown + 1))
   WHERE="${RUN#"$ROOT"/}"
   printf 'orchestratore run in this repository (%s): status %s, updated %s\n' \
@@ -33,11 +34,16 @@ for p in d.get("problems", [])[:3]:
     print("RUN.md check: " + p)' 2>/dev/null)"
     [ -n "$PROBLEMS" ] && printf '%s\n' "$PROBLEMS"
   fi
+  if [ "$WHERE" = .orchestratore/RUN.md ]; then
+    printf 'To continue: /orchestratore:orchestra resume\n'
+  else
+    printf 'To continue: /orchestratore:orchestra resume %s\n' "$WHERE"
+  fi
 done
 [ "$shown" -eq 0 ] && exit 0
+[ "$more" -gt 0 ] && printf '+%s more runs not done under .orchestratore/\n' "$more"
 if [ -f "$ROOT/.orchestratore/coordinator.lock/owner" ]; then
   printf 'coordinator lock: %s (another coordinator may be running; check before starting)\n' \
     "$(tr '\n' ' ' < "$ROOT/.orchestratore/coordinator.lock/owner")"
 fi
-printf 'To continue: /orchestratore:orchestra resume\n'
 exit 0
