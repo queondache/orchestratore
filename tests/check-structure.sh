@@ -60,6 +60,10 @@ check "session hook surfaces the run goal" bash -c "cd '$TMP' && bash '$ROOT/hoo
 mkdir "$TMP/.orchestratore/coordinator.lock"; printf 'session: s1\n' > "$TMP/.orchestratore/coordinator.lock/owner"
 check "session hook shows the coordinator lock owner" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'coordinator lock: session: s1'"
 check "session hook surfaces RUN.md check problems" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'RUN.md check: '"
+mkdir -p "$TMP/.orchestratore/menu"; printf 'status: active\nupdated: now\ngoal: rework the menu\nnext: merge PR 7\n' > "$TMP/.orchestratore/menu/RUN.md"
+check "session hook also finds a run kept in a subfolder" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -q 'next: merge PR 7' && bash '$ROOT/hooks/session-state.sh' | grep -q 'next: verify U-1'"
+printf 'status: done\nupdated: now\ngoal: old\nnext: none\n' > "$TMP/.orchestratore/menu/RUN.md"
+check "session hook skips a done run in a subfolder" bash -c "cd '$TMP' && ! bash '$ROOT/hooks/session-state.sh' | grep -q 'goal: old'"
 printf 'status: done\n' > "$TMP/.orchestratore/RUN.md"
 check "session hook silent when the run is done" bash -c "cd '$TMP' && [ -z \"\$(bash '$ROOT/hooks/session-state.sh')\" ]"
 
@@ -151,6 +155,13 @@ check "engines: mixed first-KO correction carries CONTEXT.md" engines_says 'code
 check "engines: fresh builder at second KO carries CONTEXT.md" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'new agent: \`CONTEXT.md\`, the brief, all findings' && tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'with \`CONTEXT.md\`, the brief and all findings'"
 check "engines: diagnostician gets CONTEXT.md on every runtime" bash -c "[ \$(tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -oF 'diagnostician' | wc -l) -ge 2 ] && tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'diagnostician.md\`, \`CONTEXT.md\`,' && grep -q 'run context (\`CONTEXT.md\`), the unit brief' '$ROOT/agents/diagnostician.md'"
 check "engines: repo rules reach Codex sub-agents through CONTEXT.md" engines_says 'the repository rules reach it through `CONTEXT.md` in the message'
+check "skill: ship before building more, two unmerged waves per lane" skill_says 'A lane holds at most two unmerged waves (one in its PR, one built on it)'
+check "skill: a red check not caused by the change becomes a unit, one rerun" skill_says 'becomes a FIX or CHECK unit at once: one rerun, never two.'
+check "skill: verifier recorded as unit and final, opus only without codex" skill_says '`verifier: <model> (unit), <model> (final)`, opus as `(unit, no codex)`'
+check "skill: lane worktree removed once its PR merges" skill_says "a lane's once its PR merges."
+check "engines: lane worktree removed after merge" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF \"and the lane's worktree once its PR is merged\""
+check "brief: proof names the wrong code that turns each test red" bash -c "grep -qF 'A test that would stay green with the wrong code is not a proof.' '$ROOT/skills/brief/SKILL.md'"
+check "template: verifier line has unit and final" bash -c "grep -qF 'verifier: <economical model> (unit), <strong model> (final)' '$ROOT/templates/RUN.md'"
 check "engines: unit branches never collide with the lane ref" bash -c "grep -qF 'git worktree add -b orch-unit/<run>/<ID>' '$ROOT/skills/orchestratore/references/engines.md' && ! grep -rqF 'orch/<run>/<ID>' '$ROOT/skills' '$ROOT/agents' '$ROOT/bin'"
 check "merge: no checks anywhere + final OK means --no-required-checks-ok" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/merge.md' | tr -s ' ' | grep -qF 'When that verdict is \`OK\`, pass \`--no-required-checks-ok\`; this is the rule, not a loophole.'"
 

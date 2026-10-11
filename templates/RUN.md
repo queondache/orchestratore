@@ -10,7 +10,7 @@ run: <run id, e.g. 20260926-1030>
 base: <branch>@<sha>
 integration: orch/<run> (tier 1-2)   orch/<run>-review (tier 3)
 runtime: claude | codex | mixed (Claude Code coordinator, Codex builders)
-builder: <model>        verifier: <model, different>
+builder: <model>        verifier: <economical model> (unit), <strong model> (final)   [opus as unit verifier only as `(unit, no codex)`]
 gate: build=<cmd|none> test=<cmd|none> lint=<cmd|none>
 pipeline: <post-merge deploy found at start | none>   check: <read-only command, e.g. gh run list --commit <sha> --workflow <deploy>>
 exclusive: <commands that need a shared resource, run one at a time | none>
@@ -23,6 +23,7 @@ next: <the true next action, rewritten on every state change>
 |---|---|---|---|---|---|---|---|---|---|
 | <ID> | FIX/BUILD/CHECK | 1-3 | <paths> | <sha> | <model> | queued/building/verifying/verified/merged/in production/waiting/parked | <sha> | <OK/KO + verifier model> | <0-3; 3 = parked> |
 
+Every unit is a row of this one table; never a second table elsewhere.
 States: queued (note "blocked by PR #n" while its dependencies sit on a blocked lane) → building → verifying → verified → merged → in production (deploy green on
 its merge SHA or a later one containing it; with `pipeline: none` the unit stays merged) | waiting (PR needs the user) | parked (evidence + resume
 condition below).

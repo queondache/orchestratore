@@ -70,7 +70,7 @@ read first: <path:lines — why>   (at most 8 entries)
 write only: <paths or globs this unit owns>
 do not touch: <neighbouring areas, public interfaces, dependencies>
 pitfalls: <traps already known: other callers, env vars a test needs, flaky fixtures | none>
-proof: <the failing test to write | acceptance criteria as tests | checklist items>
+proof: <each test + the wrong code it catches: fails on base (FIX) | fails if <key line> is reverted (BUILD) | checklist items>
 commands: <targeted test command, no shared database/port/browser>; full gate runs later
 done when: <proof passes + commands exit 0 + diff confined to write-only paths>
 report: status | worktree + branch | hash | files | command → exit code | blockers
@@ -96,7 +96,9 @@ question for the user; never send it hoping the builder will fill it in.
 - `code` holds the lines the change hinges on; `pattern` names an existing example when the
   repo has one (a similar test, a sibling component).
 - `read first` paths and line ranges exist on the base.
-- `proof` names each test and what it asserts; a BUILD has one test per acceptance criterion.
+- `proof` names each test, what it asserts and the wrong code it catches (FIX: the base; BUILD:
+  the key line reverted). A test that would stay green with the wrong code is not a proof.
+  A BUILD has one test per acceptance criterion.
 - `commands` were run on the base and behave as expected (the targeted suite runs).
 - `write only` covers every file the change needs; no other unit owns them in this wave.
 - The expected behaviour traces to a spec line or the user's request: no product decision
@@ -135,5 +137,5 @@ report: status | worktree + branch | hash | files | command → exit code | bloc
 | Pasting whole files or the full spec | Paste only the hinge lines in `code`; the rest in `read first` |
 | No example of how this repo writes tests | `pattern` with a sibling test to copy |
 | Two briefs writing the same file in one wave | Merge them, or sequence them |
-| `proof` says "add tests" | Name the test and what it must show |
+| `proof` says "add tests" | Name the test, what it shows and the wrong code that turns it red |
 | Report asks for a narrative | Six fixed lines; details stay in the log |

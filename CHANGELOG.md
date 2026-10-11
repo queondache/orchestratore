@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.11.0 — 2026-10-11
+
+Why: a night-long run on Pau verified 17 units but shipped 2. New waves kept starting while
+the first lane PR sat on red checks the change had not caused; every unit check ran on opus;
+two units in three came back at least once for tests that stayed green with the wrong code.
+
+### Changed
+- **Ship before you build more.** A lane holds at most two unmerged waves (one in its PR, one
+  built on it); the next waits for that merge. A red check the change did not cause (flaky
+  test, full disk, CI service) becomes a FIX or CHECK unit at once: one rerun, never two.
+- **The unit verifier is enforced.** `RUN.md` records `verifier: <model> (unit), <model>
+  (final)`; `run-check.py` refuses another form, and refuses a Claude model as unit verifier
+  unless written `(unit, no codex)`.
+- **Proof that catches the wrong code.** A brief's `proof` names, per test, the wrong code that
+  turns it red (FIX: the base; BUILD: the key line reverted); the ready check refuses a test
+  that would stay green with it.
+- **`run-check.py` sees the whole page.** Unit rows written as a second table outside `## Units`
+  (they escaped every check) and an `updated:` hours older than the last write are problems.
+- **Session hook finds runs in subfolders** (`.orchestratore/<run>/RUN.md`), not only
+  `.orchestratore/RUN.md`, and lists up to three runs that are not done.
+- **Lane worktrees are removed** once their PR merges, like unit worktrees.
+
 ## 0.10.1 — 2026-10-10
 
 Why: the first run coordinated by Codex, on a private test repository, verified all its work

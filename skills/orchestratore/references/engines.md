@@ -67,7 +67,8 @@ Unit branches live under `orch-unit/`, never below the lane name: git cannot hol
 `orch/<run>` (the lane) and a branch inside `orch/<run>/`.
 
 Remove a unit's worktree with `git worktree remove` as soon as its branch is merged into its
-lane or the unit is parked: the branch keeps the commits, the disk gets its space back. Before
+lane or the unit is parked, and the lane's worktree once its PR is merged: the branch keeps
+the commits, the disk gets its space back. Before
 each wave, `git worktree prune` and remove any leftover `.orchestratore/worktrees/*` whose
 unit is no longer building or verifying.
 Creating worktrees and committing need write access to `.git`: if your sandbox denies it,
