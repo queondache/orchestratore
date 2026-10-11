@@ -10,25 +10,22 @@ dispatch them all at once to sub-agents of your own runtime, verify each result 
 arrives, and merge only through a deterministic gate. You keep the logic of the whole run; you
 do not write product code and you do not re-plan per unit.
 
-`<plugin>` below is the plugin root: two directories above this file (in Claude Code also
-`${CLAUDE_PLUGIN_ROOT}`). Engine details: [engines](references/engines.md). Verification
-protocol: [verify](references/verify.md). Merge and deploy check: [merge](references/merge.md).
-Brief format: the `brief` skill.
+`<plugin>` = two directories above this file (Claude Code: `${CLAUDE_PLUGIN_ROOT}`). Details:
+[engines](references/engines.md), [verify](references/verify.md), [merge](references/merge.md), the `brief` skill.
 
 ## 1. Start (minutes, not hours)
 
 1. Read the repo instructions (`CLAUDE.md`, `AGENTS.md`, `README`) and, if present, `SPEC.md`,
    `ROADMAP.md`, the bug list the user named. Product decisions in those files win.
 2. **Lock first, always, for start and resume.** `mkdir -p .orchestratore && mkdir
-   .orchestratore/coordinator.lock` is atomic: if it succeeds, write
-   `coordinator.lock/owner` (`token: <random> runtime: <claude|codex> updated: <ISO time>`).
-   If the lock exists, another coordinator may be live: stop and ask the user, showing
-   `owner`; never take a lock over yourself, however old: only the user can confirm the
-   previous coordinator is gone and remove it. If `mkdir` fails for permissions,
-   the repo is read-only: stop and tell the user. Before every state change, dispatch or
-   merge, check `owner` still holds your token; if not, stop at once without writing.
-   Refresh `updated` on every state change. Release at the end, only with your token there
-   (`rm .orchestratore/coordinator.lock/owner && rmdir .orchestratore/coordinator.lock`). If
+   .orchestratore/coordinator.lock` is atomic: if it succeeds, write `coordinator.lock/owner`
+   (`token: <random> runtime: <claude|codex> updated: <ISO time>`). If the lock exists, another
+   coordinator may be live: stop and ask the user, showing `owner`; never take a lock over
+   yourself, however old: only the user removes it. If `mkdir` fails for permissions, the repo
+   is read-only: stop and tell the user. Before every state change, dispatch or merge, check
+   `owner` still holds your token; if not, stop at once without writing. Refresh `updated` on
+   every state change. Release at the end, only with your token there (`rm
+   .orchestratore/coordinator.lock/owner && rmdir .orchestratore/coordinator.lock`). If
    `RUN.md` is `active` or `parked`, this is a resume (§7); never start over it unasked.
 3. `git status` and `git fetch`. Work that is not yours stays untouched. Base = the branch
    the user named, else the default branch, at its current SHA.
@@ -44,8 +41,7 @@ Brief format: the `brief` skill.
    and tell the user how to relaunch with write access.
 
 **Defaults, written, not asked:** unattended; commit + push + PR automatic; auto-merge through
-§6; verification on every delivery. Change one only when the user says so. Merges excluded →
-say once that every unit waits on a PR, one PR per wave: never let one PR grow across waves.
+§6; verification on every delivery. Merges excluded → one PR per wave: never let one PR grow across waves.
 
 ## 2. Plan once: a spec and precise tickets before any builder starts
 
@@ -75,9 +71,10 @@ a Claude Code coordinator has Codex build and verify (opus: tier 3, final). Comm
 | **Codex** | native sub-agents (`spawn_agent`) in worktrees you create; waves larger than the slot limit via `codex-task.sh` | sub-agents on a different model |
 | **Mixed** (Claude Code) | one background `codex-task.sh build` per unit in worktrees you create; record its `model=` | as Claude Code, on a Codex model other than the builder's |
 
-Builder and verifier models differ; record both in `RUN.md`. Claude models: **opus** for the
-complex work (coordinating, final and tier 3 verification, diagnosing), **sonnet** for the
-rest (building); no other. Tier 1-2 units: an economical Codex verifier; no Codex → opus.
+Builder and verifier models differ. Claude models: **opus** for the complex work
+(coordinating, final and tier 3 verification, diagnosing), **sonnet** for the rest (building);
+no other. Tier 1-2 units: an economical Codex verifier; no Codex → opus. `RUN.md` records
+`verifier: <model> (unit), <model> (final)`, opus as `(unit, no codex)`; run-check enforces it.
 Quota, auth or credit failure: retry once (Codex: another model; Claude Code: a fresh agent;
 mixed: Claude builders); runtime exhausted → park the run (§7). Never fake a missing agent.
 
@@ -94,9 +91,14 @@ mixed: Claude builders); runtime exhausted → park the run (§7). Never fake a 
   one `xargs -P` line for `codex-task.sh`. Its worktree starts from the lane head with those
   dependencies; record that SHA as the unit's `base`. Serial dispatch of independent units is
   the main failure this skill exists to prevent.
-- Concurrency: no fixed number; you decide. Send every ready independent unit, capped only
-  by the engine's slot limit and `max_parallel` if the user set one, keeping one slot free
-  for verifiers (Codex, 3 slots: 2 builders + 1 verifier). Never split a unit to fill a slot.
+- Concurrency: no fixed number; you decide. Send every ready independent unit, capped only by
+  the engine's slot limit and `max_parallel` if the user set one, keeping one slot free for
+  verifiers (Codex, 3 slots: 2 builders + 1 verifier). Never split a unit to fill a slot.
+- **Ship before you build more.** The run holds at most two unmerged tier 1-2 waves, all lanes
+  together (one in its PR, one built on it); the next waits for that merge, on a new lane too.
+  Cap reached on a PR waiting for the user: finish verifications and tier 3, then park with
+  `next: merge PR #n`. A red check the change did not cause becomes a FIX or CHECK unit first;
+  a flaky test gets one rerun, a billing, quota or infrastructure failure none (record it).
 - Every agent you start (builder, fresh builder, verifier, diagnostician) gets `CONTEXT.md`
   first; a builder then its brief and worktree path (Codex: also `agents/builder.md`). Not
   your plan, not other units' briefs. Brief commands: targeted tests only (exclusive: §6).
@@ -121,19 +123,18 @@ Do not wait for the wave to finish.
    unit are parked too ("blocked by <ID>") and resume with it. A red gate never stops the run.
 4. A blocker needing the user → record the question (§8); continue with units not depending on it.
 
-Write every state change to `RUN.md` at once. The header and the Units table are the current
-state: overwrite them in place (`next:` always the true next action) and never add a second
-header or a new block on top. History: one plain sentence per event under `## Log` (past 100
-lines, move it to `.orchestratore/log/<date>.md`). After each write and before each merge run
-`python3 <plugin>/bin/run-check.py`: exit 1 → fix `RUN.md` before anything else.
+Write every state change to `RUN.md` at once: header and Units table overwritten in place
+(`updated:`, `next:` refreshed; never add a second header), every unit a row of that one
+table, history one sentence per event under `## Log`. After each write and before each merge
+run `python3 <plugin>/bin/run-check.py`: exit 1 → fix `RUN.md` first.
 
 ## 6. Integrate and merge
 
 1. Lanes: tier 1-2 units into `orch/<run>`; tier 3 into `orch/<run>-review`, which always
    waits for the user, so tier 3 never holds back the safe ones (numbered when blocked, §4).
 2. Merge verified branches into their lane in dependency order. A conflict goes back to the
-   builder of the later branch as a correction; you do not resolve product code. Once a
-   unit's branch is in its lane, or the unit is parked, remove its worktree (engines).
+   builder of the later branch as a correction; you do not resolve product code. Remove a
+   unit's worktree once its branch is in its lane or it is parked, a lane's once its PR merges.
 3. On each lane head a final verifier pass runs the **full gate once** (exclusive-resource
    commands one at a time), checks each unit's scope as `base...delivered hash` of that unit,
    and checks that the lane diff contains only files from the units' `write only` lists. Any
@@ -147,19 +148,19 @@ lines, move it to `.orchestratore/log/<date>.md`). After each write and before e
    when the recorded deploy is green on the merge SHA; one bounded fix-forward on red;
    `pipeline: none` → stays `merged`. You never trigger a deploy yourself.
 7. Update the project's own progress files if it has them (`ROADMAP.md`, changelog). Dispatch
-   never waits for steps 4-6 on a lane that is not blocked (§4); the post-merge check runs
-   alongside.
+   never waits for steps 4-6 on a lane that is not blocked (§4), within the two-wave cap; the
+   post-merge check runs alongside.
 
 ## 7. Resume and stop
 
-- **Resume** (after the lock in §1): run `bin/run-check.py`. An old-format page (several
-  headers, no Units table) moves to `.orchestratore/log/<date>-RUN.md`; a fresh page from the
-  template carries over goal (from its objective, else ask the user), units and `next:`, then
+- **Resume** (after the lock in §1): `bin/run-check.py --run <page>`, the page being
+  `.orchestratore/RUN.md` or the `.orchestratore/<run>/RUN.md` the user or the session hook named.
+  An old-format page (several headers, no Units table) moves to `.orchestratore/log/`; a fresh
+  page from the template carries over goal (from its objective, else ask the user), units and `next:`, then
   `--record-goal`. Read `goal:`, `next:`, the Units table, `git worktree list` and the
   branches: trust only what git shows. Set `status: active`, finish verifications, dispatch.
-- **Stop** (user asks, context or runtime exhausted, or a deploy still running): let running
-  builders report, write `status: parked` and `next:` (for a deploy: the recorded check
-  command on that SHA), release the lock (§1). A stopped run stays `parked`, never `done`.
+- **Stop** (user asks, context or runtime exhausted, deploy still running): let builders report,
+  `status: parked`, `next:` (a deploy: its check command on that SHA), unlock (§1). Never `done`.
 - **Done** only when the goal is reached: no deploy running, every unit `in production` or
   `merged` (`pipeline: none`), and `goal:` checked against them in the report. A unit still
   waiting or parked → `status: parked`, `next:` = what unblocks it; never `done`. Unlock.
@@ -185,8 +186,7 @@ Next: <one action>
 
 - Never: force-push, `reset --hard`, deleting branches that are not yours, destructive or bulk
   production data changes, new logins, tokens or secrets, raising any budget or spend limit.
-- Builders never push, open PRs or merge; only you, through §6. Worktrees and hooks guard
-  against mistakes, not against a hostile agent.
+- Builders never push, open PRs or merge; only you, through §6 (hooks stop mistakes, not malice).
 
 ## Red flags
 
@@ -194,7 +194,7 @@ Next: <one action>
 |---|---|
 | "I'll plan each unit first, then launch one by one" | The brief is the plan. One message, all independent units. |
 | "Send it now, the builder will figure it out" | No ready check, no dispatch. A vague ticket burns turns. |
-| "Wait for all builders, then review" | Verify each on arrival. |
-| "The builder says tests pass" / "same model can verify" | Only a different-model verifier's commands count. |
+| "The PR is stuck, start the next wave meanwhile" | Two unmerged waves per run at most, new lanes too. Unblock first. |
+| "Wait for all builders" / "the builder says tests pass" | Verify each on arrival, on a different model. |
 | "This red gate blocks the run" | It blocks one unit. Park it, continue. |
 | "New finding, one more round" | Third KO: diagnose, then park. Count, don't judge. |

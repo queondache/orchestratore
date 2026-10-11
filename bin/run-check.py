@@ -11,7 +11,11 @@ RUN.md? The answer is "yes" only when every condition holds:
   * the Units table has a KO column; every KO is 0-3 and a unit at 3 is parked;
   * `status: done` only when every unit is in production, or merged with
     `pipeline: none` (the goal is reached); anything else keeps the run parked;
-  * `## Log` is the last section and holds at most 100 entries.
+  * `## Log` is the last section and holds at most 100 entries;
+  * every unit is a row of the one Units table (no unit rows in other sections);
+  * `verifier:` names the unit verifier and the final verifier, as
+    `<model> (unit), <model> (final)`; opus checks units only as `(unit, no codex)`;
+  * `updated:` is ISO 8601 and not hours older than the file's last write.
 
 With --record-goal a valid goal is written to goal.lock next to RUN.md (at
 start, after a resume migration, or when the user changes the goal), even if
@@ -27,6 +31,7 @@ import argparse
 import json
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
 
@@ -37,6 +42,11 @@ MAX_KO = 3
 # States in which a unit has reached the goal; only then may the run be `done`.
 # `merged` is final only when nothing deploys (`pipeline: none`).
 FINAL_STATES = ("merged", "in production")
+# A page written later than this after its `updated:` time means `updated:` was not refreshed.
+STALE_UPDATED_SECONDS = 3 * 3600
+# Claude models that must not verify tier 1-2 units while a Codex verifier is available.
+CLAUDE_UNIT_VERIFIERS = ("opus", "sonnet", "claude")
+UNIT_CLASSES = ("FIX", "BUILD", "CHECK", "RELEASE")
 
 
 def field_lines(lines: List[str], name: str) -> List[str]:
@@ -92,6 +102,86 @@ def check_units(lines: List[str], problems: List[str], status: str = "",
         elif int(ko) == MAX_KO and state_i is not None:
             if not state.lower().startswith("parked"):
                 problems.append(f"unit {unit}: third KO but state is {state!r}, must be parked")
+
+
+def header_lines(lines: List[str]) -> List[str]:
+    """Lines above the first `## ` section, outside HTML comments."""
+    out: List[str] = []
+    in_comment = False
+    for line in lines:
+        if line.startswith("## "):
+            break
+        text = line.strip()
+        if in_comment:
+            in_comment = "-->" not in text
+            continue
+        if text.startswith("<!--"):
+            in_comment = "-->" not in text
+            continue
+        out.append(line)
+    return out
+
+
+def check_stray_unit_rows(lines: List[str], problems: List[str]) -> None:
+    """Unit rows written as a second table somewhere else drop out of every check.
+    A unit row is recognised by its content (a class and a tier 1-3), whatever its width."""
+    section = ""
+    for line in lines:
+        if line.startswith("## "):
+            section = line.strip()
+            continue
+        if section == "## Units" or not line.lstrip().startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 3:
+            continue
+        is_header = [c.lower() for c in cells[:3]] == ["id", "class", "tier"]
+        is_unit = cells[1].upper() in UNIT_CLASSES and re.fullmatch(r"[1-3]", cells[2])
+        if is_header or is_unit:
+            what = "a second Units table" if is_header else f"unit row {cells[0]!r}"
+            problems.append(f"{what} under {section or 'the header'}: every unit "
+                            "is a row of the one Units table")
+
+
+def check_verifier(lines: List[str], problems: List[str]) -> None:
+    found = [line.split("verifier:", 1)[1].strip() for line in header_lines(lines)
+             if "verifier:" in line]
+    if not found:
+        problems.append("no `verifier:` line in the header: record "
+                        "`verifier: <model> (unit), <model> (final)`")
+        return
+    value = found[0]
+    unit = re.search(r"(?:^|,)\s*([^,]*?)\s*\((unit[^)]*)\)", value)
+    if not unit or "(final" not in value:
+        problems.append(f"verifier {value!r}: write `<model> (unit), <model> (final)`")
+        return
+    model, label = unit.group(1).strip().lower(), unit.group(2).lower()
+    if any(word in model for word in CLAUDE_UNIT_VERIFIERS) and "no codex" not in label:
+        problems.append(f"unit verifier {model!r} is a Claude model: tier 1-2 units go to an "
+                        "economical Codex model; write `(unit, no codex)` only when Codex is missing")
+
+
+def check_updated(lines: List[str], run_path: Path, problems: List[str]) -> None:
+    values = field_lines(lines, "updated")
+    if len(values) != 1:
+        return
+    # Python 3.9 reads neither `Z` nor `+0200`: normalise both to `+HH:MM`.
+    text = re.sub(r"([+-]\d\d)(\d\d)$", r"\1:\2", values[0].replace("Z", "+00:00"))
+    try:
+        when = datetime.fromisoformat(text)
+    except ValueError:
+        problems.append(f"updated {values[0]!r} is not ISO 8601")
+        return
+    if when.tzinfo is None:
+        problems.append(f"updated {values[0]!r} has no timezone: write it as UTC (`Z`) or with "
+                        "its offset")
+        return
+    gap = run_path.stat().st_mtime - when.timestamp()
+    if gap > STALE_UPDATED_SECONDS:
+        problems.append(f"updated {values[0]} is hours older than the last write of RUN.md: "
+                        "refresh `updated:` on every state change")
+    elif gap < -24 * 3600:
+        problems.append(f"updated {values[0]} is in the future: write the current time")
 
 
 def check_log(lines: List[str], problems: List[str]) -> None:
@@ -156,6 +246,9 @@ def evaluate(run_path: Path, record_goal: bool) -> Dict[str, object]:
     # template placeholder may hide a deploy still to confirm.
     deploys = not (len(pipelines) == 1 and pipelines[0].lower().split()[:1] == ["none"])
     check_units(lines, problems, statuses[0] if len(statuses) == 1 else "", deploys)
+    check_stray_unit_rows(lines, problems)
+    check_verifier(lines, problems)
+    check_updated(lines, run_path, problems)
     check_log(lines, problems)
     result: Dict[str, object] = {"ok": not problems, "run": str(run_path), "goal": goal,
                                  "problems": problems}

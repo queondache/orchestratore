@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.11.0 — 2026-10-11
+
+Why: a night-long run on Pau verified 17 units but shipped 2. New waves kept starting while
+the first lane PR sat on red checks the change had not caused; every unit check ran on opus;
+two units in three came back at least once for tests that stayed green with the wrong code.
+
+### Changed
+- **Ship before you build more.** The run holds at most two unmerged tier 1-2 waves, all lanes
+  together (one in its PR, one built on it); the next waits for that merge, on a new lane
+  too. A red check the change did not cause becomes a FIX or CHECK unit first; a flaky test
+  gets one rerun, a billing, quota or infrastructure failure none. Cap reached on a PR waiting
+  for the user: finish verifications and tier 3, then park with `next: merge PR #n`.
+- **The unit verifier is enforced.** `RUN.md` records `verifier: <model> (unit), <model>
+  (final)` in the header; `run-check.py` refuses another form, and refuses a Claude model
+  (opus, sonnet) as unit verifier unless written `(unit, no codex)`.
+- **Proof that catches the wrong code.** A brief's `proof` names, per test, the wrong code that
+  turns it red (FIX: the base; BUILD: the key line reverted); the ready check refuses a test
+  that would stay green with it.
+- **`run-check.py` sees the whole page.** Unit rows anywhere outside `## Units` (recognised by
+  class and tier, whatever their width; they escaped every check), an `updated:` hours older
+  than the last write, in the future, or without a timezone are problems.
+- **Runs in subfolders.** The session hook finds `.orchestratore/<run>/RUN.md` too, lists up
+  to three runs not done (then "+N more") with the exact resume command for each;
+  `/orchestra resume [page]` and skill §7 take that page.
+- **Lane worktrees are removed** once their PR merges, like unit worktrees.
+
 ## 0.10.1 — 2026-10-10
 
 Why: the first run coordinated by Codex, on a private test repository, verified all its work
