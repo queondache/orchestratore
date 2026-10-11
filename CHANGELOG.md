@@ -10,7 +10,8 @@ two units in three came back at least once for tests that stayed green with the 
 - **Ship before you build more.** The run holds at most two unmerged tier 1-2 waves, all lanes
   together (one in its PR, one built on it); the next waits for that merge, on a new lane
   too. A red check the change did not cause becomes a FIX or CHECK unit first; a flaky test
-  gets one rerun, a billing, quota or infrastructure failure none.
+  gets one rerun, a billing, quota or infrastructure failure none. Cap reached on a PR waiting
+  for the user: finish verifications and tier 3, then park with `next: merge PR #n`.
 - **The unit verifier is enforced.** `RUN.md` records `verifier: <model> (unit), <model>
   (final)` in the header; `run-check.py` refuses another form, and refuses a Claude model
   (opus, sonnet) as unit verifier unless written `(unit, no codex)`.

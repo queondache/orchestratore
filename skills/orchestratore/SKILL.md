@@ -91,13 +91,14 @@ mixed: Claude builders); runtime exhausted → park the run (§7). Never fake a 
   one `xargs -P` line for `codex-task.sh`. Its worktree starts from the lane head with those
   dependencies; record that SHA as the unit's `base`. Serial dispatch of independent units is
   the main failure this skill exists to prevent.
-- Concurrency: no fixed number; you decide. Send every ready independent unit, capped only
-  by the engine's slot limit and `max_parallel` if the user set one, keeping one slot free
-  for verifiers (Codex, 3 slots: 2 builders + 1 verifier). Never split a unit to fill a slot.
+- Concurrency: no fixed number; you decide. Send every ready independent unit, capped only by
+  the engine's slot limit and `max_parallel` if the user set one, keeping one slot free for
+  verifiers (Codex, 3 slots: 2 builders + 1 verifier). Never split a unit to fill a slot.
 - **Ship before you build more.** The run holds at most two unmerged tier 1-2 waves, all lanes
   together (one in its PR, one built on it); the next waits for that merge, on a new lane too.
-  A red check the change did not cause becomes a FIX or CHECK unit first; a flaky test gets
-  one rerun, a billing, quota or infrastructure failure none (record it; fix it or wait).
+  Cap reached on a PR waiting for the user: finish verifications and tier 3, then park with
+  `next: merge PR #n`. A red check the change did not cause becomes a FIX or CHECK unit first;
+  a flaky test gets one rerun, a billing, quota or infrastructure failure none (record it).
 - Every agent you start (builder, fresh builder, verifier, diagnostician) gets `CONTEXT.md`
   first; a builder then its brief and worktree path (Codex: also `agents/builder.md`). Not
   your plan, not other units' briefs. Brief commands: targeted tests only (exclusive: §6).
@@ -193,8 +194,7 @@ Next: <one action>
 |---|---|
 | "I'll plan each unit first, then launch one by one" | The brief is the plan. One message, all independent units. |
 | "Send it now, the builder will figure it out" | No ready check, no dispatch. A vague ticket burns turns. |
-| "Wait for all builders, then review" | Verify each on arrival. |
 | "The PR is stuck, start the next wave meanwhile" | Two unmerged waves per run at most, new lanes too. Unblock first. |
-| "The builder says tests pass" / "same model can verify" | Only a different-model verifier's commands count. |
+| "Wait for all builders" / "the builder says tests pass" | Verify each on arrival, on a different model. |
 | "This red gate blocks the run" | It blocks one unit. Park it, continue. |
 | "New finding, one more round" | Third KO: diagnose, then park. Count, don't judge. |

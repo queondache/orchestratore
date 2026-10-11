@@ -67,6 +67,8 @@ printf 'status: done\nupdated: now\ngoal: old\nnext: none\n' > "$TMP/.orchestrat
 check "session hook skips a done run in a subfolder" bash -c "cd '$TMP' && ! bash '$ROOT/hooks/session-state.sh' | grep -q 'goal: old'"
 for r in r2 r3 r4; do mkdir -p "$TMP/.orchestratore/$r"; printf 'status: active\nupdated: now\ngoal: g\nnext: n\n' > "$TMP/.orchestratore/$r/RUN.md"; done
 check "session hook counts runs beyond three" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -qF '+1 more runs'"
+mkdir -p "$TMP/.orchestratore/notes"; printf '# notes\nnext: nothing\n' > "$TMP/.orchestratore/notes/RUN.md"
+check "session hook ignores a page without a status line" bash -c "cd '$TMP' && bash '$ROOT/hooks/session-state.sh' | grep -qF '+1 more runs'"
 for r in r2 r3 r4; do printf 'status: done\n' > "$TMP/.orchestratore/$r/RUN.md"; done
 printf 'status: done\n' > "$TMP/.orchestratore/RUN.md"
 check "session hook silent when the run is done" bash -c "cd '$TMP' && [ -z \"\$(bash '$ROOT/hooks/session-state.sh')\" ]"
@@ -161,6 +163,7 @@ check "engines: diagnostician gets CONTEXT.md on every runtime" bash -c "[ \$(tr
 check "engines: repo rules reach Codex sub-agents through CONTEXT.md" engines_says 'the repository rules reach it through `CONTEXT.md` in the message'
 check "skill: ship before building more, two unmerged waves per run" skill_says 'The run holds at most two unmerged tier 1-2 waves, all lanes together (one in its PR, one built on it); the next waits for that merge, on a new lane too.'
 check "skill: unrelated red check is a unit; no rerun of billing/quota/infra" skill_says 'a flaky test gets one rerun, a billing, quota or infrastructure failure none'
+check "skill: cap reached on a user-blocked PR → park with next" skill_says 'Cap reached on a PR waiting for the user: finish verifications and tier 3, then park with `next: merge PR #n`.'
 check "skill: dispatch respects the two-wave cap" skill_says 'not blocked (§4), within the two-wave cap'
 check "skill: resume takes a subfolder page" skill_says 'or the `.orchestratore/<run>/RUN.md` the user or the session hook named'
 check "skill: only the user removes a lock" skill_says 'however old: only the user removes it.'

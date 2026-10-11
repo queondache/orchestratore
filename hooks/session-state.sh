@@ -14,6 +14,8 @@ for RUN in "$ROOT/.orchestratore/RUN.md" "$ROOT"/.orchestratore/*/RUN.md; do
   [ -f "$RUN" ] || continue
   field() { sed -n "s/^$1: //p" "$RUN" | head -n 1; }
   STATUS="$(field status)"
+  # Pages without a status line are not orchestratore runs.
+  [ -z "$STATUS" ] && continue
   [ "$STATUS" = done ] && continue
   if [ "$shown" -ge 3 ]; then more=$((more + 1)); continue; fi
   shown=$((shown + 1))
