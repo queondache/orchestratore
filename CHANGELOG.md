@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.12.1 — 2026-10-12
+
+Fixes from the first 0.12.0 trial run.
+
+- Brief: BUILD acceptance criteria numbered `C1..Cn`, each mapped to its test, so the verifier
+  never answers BLOCKED for missing criteria.
+- Brief ready check: the targeted command must run at least one test on the base; for a test
+  file the unit will create, run it on an existing test file instead.
+- `merge-gate.py` without `--merge` adds a `note` saying the PR was only checked, not merged;
+  `merge.md` says to always pass `--merge`.
+
 ## 0.12.0 — 2026-10-12
 
 Simpler and faster: the coordinator finishes every unit as soon as it can.

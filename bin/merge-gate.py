@@ -304,6 +304,9 @@ def main(argv: List[str] | None = None) -> int:
         print(json.dumps({"merge": False, "merged": False, "pending": False, "error": str(exc),
                           "reasons": [str(exc)]}, indent=2))
         return 2
+    if result["merge"] and not args.merge:
+        # Check only: without --merge the PR stays open, so say it explicitly.
+        result["note"] = "allowed but not merged: rerun with --merge to merge"
     print(json.dumps(result, indent=2))
     return 0 if result["merge"] else 1
 
