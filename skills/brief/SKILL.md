@@ -71,7 +71,7 @@ read first: <path:lines — why>   (at most 8 entries)
 write only: <paths or globs this unit owns>
 do not touch: <neighbouring areas, public interfaces, dependencies>
 pitfalls: <traps already known: other callers, env vars a test needs, flaky fixtures | none>
-proof: <each test + the wrong code it catches: fails on base (FIX) | fails if <key line> is reverted (BUILD) | checklist items>
+proof: <numbered: C1: <criterion> → <test name>, fails on base (FIX) | fails if <key line> is reverted (BUILD); CHECK: numbered checklist items>
 commands: <targeted test command, no shared database/port/browser>; full gate runs later
 done when: <proof passes + commands exit 0 + diff confined to write-only paths>
 report: status | worktree + branch | hash | files | command → exit code | blockers
@@ -99,8 +99,10 @@ question for the user; never send it hoping the builder will fill it in.
 - `read first` paths and line ranges exist on the base.
 - `proof` names each test, what it asserts and the wrong code it catches (FIX: the base; BUILD:
   the key line reverted). A test that would stay green with the wrong code is not a proof.
-  A BUILD has one test per acceptance criterion.
-- `commands` were run on the base and behave as expected (the targeted suite runs).
+  A BUILD has one test per acceptance criterion, numbered `C1..Cn` so the verifier can map each.
+- `commands` were run on the base and run at least one test (exit code recorded). A test file
+  the unit will create does not exist yet: run the same command on an existing test file of
+  the repo instead; "no tests ran" or a runner/import error means the command is wrong.
 - `write only` covers every file the change needs; no unbuilt or unmerged unit owns them.
 - The expected behaviour traces to a spec line or the user's request: no product decision
   is left to the builder.

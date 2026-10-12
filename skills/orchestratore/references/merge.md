@@ -23,6 +23,7 @@ Run it on the verified SHA of the tier 1-2 PR:
 python3 <plugin>/bin/merge-gate.py --pr <n> --sha <sha> --tier <max tier> --merge
 ```
 
+- Always pass `--merge`: without it the gate only checks (`"note"` says so) and the PR stays open.
 - Exit 0 with `"merged": true` = merged.
 - Exit 0 with `"pending": true` = still open (for example a merge queue). Check again before
   counting it merged.

@@ -189,6 +189,10 @@ check "engines: worktree removed once merged or parked" grep -q 'as soon as its 
 check "verify: verdict is the PR quality proof" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/verify.md' | tr -s ' ' | grep -qF 'this verdict is the quality proof for the unit'"
 check "diagnostician: runs at the second KO" grep -q "second KO" "$ROOT/agents/diagnostician.md"
 
+check "brief: BUILD criteria numbered C1..Cn" bash -c "grep -qF 'numbered \`C1..Cn\`' '$ROOT/skills/brief/SKILL.md'"
+check "brief: commands proven to run at least one test" bash -c "grep -qF 'run at least one test' '$ROOT/skills/brief/SKILL.md'"
+check "merge: always pass --merge" grep -qF 'Always pass `--merge`' "$ROOT/skills/orchestratore/references/merge.md"
+
 echo
 if [ "$FAIL" -eq 0 ]; then echo "GREEN: all checks pass"; exit 0; fi
 echo "RED: $FAIL checks failed"; exit 1

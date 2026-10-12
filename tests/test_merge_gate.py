@@ -141,6 +141,7 @@ class MergeGateTest(unittest.TestCase):
         self.assertTrue(out["merge"])
         self.assertEqual(out["reasons"], [])
         self.assertFalse(any(c[:2] == ["pr", "merge"] for c in self.calls()))
+        self.assertIn("--merge", out["note"])
 
     def test_merge_flag_merges_with_head_match(self) -> None:
         code, out = self.run_gate("--merge")
@@ -151,6 +152,7 @@ class MergeGateTest(unittest.TestCase):
         self.assertIn("--match-head-commit", merge[0])
         self.assertIn(SHA, merge[0])
         self.assertIn("--squash", merge[0])
+        self.assertNotIn("note", out)
 
     def test_head_differs_from_verified_sha(self) -> None:
         self.set_files("src/a.ts", head="b" * 40)
