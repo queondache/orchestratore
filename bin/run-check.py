@@ -8,13 +8,13 @@ RUN.md? The answer is "yes" only when every condition holds:
     (a second header block is the first sign a run is drifting);
   * `goal:` is not empty and, once recorded, has not changed;
   * `status:` is active, parked or done;
-  * the Units table has a KO column; every KO is 0-3 and a unit at 3 is parked;
+  * the Units table has a KO column; every KO is 0-2 and a unit at 2 is parked;
   * `status: done` only when every unit is in production, or merged with
     `pipeline: none` (the goal is reached); anything else keeps the run parked;
   * `## Log` is the last section and holds at most 100 entries;
   * every unit is a row of the one Units table (no unit rows in other sections);
-  * `verifier:` names the unit verifier and the final verifier, as
-    `<model> (unit), <model> (final)`; opus checks units only as `(unit, no codex)`;
+  * `verifier:` names the tier 1-2 and the tier 3 verifier, as
+    `<model> (tier 1-2), <model> (tier 3)`; opus checks tier 1-2 only as `(tier 1-2, no codex)`;
   * `updated:` is ISO 8601 and not hours older than the file's last write.
 
 With --record-goal a valid goal is written to goal.lock next to RUN.md (at
@@ -38,7 +38,7 @@ from typing import Dict, List
 SINGLE_FIELDS = ("goal", "status", "updated", "next")
 STATUSES = {"active", "parked", "done"}
 MAX_LOG_ENTRIES = 100
-MAX_KO = 3
+MAX_KO = 2
 # States in which a unit has reached the goal; only then may the run be `done`.
 # `merged` is final only when nothing deploys (`pipeline: none`).
 FINAL_STATES = ("merged", "in production")
@@ -101,7 +101,7 @@ def check_units(lines: List[str], problems: List[str], status: str = "",
             problems.append(f"unit {unit}: KO {ko} exceeds {MAX_KO}; it should have been parked at {MAX_KO}")
         elif int(ko) == MAX_KO and state_i is not None:
             if not state.lower().startswith("parked"):
-                problems.append(f"unit {unit}: third KO but state is {state!r}, must be parked")
+                problems.append(f"unit {unit}: second KO but state is {state!r}, must be parked")
 
 
 def header_lines(lines: List[str]) -> List[str]:
@@ -148,17 +148,17 @@ def check_verifier(lines: List[str], problems: List[str]) -> None:
              if "verifier:" in line]
     if not found:
         problems.append("no `verifier:` line in the header: record "
-                        "`verifier: <model> (unit), <model> (final)`")
+                        "`verifier: <model> (tier 1-2), <model> (tier 3)`")
         return
     value = found[0]
-    unit = re.search(r"(?:^|,)\s*([^,]*?)\s*\((unit[^)]*)\)", value)
-    if not unit or "(final" not in value:
-        problems.append(f"verifier {value!r}: write `<model> (unit), <model> (final)`")
+    unit = re.search(r"(?:^|,)\s*([^,]*?)\s*\((tier 1-2[^)]*)\)", value)
+    if not unit or "(tier 3" not in value:
+        problems.append(f"verifier {value!r}: write `<model> (tier 1-2), <model> (tier 3)`")
         return
     model, label = unit.group(1).strip().lower(), unit.group(2).lower()
     if any(word in model for word in CLAUDE_UNIT_VERIFIERS) and "no codex" not in label:
-        problems.append(f"unit verifier {model!r} is a Claude model: tier 1-2 units go to an "
-                        "economical Codex model; write `(unit, no codex)` only when Codex is missing")
+        problems.append(f"tier 1-2 verifier {model!r} is a Claude model: tier 1-2 units go to an "
+                        "economical Codex model; write `(tier 1-2, no codex)` only when Codex is missing")
 
 
 def check_updated(lines: List[str], run_path: Path, problems: List[str]) -> None:

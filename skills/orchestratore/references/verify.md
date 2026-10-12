@@ -12,7 +12,8 @@ Every unit:
 2. **Scope** — `git diff --name-only <base>...<hash>`: every path is inside the brief's
    `write only`. One path outside → `KO: out of scope`.
 3. **Commands** — the brief's `commands`, run by the verifier, exit 0, raw output kept.
-   These are targeted tests; exclusive-resource commands belong to the final pass only.
+   Then the full gate (build, test, lint) on the same hash, exclusive-resource commands one
+   at a time across the run: this verdict is the quality proof for the unit's own PR.
    Untracked build artefacts are fine; tracked files in the reviewed worktree must not change.
 
 Then by class:
@@ -53,9 +54,8 @@ each FIX source, the tests for each BUILD criterion, the evidence for each CHECK
    `<tmp>` before answering `KO: no oracle`: a link can hide an editable install.
 4. `rm -rf <tmp>`, always, also on KO or BLOCKED.
 
-The final pass on a lane head (SKILL.md §6) runs the full gate (build, test, lint) instead of
-the targeted commands, checks each unit's scope as `base...delivered hash` of that unit, and
-checks that the lane diff holds only files from the units' `write only` lists.
+A new SHA after the verdict (a correction, the base merged in after it moved) needs a new
+verdict on that SHA before its PR merges.
 
 ## Verdict
 
@@ -100,6 +100,6 @@ model (never the builder's model); rejected again → the unit is `parked` "unve
 - **Unit verifier** (tier 1-2): an economical Codex model via `codex-task.sh verify`
   ([engines](engines.md)); Codex unavailable → `orchestratore:verifier` on opus.
 - **Strong verifier** (opus in Claude Code, the strongest listed model in Codex): every
-  tier 3 unit, the final pass on each lane head, and the diagnostician.
+  tier 3 unit, and the diagnostician.
 - Record builder and verifier model per unit in `RUN.md`; report only models the runtime
   actually confirmed.

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.12.0 — 2026-10-12
+
+Simpler and faster: the coordinator finishes every unit as soon as it can.
+
+- SKILL.md from 200 to 99 lines.
+- No lanes and no waves: each verified unit gets its own PR against the base. The two-wave
+  cap is gone; a PR waiting for the user holds back only the units that depend on it.
+- File map at start: two units writing one file → the second depends on the first.
+- The unit verifier runs the full gate on the unit's hash; no separate final pass.
+- Second KO parks the unit with a diagnosis (was: third KO, after a fresh builder).
+- One run context file (`CONTEXT.md`) instead of a run spec plus context.
+- `RUN.md`: `depends on` and `PR` columns, KO 0-2, `verifier: <model> (tier 1-2), <model> (tier 3)`.
+- Report lists the PRs to approve: dependencies first, then oldest.
+- A unit whose base moved since its verdict merges the base in and gets a new verdict before
+  the merge gate, so units merged separately are always tested together.
+- Each `exclusive:` resource goes to one verifier at a time.
+- Each unit's expected behaviour lives in its brief (`spec:`); `CONTEXT.md` holds only what
+  every agent shares.
+
 ## 0.11.0 — 2026-10-11
 
 Why: a night-long run on Pau verified 17 units but shipped 2. New waves kept starting while

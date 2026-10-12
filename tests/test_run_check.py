@@ -20,7 +20,7 @@ VALID = textwrap.dedent("""\
     status: active
     updated: 2026-09-30T18:00:00+02:00
     run: 20260930-1800
-    builder: sonnet        verifier: gpt-6-luna (unit), opus (final)
+    builder: sonnet        verifier: gpt-6-luna (tier 1-2), opus (tier 3)
     next: verify U-2
 
     ## Units
@@ -29,7 +29,7 @@ VALID = textwrap.dedent("""\
     |---|---|---|---|---|---|---|---|---|---|
     | U-1 | FIX | 2 | src/a.ts | abc1234 | sonnet | merged | def5678 | OK opus | 1 |
     | U-2 | FIX | 2 | src/b.ts | abc1234 | sonnet | verifying | 9876fed | | 0 |
-    | U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 3 |
+    | U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 2 |
 
     ## Decisions
 
@@ -38,7 +38,7 @@ VALID = textwrap.dedent("""\
     ## Log
 
     18:01 U-1 merged as def5678 after one KO on a missing test.
-    18:05 U-3 parked after its third KO; resume when the user picks a date format.
+    18:05 U-3 parked after its second KO; resume when the user picks a date format.
     """)
 
 
@@ -107,21 +107,21 @@ class RunCheckTest(unittest.TestCase):
     def test_done_with_every_unit_merged_or_in_production_passes(self):
         text = (VALID.replace("status: active", "status: done\npipeline: none")
                 .replace("| verifying | 9876fed | | 0 |", "| in production | 9876fed | OK opus | 0 |")
-                .replace("| U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 3 |\n", ""))
+                .replace("| U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 2 |\n", ""))
         code, out = run(text)
         self.assertEqual(code, 0, out)
 
     def test_done_with_merged_unit_but_a_deploy_pipeline_fails(self):
         text = (VALID.replace("status: active", "status: done\npipeline: vercel   check: gh api x")
                 .replace("| verifying | 9876fed | | 0 |", "| in production | 9876fed | OK opus | 0 |")
-                .replace("| U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 3 |\n", ""))
+                .replace("| U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 2 |\n", ""))
         code, out = run(text)
         self.assertEqual(code, 1)
         self.assertIn("U-1", problems(out))
 
     def test_done_with_merged_unit_and_missing_or_placeholder_pipeline_fails(self):
         base = (VALID.replace("| verifying | 9876fed | | 0 |", "| in production | 9876fed | OK opus | 0 |")
-                .replace("| U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 3 |\n", ""))
+                .replace("| U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 2 |\n", ""))
         for header in ("status: done", "status: done\npipeline: <post-merge deploy found at start | none>"):
             code, out = run(base.replace("status: active", header))
             self.assertEqual(code, 1, header)
@@ -130,17 +130,17 @@ class RunCheckTest(unittest.TestCase):
     def test_done_with_merged_unit_and_no_pipeline_passes(self):
         text = (VALID.replace("status: active", "status: done\npipeline: none")
                 .replace("| verifying | 9876fed | | 0 |", "| merged | 9876fed | OK opus | 0 |")
-                .replace("| U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 3 |\n", ""))
+                .replace("| U-3 | BUILD | 2 | src/c.ts | abc1234 | sonnet | parked | 1111111 | KO opus | 2 |\n", ""))
         code, out = run(text)
         self.assertEqual(code, 0, out)
 
-    def test_third_ko_must_be_parked(self):
-        code, out = run(VALID.replace("| parked | 1111111 | KO opus | 3 |", "| building | 1111111 | KO opus | 3 |"))
+    def test_second_ko_must_be_parked(self):
+        code, out = run(VALID.replace("| parked | 1111111 | KO opus | 2 |", "| building | 1111111 | KO opus | 2 |"))
         self.assertEqual(code, 1)
         self.assertIn("U-3", problems(out))
 
-    def test_ko_above_three_fails(self):
-        code, out = run(VALID.replace("| KO opus | 3 |", "| KO opus | 4 |"))
+    def test_ko_above_two_fails(self):
+        code, out = run(VALID.replace("| KO opus | 2 |", "| KO opus | 3 |"))
         self.assertEqual(code, 1)
         self.assertIn("U-3", problems(out))
 
@@ -191,7 +191,7 @@ class RunCheckTest(unittest.TestCase):
 
     def test_parked_with_a_note_or_capitalised_is_parked(self):
         for state in ("parked (blocked by U-1)", "Parked"):
-            code, out = run(VALID.replace("| parked | 1111111 | KO opus | 3 |", f"| {state} | 1111111 | KO opus | 3 |"))
+            code, out = run(VALID.replace("| parked | 1111111 | KO opus | 2 |", f"| {state} | 1111111 | KO opus | 2 |"))
             self.assertEqual(code, 0, (state, out))
 
     def test_goal_unchanged_against_lock_passes(self):
@@ -217,20 +217,20 @@ class RunCheckTest(unittest.TestCase):
 
     def test_missing_verifier_line_fails(self):
         code, out = run(VALID.replace(
-            "builder: sonnet        verifier: gpt-6-luna (unit), opus (final)\n", ""))
+            "builder: sonnet        verifier: gpt-6-luna (tier 1-2), opus (tier 3)\n", ""))
         self.assertEqual(code, 1)
         self.assertIn("verifier", problems(out))
 
-    def test_verifier_without_unit_and_final_fails(self):
-        code, out = run(VALID.replace("gpt-6-luna (unit), opus (final)", "opus/verificatore"))
+    def test_verifier_without_both_tiers_fails(self):
+        code, out = run(VALID.replace("gpt-6-luna (tier 1-2), opus (tier 3)", "opus/verificatore"))
         self.assertEqual(code, 1)
-        self.assertIn("(unit)", problems(out))
+        self.assertIn("(tier 1-2)", problems(out))
 
     def test_opus_unit_verifier_fails_unless_no_codex(self):
-        code, out = run(VALID.replace("gpt-6-luna (unit)", "opus (unit)"))
+        code, out = run(VALID.replace("gpt-6-luna (tier 1-2)", "opus (tier 1-2)"))
         self.assertEqual(code, 1)
         self.assertIn("Codex", problems(out))
-        code, out = run(VALID.replace("gpt-6-luna (unit)", "opus (unit, no codex)"))
+        code, out = run(VALID.replace("gpt-6-luna (tier 1-2)", "opus (tier 1-2, no codex)"))
         self.assertEqual(code, 0, problems(out))
 
     def test_stale_updated_fails(self):
@@ -259,12 +259,29 @@ class RunCheckTest(unittest.TestCase):
 
     def test_sonnet_or_qualified_opus_unit_verifier_fails(self):
         for model in ("sonnet", "claude-sonnet", "opus (max)"):
-            code, out = run(VALID.replace("gpt-6-luna (unit)", f"{model} (unit)"))
+            code, out = run(VALID.replace("gpt-6-luna (tier 1-2)", f"{model} (tier 1-2)"))
             self.assertEqual(code, 1, model)
+            self.assertIn("Claude model", problems(out), model)
+
+    def test_template_columns_depends_on_and_pr_pass(self):
+        text = (VALID.replace("| ID | class | tier | write only | base |", "| ID | class | tier | write only | depends on | base |")
+                .replace("| verdict | KO |", "| verdict | PR | KO |")
+                .replace("|---|---|---|---|---|---|---|---|---|---|", "|---|---|---|---|---|---|---|---|---|---|---|---|")
+                .replace("| U-1 | FIX | 2 | src/a.ts | abc1234 |", "| U-1 | FIX | 2 | src/a.ts | - | abc1234 |")
+                .replace("| U-2 | FIX | 2 | src/b.ts | abc1234 |", "| U-2 | FIX | 2 | src/b.ts | U-1 | abc1234 |")
+                .replace("| U-3 | BUILD | 2 | src/c.ts | abc1234 |", "| U-3 | BUILD | 2 | src/c.ts | - | abc1234 |")
+                .replace("| OK opus | 1 |", "| OK opus | #4 | 1 |").replace("| | 0 |", "| | - | 0 |")
+                .replace("| KO opus | 2 |", "| KO opus | - | 2 |"))
+        code, out = run(text)
+        self.assertEqual(code, 0, problems(out))
+        code, out = run(text.replace("| sonnet | parked | 1111111 | KO opus | - | 2 |",
+                                     "| sonnet | building | 1111111 | KO opus | - | 2 |"))
+        self.assertEqual(code, 1)
+        self.assertIn("second KO", problems(out))
 
     def test_verifier_only_read_from_the_header(self):
-        text = VALID.replace("builder: sonnet        verifier: gpt-6-luna (unit), opus (final)\n", "")
-        text = text.replace("18:01 U-1", "builder sonnet verifier: gpt-6-luna (unit), opus (final)\n18:01 U-1")
+        text = VALID.replace("builder: sonnet        verifier: gpt-6-luna (tier 1-2), opus (tier 3)\n", "")
+        text = text.replace("18:01 U-1", "builder sonnet verifier: gpt-6-luna (tier 1-2), opus (tier 3)\n18:01 U-1")
         code, out = run(text)
         self.assertEqual(code, 1)
         self.assertIn("header", problems(out))

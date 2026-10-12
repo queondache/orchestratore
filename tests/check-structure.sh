@@ -32,7 +32,6 @@ for dir in "$ROOT"/skills/*/; do
   check "skill $name: frontmatter <= 1024 chars" bash -c "[ \$(awk '/^---\$/{n++; next} n==1' '$skill' | wc -c) -le 1024 ]"
   check "skill $name: relative links resolve" bash -c "cd '$dir' && grep -o '](references/[^)]*)' SKILL.md | sed 's/](//;s/)\$//' | while read -r l; do test -f \"\$l\" || exit 1; done"
 done
-check "orchestratore SKILL.md <= 200 lines" bash -c "[ \$(wc -l < '$ROOT/skills/orchestratore/SKILL.md') -le 200 ]"
 check "brief SKILL.md <= 160 lines" bash -c "[ \$(wc -l < '$ROOT/skills/brief/SKILL.md') -le 160 ]"
 
 # Agents
@@ -93,21 +92,10 @@ skill_says() { # skill_says <phrase>: the phrase appears in SKILL.md, line break
   tr '\n' ' ' < "$ROOT/skills/orchestratore/SKILL.md" | tr -s ' ' | grep -qF "$1"
 }
 check "skill: RUN header overwritten in place, never a second header" skill_says 'never add a second header'
-check "skill: third KO on a unit parks it whatever the findings" skill_says 'Third KO on the unit, whatever the findings'
-check "skill: a lane is blocked while red or waiting for the user" skill_says 'A lane is **blocked** while its full gate is red or its PR waits for the user'
-check "skill: never stack onto a blocked lane; independents open the next lane" skill_says 'an independent unit opens the next lane from the base'
 check "skill: merge and deploy details live in references/merge.md" test -f "$ROOT/skills/orchestratore/references/merge.md"
-check "skill: one PR per wave, never growing across waves" skill_says 'never let one PR grow across waves'
-check "skill: KO count survives new findings and group reviews" skill_says 'counts one KO for each unit in the group'
-check "skill: run-check after each RUN.md write and before each merge" skill_says 'After each write and before each merge run `python3 <plugin>/bin/run-check.py`'
 check "skill: goal recorded at start" skill_says 'run-check.py --record-goal'
-check "skill: resume migrates an old-format page" skill_says 'An old-format page'
-check "skill: only a verdict accepted by verdict-check moves a unit" skill_says 'Only a verdict that `bin/verdict-check.py --hash <hash>` accepts moves a unit'
-check "skill: BLOCKED is not a KO" skill_says '**BLOCKED** (proof cannot run here) is not a KO'
-check "skill: third KO gets a diagnosis before the unit waits" skill_says 'send `orchestratore:diagnostician`'
-check "skill: a brief diagnosis becomes a question for the user" skill_says '`cause: brief`'
 # Mixed mode: Claude Code coordinates, Codex builds, Claude verifies.
-check "skill: mixed mode row in the engines table" grep -q '^| \*\*Mixed\*\* (Claude Code) |' "$ROOT/skills/orchestratore/SKILL.md"
+check "skill: mixed mode named" skill_says '**Mixed**: Codex builds for a Claude Code coordinator'
 check "engines: mixed section exists" grep -q '^## Mixed: Claude Code coordinates, Codex builds' "$ROOT/skills/orchestratore/references/engines.md"
 check "engines: mixed preflight checks codex login" grep -q 'codex login status' "$ROOT/skills/orchestratore/references/engines.md"
 check "engines: mixed dispatch is one background Bash per unit" grep -q 'one Bash call per unit' "$ROOT/skills/orchestratore/references/engines.md"
@@ -134,22 +122,14 @@ check "agents: builder runs on sonnet" agent_model builder sonnet
 check "agents: verifier runs on opus" agent_model verifier opus
 check "agents: diagnostician runs on opus" agent_model diagnostician opus
 check "config: claude builder sonnet, verifier opus" bash -c "grep -qx 'claude_builder = \"sonnet\"' '$ROOT/templates/config.toml' && grep -qx 'claude_verifier = \"opus\"' '$ROOT/templates/config.toml'"
-check "skill: opus for complex work, sonnet for the rest" skill_says '**opus** for the complex work (coordinating, final and tier 3 verification, diagnosing), **sonnet** for the rest'
-check "skill: tier 1-2 units get an economical Codex verifier, opus fallback" skill_says 'Tier 1-2 units: an economical Codex verifier; no Codex → opus.'
 check "engines: unit verify command uses codex_unit_verifier" grep -q 'codex-task.sh --model "<codex_unit_verifier>" --effort low' "$ROOT/skills/orchestratore/references/engines.md"
 check "config: codex_unit_verifier key present" grep -q '^codex_unit_verifier = ' "$ROOT/templates/config.toml"
 check "engines: coordinator session runs on opus" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'Run the coordinator session on **opus**'"
-check "skill: rejected verdict reruns once on the same verifier model" skill_says 'rerun once with the rejection reasons, same verifier model'
 check "verify: rejected verdict reruns once on the same verifier model" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/verify.md' | tr -s ' ' | grep -qF 'on the same verifier model (never the builder'"
 # 0.10.0: spec and ready tickets before dispatch, no fixed agent cap, done = goal reached.
-check "skill: spec and precise tickets before any builder" skill_says 'a spec and precise tickets before any builder starts'
-check "skill: a brief failing the ready check does not go out" skill_says 'A brief that fails does not go out'
 check "brief: ready check section" grep -q '^## 5. Ready check' "$ROOT/skills/brief/SKILL.md"
 check "brief: run context section" grep -q '^## 3. Run context' "$ROOT/skills/brief/SKILL.md"
 check "brief: template carries spec, code, pattern, pitfalls" bash -c "for f in spec code pattern pitfalls; do grep -q \"^\$f: \" '$ROOT/skills/brief/SKILL.md' || exit 1; done"
-check "skill: every agent started gets the run context" skill_says 'Every agent you start (builder, fresh builder, verifier, diagnostician) gets `CONTEXT.md` first'
-check "skill: silence is never an answer" skill_says 'Silence is never an answer.'
-check "skill: the smallest question that unblocks" skill_says 'the smallest that unblocks'
 engines_says() { tr '\n' ' ' < "$ROOT/skills/orchestratore/references/engines.md" | tr -s ' ' | grep -qF "$1"; }
 check "engines: unit verify brief carries CONTEXT.md" engines_says 'base: <unit base sha>` + `.orchestratore/CONTEXT.md` + the unit brief'
 check "engines: Claude Code builder prompt carries CONTEXT.md" engines_says 'prompt=<CONTEXT.md> + <brief content>)'
@@ -158,37 +138,56 @@ check "engines: Codex spawn_agent message carries CONTEXT.md" engines_says '+ <C
 check "engines: Codex batch verify brief carries CONTEXT.md" engines_says 'the hash, `CONTEXT.md` and the unit brief'
 check "engines: mixed build brief carries CONTEXT.md" engines_says '+ `.orchestratore/CONTEXT.md` + the unit brief. Brief commands'
 check "engines: mixed first-KO correction carries CONTEXT.md" engines_says 'codex-fix1/<ID>.md` = the builder body + `workdir:` + `CONTEXT.md` +'
-check "engines: fresh builder at second KO carries CONTEXT.md" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'new agent: \`CONTEXT.md\`, the brief, all findings' && tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'with \`CONTEXT.md\`, the brief and all findings'"
 check "engines: diagnostician gets CONTEXT.md on every runtime" bash -c "[ \$(tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -oF 'diagnostician' | wc -l) -ge 2 ] && tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF 'diagnostician.md\`, \`CONTEXT.md\`,' && grep -q 'run context (\`CONTEXT.md\`), the unit brief' '$ROOT/agents/diagnostician.md'"
 check "engines: repo rules reach Codex sub-agents through CONTEXT.md" engines_says 'the repository rules reach it through `CONTEXT.md` in the message'
-check "skill: ship before building more, two unmerged waves per run" skill_says 'The run holds at most two unmerged tier 1-2 waves, all lanes together (one in its PR, one built on it); the next waits for that merge, on a new lane too.'
-check "skill: unrelated red check is a unit; no rerun of billing/quota/infra" skill_says 'a flaky test gets one rerun, a billing, quota or infrastructure failure none'
-check "skill: cap reached on a user-blocked PR → park with next" skill_says 'Cap reached on a PR waiting for the user: finish verifications and tier 3, then park with `next: merge PR #n`.'
-check "skill: dispatch respects the two-wave cap" skill_says 'not blocked (§4), within the two-wave cap'
-check "skill: resume takes a subfolder page" skill_says 'or the `.orchestratore/<run>/RUN.md` the user or the session hook named'
-check "skill: only the user removes a lock" skill_says 'however old: only the user removes it.'
 check "command: resume takes a page" bash -c "grep -qF 'resume** \`[page]\`' '$ROOT/commands/orchestra.md'"
-check "skill: verifier recorded as unit and final, opus only without codex" skill_says '`verifier: <model> (unit), <model> (final)`, opus as `(unit, no codex)`'
-check "skill: lane worktree removed once its PR merges" skill_says "a lane's once its PR merges."
-check "engines: lane worktree removed after merge" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/engines.md' | tr -s ' ' | grep -qF \"and the lane's worktree once its PR is merged\""
 check "brief: proof names the wrong code that turns each test red" bash -c "grep -qF 'A test that would stay green with the wrong code is not a proof.' '$ROOT/skills/brief/SKILL.md'"
-check "template: verifier line has unit and final" bash -c "grep -qF 'verifier: <economical model> (unit), <strong model> (final)' '$ROOT/templates/RUN.md'"
-check "engines: unit branches never collide with the lane ref" bash -c "grep -qF 'git worktree add -b orch-unit/<run>/<ID>' '$ROOT/skills/orchestratore/references/engines.md' && ! grep -rqF 'orch/<run>/<ID>' '$ROOT/skills' '$ROOT/agents' '$ROOT/bin'"
 check "merge: no checks anywhere + final OK means --no-required-checks-ok" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/merge.md' | tr -s ' ' | grep -qF 'When that verdict is \`OK\`, pass \`--no-required-checks-ok\`; this is the rule, not a loophole.'"
 
 check "verify: fresh environment in the copy, no stale bytecode" bash -c "grep -q 'PYTHONDONTWRITEBYTECODE=1' '$ROOT/skills/orchestratore/references/verify.md' && grep -q 'PYTHONDONTWRITEBYTECODE=1' '$ROOT/agents/verifier.md'"
-check "skill: no fixed number of agents" skill_says 'no fixed number; you decide'
 check "config: max_parallel defaults to no cap" grep -q '^max_parallel = 0 ' "$ROOT/templates/config.toml"
-check "skill: done only when the goal is reached" skill_says '**Done** only when the goal is reached'
 check "config: auto-merge default everything outside sensitive" grep -qx 'auto_merge_globs = \["\*\*"\]' "$ROOT/templates/config.toml"
 check "verify: FIX oracle in a throwaway copy of the exact hash, no reinstall" bash -c "grep -q 'git -C <worktree> archive <hash> |' '$ROOT/skills/orchestratore/references/verify.md' && grep -q 'git -C <worktree> archive <hash> |' '$ROOT/agents/verifier.md'"
 check "verify: never link dependencies that point back into the reviewed worktree" bash -c "grep -q 'Do not link' '$ROOT/skills/orchestratore/references/verify.md' && grep -q 'Never link dependencies that point back' '$ROOT/agents/verifier.md'"
 check "engines: unit verify never runs without an explicit model" grep -q 'Never call `codex-task.sh verify` without `--model`' "$ROOT/skills/orchestratore/references/engines.md"
 check "no Claude verifier left in mixed-mode wording" bash -c "! grep -rn 'Claude verif' '$ROOT/skills' '$ROOT/templates' '$ROOT/README.md'"
-check "engines: worktrees removed once merged into the lane or parked" grep -q 'as soon as its branch is merged into its' "$ROOT/skills/orchestratore/references/engines.md"
 check "no fable or haiku in shipped files" shipped_grep '(?i)\b(fable|haiku)\b'
 check "no TODO/TBD in shipped files" shipped_grep '\bTODO\b|\bTBD\b'
 check "0.6 controller is gone" bash -c "! test -e '$ROOT/controller' && ! test -e '$ROOT/bin/orchestratore-controller'"
+
+# 0.12.0: speed first. No lanes or waves, one PR per verified unit, second KO parks.
+check "skill: orchestratore SKILL.md under 100 lines" bash -c "[ \$(wc -l < '$ROOT/skills/orchestratore/SKILL.md') -lt 100 ]"
+check "skill: no lanes or waves left" bash -c "! grep -rniE '\\blanes?\\b|two-wave|per wave|final pass' '$ROOT/skills' '$ROOT/agents' '$ROOT/templates' '$ROOT/commands' '$ROOT/README.md'"
+check "skill: one PR per verified unit" skill_says 'one PR per verified unit'
+check "skill: a waiting PR holds only its dependents" skill_says 'A PR waiting for the user holds only its dependents; all else builds.'
+check "skill: two units writing one file depend on each other" skill_says 'Two units writing one file: the second `depends on` the first.'
+check "skill: all ready units in one message" skill_says 'All ready units go out **in one message**'
+check "skill: no fixed number of agents" skill_says 'No waves, no fixed number'
+check "skill: second KO parks after a diagnosis" skill_says '**Second KO** → `orchestratore:diagnostician`'
+check "skill: verifier runs class proof plus full gate" skill_says 'class proof plus full gate on that hash'
+check "skill: only a verdict accepted by verdict-check counts" skill_says 'Only a verdict `bin/verdict-check.py --hash <hash>` accepts counts'
+check "skill: BLOCKED is not a KO" skill_says '**BLOCKED** is not a KO'
+check "skill: run-check after each RUN.md event" skill_says 'never add a second header, one sentence under `## Log`; then `python3 <plugin>/bin/run-check.py`'
+check "skill: only the user removes a lock" skill_says 'only the user removes it, however old.'
+check "skill: resume takes a page" skill_says '`bin/run-check.py --run <page>`'
+check "skill: done only when the goal is reached" skill_says '**Done** only when every unit is'
+check "skill: every agent gets the run context" skill_says 'Each agent gets `CONTEXT.md`'
+check "skill: opus coordinates and verifies tier 3, sonnet builds" skill_says 'builders always run on an economical model (**sonnet**, or a cheap Codex model)'
+check "skill: questions never stop independent work" skill_says 'keep building what does not depend on it.'
+check "skill: token not yours → stop without writing" skill_says 'if not, stop at once without writing.'
+check "skill: unlock only with your token" skill_says '**Unlock**, only with your token there: `rm .orchestratore/coordinator.lock/owner && rmdir .orchestratore/coordinator.lock`'
+check "skill: red check not caused by the change becomes a unit" skill_says 'A red check the change did not cause becomes a FIX or CHECK unit; a flaky test gets one rerun, billing/quota/infra none.'
+check "skill: base moved → merge base in, update base, new verdict" skill_says 'Base moved since the verdict (conflict or not) → before the merge gate, the same builder merges the base in (never rebase), `base` updated to that head, new verdict.'
+check "skill: exclusive resources handed to one verifier at a time" skill_says 'you hand each `exclusive:` resource to one verifier at a time.'
+check "skill: dependents of a parked unit resume with it" skill_says 'resume with it'
+check "skill: per-unit behaviour lives in the brief" skill_says 'goes in its own brief (`spec:`)'
+check "command: section references match the skill" bash -c "grep -qF 'the §7 report' '$ROOT/commands/orchestra.md' && grep -qF 'then §6 on' '$ROOT/commands/orchestra.md' && grep -qF 'stop** — skill §6' '$ROOT/commands/orchestra.md'"
+check "template: verifier line names both tiers" grep -qF 'verifier: <economical model> (tier 1-2), <strong model> (tier 3)' "$ROOT/templates/RUN.md"
+check "template: units carry depends on and PR" grep -qF '| depends on |' "$ROOT/templates/RUN.md"
+check "engines: unit branches under orch-unit" grep -qF 'git worktree add -b orch-unit/<run>/<ID>' "$ROOT/skills/orchestratore/references/engines.md"
+check "engines: worktree removed once merged or parked" grep -q 'as soon as its branch is merged or the' "$ROOT/skills/orchestratore/references/engines.md"
+check "verify: verdict is the PR quality proof" bash -c "tr '\\n' ' ' < '$ROOT/skills/orchestratore/references/verify.md' | tr -s ' ' | grep -qF 'this verdict is the quality proof for the unit'"
+check "diagnostician: runs at the second KO" grep -q "second KO" "$ROOT/agents/diagnostician.md"
 
 echo
 if [ "$FAIL" -eq 0 ]; then echo "GREEN: all checks pass"; exit 0; fi

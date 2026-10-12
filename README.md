@@ -16,15 +16,15 @@ Orchestratore removes each of those:
 
 | Step | What happens |
 |---|---|
-| Plan once | The coordinator writes a run spec, a run context (stack, repo rules, how to run one test) and one precise brief per unit (FIX, BUILD or CHECK) with the quoted spec, the cause, the code it hinges on, an example to imitate and the proof required. A brief that fails the ready check never reaches a builder. |
-| Dispatch | All ready independent units go out in one message, each in its own git worktree. No fixed agent count: the coordinator sends as many as the runtime's slots allow. |
-| Verify on arrival | A different model checks hash, scope, commands and a class-specific proof (for a FIX: the new test must fail without the fix). Tier 1-2 units: an economical Codex model; tier 3 and the final pass: opus. |
-| Correct or park | A KO goes back to the same builder once; then a new approach; then the unit is parked with evidence. The run keeps going. |
-| Gate the merge | `bin/merge-gate.py` merges tier 1-2 changes that touch no sensitive path (schema, auth, payments, tenancy, personal data, secrets, permissions), with required CI checks green on the exact verified SHA. Everything else waits for you. |
+| Map once | The coordinator writes one run context shared by every agent (goal, stack, gate commands, repo rules), maps which files each unit writes, and writes one precise brief per unit (FIX, BUILD or CHECK) with the expected behaviour quoted from its source, the cause, the code it hinges on, an example to imitate and the proof required. A brief that fails the ready check never reaches a builder. |
+| Dispatch | Every unit that collides with nothing goes out in one message, each in its own git worktree. No waves and no fixed agent count: a PR waiting for you holds back only the units that depend on it. |
+| Verify on arrival | A different model checks hash, scope, commands and a class-specific proof (for a FIX: the new test must fail without the fix). The verifier also runs the full gate on that hash. Tier 1-2 units: an economical Codex model; tier 3: opus. |
+| Correct or park | A KO goes back to the same builder once; a second KO parks the unit with a diagnosis. The run keeps going. |
+| One PR per unit | Each verified unit gets its own PR. `bin/merge-gate.py` merges tier 1-2 changes that touch no sensitive path (schema, auth, payments, tenancy, personal data, secrets, permissions), with required CI checks green on the exact verified SHA. Everything else waits for you. |
 | Accept only proven verdicts | `bin/verdict-check.py` accepts a verdict only if its facts support it: exact hash, exit codes, each proof tagged as run now, from CI on that hash, or reused (never enough for OK). A proof that cannot run is `BLOCKED`, not a failure. |
-| Keep the run on target | `bin/run-check.py` checks after every write that `RUN.md` is still one page: one header, the recorded goal unchanged, at most 3 KO per unit, the Log last and short. The session hook shows its problems. |
-| Diagnose before giving up | After a unit's third failed check, a fresh read-only agent says whether the cause is the code, the test, the request or the environment, with one proposal; a contradictory request becomes a question for the user. |
-| Codex builds | With `mode = "mixed"` a Claude Code coordinator sends each unit to Codex through `bin/codex-task.sh`; an economical Codex model of a different kind checks tier 1-2 units, opus checks tier 3 and the final pass; the model that really ran is recorded. |
+| Keep the run on target | `bin/run-check.py` checks after every write that `RUN.md` is still one page: one header, the recorded goal unchanged, at most 2 KO per unit, the Log last and short. The session hook shows its problems. |
+| Diagnose before giving up | After a unit's second failed check, a fresh read-only agent says whether the cause is the code, the test, the request or the environment, with one proposal; a contradictory request becomes a question for the user. |
+| Codex builds | With `mode = "mixed"` a Claude Code coordinator sends each unit to Codex through `bin/codex-task.sh`; an economical Codex model of a different kind checks tier 1-2 units, opus checks tier 3; the model that really ran is recorded. |
 
 ## Install
 
@@ -73,8 +73,8 @@ The main keys:
   verifier agent is read-only.
 - **Codex:** native sub-agents (`spawn_agent`) up to the session's slot limit, each told to
   work in a coordinator-made worktree; beyond that, `bin/codex-task.sh` runs one Codex
-  process per unit (`xargs -P` for the whole wave) and commits its changes.
-- Tier 3 units go to a separate PR that always waits for you, so they never block the rest.
+  process per unit (`xargs -P` for the ready units) and commits its changes.
+- Tier 3 PRs always wait for you; only the units that depend on them wait too.
 - Worktrees, prompts and sandboxes are guardrails against mistakes, not a security boundary
   against a hostile agent.
 
