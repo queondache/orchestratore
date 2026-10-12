@@ -25,7 +25,7 @@ review, rework rounds, interruptions of the user.
 | I1 | Builder and verifier run on different models; the builder's report is never proof. |
 | I2 | A unit advances only on a verdict with hash, commands and exit codes. |
 | I3 | A FIX has a regression test that fails on the base. |
-| I4 | One file has one owner per wave. |
+| I4 | One file has one owner at a time: a unit writing a file another open unit writes depends on it. |
 | I5 | Auto-merge only through `bin/merge-gate.py`: tier 1-2, every path in the allowlist, no sensitive path, required checks green on the exact SHA. |
 | I6 | A red gate parks one unit; it never stops the run. |
 | I7 | Questions to the user only for product, scope or out-of-perimeter actions. |

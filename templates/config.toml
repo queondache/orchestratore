@@ -11,8 +11,8 @@ mode = "single"          # "mixed": a Claude Code coordinator has Codex build; c
 # sonnet builds. Tier 1-2 units are verified by an economical Codex model (falls back to opus).
 claude_builder = "sonnet"
 claude_verifier = "opus"
-codex_builder = ""       # "" = the coordinator picks from the models the session lists
-codex_verifier = ""      # strongest model: tier 3 and final lane pass; must differ from codex_builder
+codex_builder = ""       # "" = the coordinator picks an economical model the session lists
+codex_verifier = ""      # strongest model: tier 3 and diagnosis; must differ from codex_builder
 codex_unit_verifier = "" # economical model for tier 1-2 unit checks; "" = the coordinator picks one
 codex_effort = "medium"
 codex_sandbox = "workspace-write"   # codex-task.sh: read-only | workspace-write | danger-full-access

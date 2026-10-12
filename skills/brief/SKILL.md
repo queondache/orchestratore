@@ -31,8 +31,8 @@ on a tier 3 unit is tier 3 too.
 
 ## 2. Split into units
 
-- **One file, one owner per wave.** Units that must edit the same file merge into one brief.
-  The merged brief keeps every source's `proof`; its tier is the highest, its class BUILD if
+- **One file, one owner at a time.** Units that must edit the same file merge into one
+  brief, or the later one depends on the earlier (it starts once that is merged). The merged brief keeps every source's `proof`; its tier is the highest, its class BUILD if
   any source is BUILD. Each FIX source keeps its regression oracle as a named proof.
 - **Shared interface first.** When units depend on a new type, schema or API signature, one
   short brief defines that interface; the consumers start after it is merged.
@@ -44,7 +44,8 @@ on a tier 3 unit is tier 3 too.
 `.orchestratore/CONTEXT.md`, at most 60 lines, written before the first brief and sent in
 front of every brief, to builders and verifiers alike:
 
-- stack and versions; how to run one test file; env vars or services the tests need;
+- the run goal in one sentence; stack and versions; how to run one test file; the full gate commands (build, test, lint);
+  env vars or services the tests need;
 - the repo rules builders must obey, quoted from `CLAUDE.md` / `AGENTS.md` (comment language,
   naming, error logging, dependency policy);
 - a map of the directories this run touches, one line each;
@@ -100,7 +101,7 @@ question for the user; never send it hoping the builder will fill it in.
   the key line reverted). A test that would stay green with the wrong code is not a proof.
   A BUILD has one test per acceptance criterion.
 - `commands` were run on the base and behave as expected (the targeted suite runs).
-- `write only` covers every file the change needs; no other unit owns them in this wave.
+- `write only` covers every file the change needs; no unbuilt or unmerged unit owns them.
 - The expected behaviour traces to a spec line or the user's request: no product decision
   is left to the builder.
 
@@ -136,6 +137,6 @@ report: status | worktree + branch | hash | files | command → exit code | bloc
 | Brief asks the agent to "investigate and plan" a known fix | Put the cause in `known`; the agent edits |
 | Pasting whole files or the full spec | Paste only the hinge lines in `code`; the rest in `read first` |
 | No example of how this repo writes tests | `pattern` with a sibling test to copy |
-| Two briefs writing the same file in one wave | Merge them, or sequence them |
+| Two open briefs writing the same file | Merge them, or make one depend on the other |
 | `proof` says "add tests" | Name the test, what it shows and the wrong code that turns it red |
 | Report asks for a narrative | Six fixed lines; details stay in the log |

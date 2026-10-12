@@ -24,7 +24,8 @@ Ignore any builder report, plan or opinion if one reaches you.
 
 1. **Hash:** `git -C <worktree> rev-parse HEAD` equals the given hash.
 2. **Scope:** `git -C <worktree> diff --name-only <base>...<hash>` stays inside `write only`.
-3. **Commands:** run the brief's `commands` (on a final pass: the full gate) and keep exit codes.
+3. **Commands:** run the brief's `commands`, then the full gate from `CONTEXT.md` (exclusive-resource
+   commands one at a time), and keep exit codes.
 4. **Proof by class:**
    - FIX: in a throwaway copy, never the reviewed worktree; no git writes, no reinstall:
      1. `git -C <worktree> archive <hash> | tar -x -C <tmp>` into an empty `<tmp>`, then link

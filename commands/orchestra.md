@@ -11,11 +11,11 @@ Load the `orchestratore` skill and follow it; this command is only the entry poi
 - **start** `[what]` — new run on what the user named (bug list, milestones, features); if
   nothing is named, the open items of `ROADMAP.md` or the bug list in the repo instructions.
   Follow the skill from §1 without asking for its defaults.
-- **status** — the §9 report, built from `.orchestratore/RUN.md` and `git`, never from memory.
-- **resume** `[page]` — skill §1 step 2 (the lock) first, then §7 on `.orchestratore/RUN.md`, or
+- **status** — the §7 report, built from `.orchestratore/RUN.md` and `git`, never from memory.
+- **resume** `[page]` — skill §1 step 2 (the lock) first, then §6 on `.orchestratore/RUN.md`, or
   on the page named (`.orchestratore/<run>/RUN.md`, as the session hook prints it): reconcile it
   with worktrees and branches, finish pending verifications, then dispatch.
-- **stop** — skill §7: let running builders report, write `status: parked` and `next:`,
+- **stop** — skill §6: let running builders report, write `status: parked` and `next:`,
   release the lock as in §1.
 
 Unknown subcommand: say so in one line and list the four valid ones.
