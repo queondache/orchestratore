@@ -19,8 +19,9 @@ merge gate and the run page are what the runtime does not have.
   runtime's own orchestration.
 - **The engine is asked at start**, once: `claude` (Claude builds, Claude checks), `codex`
   (Codex builds, Codex checks) or `mixed` (Claude builds, Codex checks). Named in the request
-  or in `config.toml` (`mode`) → no question. `mode = "single"` is gone; default `"ask"`.
-  The old mixed (Codex builds for a Claude Code director) is now engine `codex`.
+  or in `config.toml` (`engine`) → no question. The old `mode` key is ignored, so a 0.12
+  config or a resumed run without an `engine:` line always gets the question. The old mixed
+  (Codex builds for a Claude Code director) is now engine `codex`.
 - **Claude Code builds and checks through one workflow**, `workflows/build-verify.js`: one
   builder per unit in its own worktree, the check on arrival by a different model, one
   correction after a KO. The director waits for the batch instead of dispatching unit by unit.
@@ -28,7 +29,8 @@ merge gate and the run page are what the runtime does not have.
   other (their files are disjoint); the director then runs the gate once on the base head. A
   conflict still means: merge the base in, new verdict.
 - `run-check.py` accepts a Claude model as tier 1-2 verifier when `RUN.md` says
-  `engine: claude`. `RUN.md` has an `engine:` line.
+  `engine: claude`; `engine:` must be exactly one engine, and the tier 1-2 verifier is never
+  the builder's model. `RUN.md` has an `engine:` line.
 - An engine that fails mid-run parks the run and asks; it never switches engine on its own.
 
 ### Removed

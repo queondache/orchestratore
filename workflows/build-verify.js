@@ -15,7 +15,7 @@ export const meta = {
 //   base     base SHA every unit starts from
 //   engine   "claude" | "mixed"
 //   context  text of .orchestratore/CONTEXT.md
-//   units    [{ id, tier, brief }]   brief = text of .orchestratore/briefs/<ID>.md
+//   units    [{ id, tier, brief }]   tier = 1, 2 or 3; brief = text of .orchestratore/briefs/<ID>.md
 //   models   { builder, verifier, codex_unit_verifier }
 const { plugin, repo, base, engine, context, units, models } = args
 
@@ -53,8 +53,45 @@ const VERDICT = {
   required: ['result', 'verdict', 'verdict_file'],
 }
 
+// Values that end up inside a shell command or a file name are checked first: a builder's
+// report is model output, never trusted text.
+const SAFE_PATH = /^\/[A-Za-z0-9._\/@+ -]+$/
+const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
+const SHA = /^[0-9a-f]{40,64}$/
+
+for (const [name, value] of [['plugin', plugin], ['repo', repo]]) {
+  if (typeof value !== 'string' || !SAFE_PATH.test(value) || value.includes('..')) {
+    throw new Error(`${name} must be an absolute path without shell metacharacters`)
+  }
+}
+if (typeof base !== 'string' || !SHA.test(base)) throw new Error('base must be a full commit SHA')
+if (!Array.isArray(units) || units.length === 0) throw new Error('units must be a non-empty list')
+for (const unit of units) {
+  if (!unit || typeof unit.id !== 'string' || !SAFE_ID.test(unit.id) || typeof unit.brief !== 'string') {
+    throw new Error('every unit needs an id (letters, digits, . _ -) and its brief text')
+  }
+  // A tier that is not plainly 1, 2 or 3 must never fall to the economical check.
+  if (![1, 2, 3].includes(unit.tier) && !['1', '2', '3'].includes(unit.tier)) {
+    throw new Error(`unit ${unit.id}: tier must be 1, 2 or 3`)
+  }
+}
+for (const model of Object.values(models)) {
+  if (typeof model !== 'string' || !/^[A-Za-z0-9._:\/-]+$/.test(model)) {
+    throw new Error('model names may hold only letters, digits and . _ : / -')
+  }
+}
+
+// A delivery counts only with a committed hash and a worktree path that are safe to use.
 function delivered(built) {
-  return built && built.status === 'done' && built.hash && built.hash !== 'uncommitted'
+  return Boolean(
+    built &&
+      built.status === 'done' &&
+      typeof built.hash === 'string' &&
+      SHA.test(built.hash) &&
+      typeof built.worktree === 'string' &&
+      SAFE_PATH.test(built.worktree) &&
+      !built.worktree.includes('..'),
+  )
 }
 
 // The check of one delivery. Tier 3, and every unit of the claude engine, goes to the
@@ -121,7 +158,8 @@ const results = await pipeline(
     const fixed = await agent(
       `workdir: ${state.built.worktree}\n\n${context}\n\n${unit.brief}\n\n` +
         `Your first delivery (${state.built.hash}) failed its check. Fix exactly these ` +
-        `findings, inside the same worktree and branch, then commit:\n\n${first.verdict}`,
+        `findings. Work only inside the workdir above (cd there first; every edit and ` +
+        `command stays in it, on its branch), then commit:\n\n${first.verdict}`,
       {
         label: `fix:${unit.id}`,
         phase: 'Correct',
@@ -130,7 +168,11 @@ const results = await pipeline(
         schema: BUILT,
       },
     )
-    if (!delivered(fixed)) return { ...state, correction: fixed }
+    // A correction that is missing, or that landed anywhere but the unit's worktree, is
+    // not a delivery.
+    if (!delivered(fixed) || fixed.worktree !== state.built.worktree) {
+      return { ...state, correction: fixed || null, correction_missing: true }
+    }
     const second = await verify(unit, fixed, 2)
     return { ...state, first_hash: state.built.hash, built: fixed, verdicts: [first, second] }
   },
@@ -146,10 +188,14 @@ return units.map((unit, i) => {
   }
   const last = r.verdicts[r.verdicts.length - 1]
   const ko = r.verdicts.filter(v => v && v.result === 'KO').length
-  let state = 'unverified'
-  if (last && last.result === 'OK') state = 'verified'
+  // verified | blocked | second KO | correction missing | unverified
+  let state = 'unverified' // a check that returned nothing: `built` is still to be checked
+  if (r.correction_missing) state = 'correction missing'
+  else if (last && last.result === 'OK') state = 'verified'
   else if (last && last.result === 'BLOCKED') state = 'blocked'
   else if (ko >= 2) state = 'second KO'
-  else if (ko === 1) state = 'KO, correction not delivered'
-  return { id: unit.id, state, ko, built: r.built, first_hash: r.first_hash || null, verdicts: r.verdicts }
+  return {
+    id: unit.id, state, ko, built: r.built, first_hash: r.first_hash || null,
+    correction: r.correction || null, verdicts: r.verdicts,
+  }
 })

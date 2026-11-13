@@ -15,7 +15,8 @@ RUN.md? The answer is "yes" only when every condition holds:
   * every unit is a row of the one Units table (no unit rows in other sections);
   * `verifier:` names the tier 1-2 and the tier 3 verifier, as
     `<model> (tier 1-2), <model> (tier 3)`; a Claude model checks tier 1-2 only with
-    `engine: claude`, or as `(tier 1-2, no codex)`;
+    `engine: claude`, or as `(tier 1-2, no codex)`; never the builder's own model;
+  * `engine:`, when present, is exactly one of claude, codex, mixed;
   * `updated:` is ISO 8601 and not hours older than the file's last write.
 
 With --record-goal a valid goal is written to goal.lock next to RUN.md (at
@@ -144,29 +145,51 @@ def check_stray_unit_rows(lines: List[str], problems: List[str]) -> None:
                             "is a row of the one Units table")
 
 
+def check_engine(lines: List[str], problems: List[str]) -> str:
+    """The engine the user chose, or "" when the page has no `engine:` line (a run started
+    before the engine was asked). A line that is not exactly one engine is a problem: the
+    template placeholder left as it is must never count as a choice."""
+    found = [line.split("engine:", 1)[1].strip() for line in header_lines(lines)
+             if line.startswith("engine:")]
+    if not found:
+        return ""
+    match = re.fullmatch(r"(claude|codex|mixed)(\s+\(.*\))?", found[0])
+    if len(found) > 1 or not match:
+        problems.append(f"engine {found[0]!r}: write exactly one of `claude`, `codex`, `mixed`, "
+                        "the one the user chose at start")
+        return ""
+    return match.group(1)
+
+
 def check_verifier(lines: List[str], problems: List[str]) -> None:
     found = [line.split("verifier:", 1)[1].strip() for line in header_lines(lines)
              if "verifier:" in line]
     if not found:
         problems.append("no `verifier:` line in the header: record "
                         "`verifier: <model> (tier 1-2), <model> (tier 3)`")
+        check_engine(lines, problems)
         return
     value = found[0]
     unit = re.search(r"(?:^|,)\s*([^,]*?)\s*\((tier 1-2[^)]*)\)", value)
     if not unit or "(tier 3" not in value:
         problems.append(f"verifier {value!r}: write `<model> (tier 1-2), <model> (tier 3)`")
+        check_engine(lines, problems)
         return
     model, label = unit.group(1).strip().lower(), unit.group(2).lower()
+    # Whatever the engine, the model that built never checks its own work.
+    builders = [re.split(r"\s{2,}|\s+verifier:", line.split("builder:", 1)[1].strip())[0].strip().lower()
+                for line in header_lines(lines) if line.startswith("builder:")]
+    if builders and builders[0] and builders[0] == model:
+        problems.append(f"tier 1-2 verifier {model!r} is the builder's own model: builder and "
+                        "verifier must differ")
     # The user may pick the all-Claude engine: then a Claude model checks every tier.
-    engines = [line.split("engine:", 1)[1].split()[:1] for line in header_lines(lines)
-               if line.startswith("engine:")]
-    all_claude = bool(engines) and engines[0] == ["claude"]
+    all_claude = check_engine(lines, problems) == "claude"
     if (any(word in model for word in CLAUDE_UNIT_VERIFIERS) and "no codex" not in label
             and not all_claude):
         problems.append(f"tier 1-2 verifier {model!r} is a Claude model: with engine mixed or "
-                        "codex, tier 1-2 units go to an economical Codex model; write "
-                        "`engine: claude` if the user chose it, `(tier 1-2, no codex)` only "
-                        "when Codex is missing")
+                        "codex, tier 1-2 units go to an economical Codex model. The engine is "
+                        "the user's choice, recorded as `engine:`; never change it to pass this "
+                        "check (`(tier 1-2, no codex)` only when Codex is missing)")
 
 
 def check_updated(lines: List[str], run_path: Path, problems: List[str]) -> None:

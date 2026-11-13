@@ -52,7 +52,7 @@ Other subcommands: `status`, `resume`, `stop`. The run state lives in
 Optional `.orchestratore/config.toml`; see [templates/config.toml](templates/config.toml).
 The main keys:
 
-- `[engines] mode` — `"ask"` (default), `"claude"`, `"codex"` or `"mixed"`; `max_parallel` —
+- `[engines] engine` — `"ask"` (default), `"claude"`, `"codex"` or `"mixed"`; `max_parallel` —
   optional cap on concurrent agents, default 0 = the runtime's own limit.
 - `[models]` — builder and verifier model per runtime (they must differ).
   In Claude Code only two models: opus for the complex work (director, tier 3 checks,
@@ -82,8 +82,8 @@ The main keys:
 The plugin is now `direttore`: uninstall `orchestratore@orchestratore`, install
 `direttore@direttore`. The command is `/direttore:dirigi`. Run folders (`.orchestratore/`)
 and `RUN.md` pages are unchanged, so an open run resumes; add an `engine:` line to it.
-`mode = "single"` and `mode = "mixed"` (Codex builds) in `config.toml` become `"claude"`
-and `"codex"`.
+The config key is now `engine`; an old `mode` key is ignored and the director asks
+(0.12 `"single"` → `engine = "claude"`, 0.12 `"mixed"`, Codex builds → `engine = "codex"`).
 
 ## Upgrading from 0.6.x
 

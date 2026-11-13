@@ -243,7 +243,29 @@ class RunCheckTest(unittest.TestCase):
             code, out = run(opus_units.replace("run: 20260930-1800",
                                                "run: 20260930-1800\nengine: " + engine))
             self.assertEqual(code, 1, engine)
-            self.assertIn("engine: claude", problems(out))
+            self.assertIn("user's choice", problems(out))
+
+    def test_engine_placeholder_is_not_a_choice(self):
+        opus_units = VALID.replace("gpt-6-luna (tier 1-2)", "opus (tier 1-2)")
+        line = "run: 20260930-1800\nengine: claude | codex | mixed   (chosen by the user at start)"
+        code, out = run(opus_units.replace("run: 20260930-1800", line))
+        self.assertEqual(code, 1)
+        self.assertIn("exactly one of", problems(out))
+        code, out = run(VALID.replace("run: 20260930-1800", "run: 20260930-1800\nengine: both"))
+        self.assertEqual(code, 1)
+        self.assertIn("exactly one of", problems(out))
+        code, out = run(VALID.replace("run: 20260930-1800", "run: 20260930-1800\nengine: mixed"))
+        self.assertEqual(code, 0, problems(out))
+
+    def test_verifier_equal_to_builder_fails_on_every_engine(self):
+        same = VALID.replace("gpt-6-luna (tier 1-2)", "sonnet (tier 1-2)")
+        for engine in ("claude", "mixed", "codex"):
+            code, out = run(same.replace("run: 20260930-1800", "run: 20260930-1800\nengine: " + engine))
+            self.assertEqual(code, 1, engine)
+            self.assertIn("builder's own model", problems(out))
+        code, out = run(same.replace("sonnet (tier 1-2)", "sonnet (tier 1-2, no codex)"))
+        self.assertEqual(code, 1)
+        self.assertIn("builder's own model", problems(out))
 
     def test_stale_updated_fails(self):
         code, out = run(VALID, written=VALID_WRITTEN + 4 * 3600)

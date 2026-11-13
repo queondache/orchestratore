@@ -95,14 +95,14 @@ engines_says() { tr '\n' ' ' < "$ROOT/skills/direttore/references/engines.md" | 
 check "skill: RUN header overwritten in place, never a second header" skill_says 'never add a second header'
 check "skill: merge and deploy details live in references/merge.md" test -f "$ROOT/skills/direttore/references/merge.md"
 check "skill: goal recorded at start" skill_says 'run-check.py --record-goal'
-# Mixed mode: Claude Code coordinates, Codex builds, Claude verifies.
+# Engines: claude, codex, mixed (Claude builds, Codex checks).
 check "skill: the three engines are named" skill_says '`claude` (Claude builds, Claude checks), `codex` (Codex builds, Codex checks) or `mixed` (Claude builds, Codex checks)'
 check "engines: one section per way to run" bash -c "grep -q '^## Claude Code, engine \`claude\` or \`mixed\`: one workflow' '$ROOT/skills/direttore/references/engines.md' && grep -q '^## Codex, engine \`codex\`: native sub-agents' '$ROOT/skills/direttore/references/engines.md' && grep -q '^## Claude Code, engine \`codex\`: Codex processes' '$ROOT/skills/direttore/references/engines.md'"
 check "engines: Codex availability checks codex login" grep -q 'codex login status' "$ROOT/skills/direttore/references/engines.md"
 check "engines: Codex processes are one background Bash per unit" grep -q 'one Bash call per unit' "$ROOT/skills/direttore/references/engines.md"
 check "engines: the model that ran is recorded" grep -q 'Write the `model=` value in the' "$ROOT/skills/direttore/references/engines.md"
 check "engines: a failed engine parks the run and asks, never switches alone" engines_says '`status: parked`, and ask the user whether to go on with another engine'
-check "config template asks for the engine by default" grep -q '^mode = "ask" ' "$ROOT/templates/config.toml"
+check "config template asks for the engine by default" grep -q '^engine = "ask" ' "$ROOT/templates/config.toml"
 check "config template parses as TOML" python3 -c "import sys
 try:
     import tomllib
@@ -214,6 +214,12 @@ check "workflow: parses as JavaScript" bash -c "command -v node >/dev/null 2>&1 
 check "template: RUN.md records the engine" grep -q '^engine: claude | codex | mixed' "$ROOT/templates/RUN.md"
 check "hook: resume command is the new one" bash -c "grep -q '/direttore:dirigi resume' '$ROOT/hooks/session-state.sh' && ! grep -q 'orchestratore:orchestra' '$ROOT/hooks/session-state.sh'"
 check "no old plugin namespace left in shipped files" shipped_grep 'orchestratore:(orchestra|builder|verifier|diagnostician|orchestratore)'
+check "config template has no 0.12 mode key" bash -c "! grep -q '^mode = ' '$ROOT/templates/config.toml'"
+check "engines: an old mode key or a missing engine line is a question" bash -c "grep -q 'an old \`mode\` key' '$ROOT/skills/direttore/references/engines.md' && grep -q 'without an \`engine:\` line: ask' '$ROOT/skills/direttore/references/engines.md'"
+check "engines: every workflow state has an action" bash -c "for st in verified 'second KO' blocked unverified 'correction missing' 'not delivered'; do grep -qF \"\\\`\$st\\\`\" '$ROOT/skills/direttore/references/engines.md' || exit 1; done"
+check "workflow: checks hash, paths and ids before using them in a command" bash -c "grep -q 'const SAFE_PATH = ' '$ROOT/workflows/build-verify.js' && grep -q 'SHA.test(built.hash)' '$ROOT/workflows/build-verify.js' && grep -q 'SAFE_ID.test(unit.id)' '$ROOT/workflows/build-verify.js'"
+check "workflow: a tier that is not 1, 2 or 3 is refused" grep -q 'tier must be 1, 2 or 3' "$ROOT/workflows/build-verify.js"
+check "workflow: a correction outside the unit worktree is not a delivery" grep -q 'fixed.worktree !== state.built.worktree' "$ROOT/workflows/build-verify.js"
 
 echo
 if [ "$FAIL" -eq 0 ]; then echo "GREEN: all checks pass"; exit 0; fi

@@ -21,9 +21,16 @@ Ask once, before the lock. Offer only the engines available here; recommended fi
   to relaunch from Claude Code for `claude` or `mixed`.
 
 The request names the engine ("full Claude", "full Codex", "mixed"), or
-`.orchestratore/config.toml` has `mode` set → no question; write the source under
-`## Decisions`. Never fall back to another engine without asking: an engine that fails
-mid-run parks the run (Failures, below).
+`.orchestratore/config.toml` has `engine` set to one of the three → no question; write the
+source under `## Decisions`. Everything else is a question, never a guess:
+
+- `engine = "ask"`, no key, or an old `mode` key (0.12: its `"mixed"` meant something else);
+- a configured or requested engine that is not available here;
+- a resumed `RUN.md` without an `engine:` line: ask, then write the line. Never write
+  `engine:` to make `run-check.py` pass.
+
+Never fall back to another engine without asking: an engine that fails mid-run parks the run
+(Failures, below).
 
 ## Configuration
 
@@ -34,7 +41,7 @@ never hardcodes them.
 ```toml
 [engines]
 max_parallel = 0              # 0 = no cap; the runtime's slots still apply
-mode = "ask"                  # "ask" | "claude" | "codex" | "mixed"
+engine = "ask"                # "ask" | "claude" | "codex" | "mixed"
 
 [models]
 claude_builder = "sonnet"
@@ -79,11 +86,17 @@ Workflow(scriptPath="<plugin>/workflows/build-verify.js", args={
   that file, not the text relayed to you.
 - `claude`: the verdict comes back as text; save it to
   `.orchestratore/briefs/verify/<ID>.r<n>.verdict.md`, then check it.
-- The result has one entry per unit: `state` (`verified`, `second KO`, `blocked`, `not
-  delivered`, …), `built` (worktree, branch, hash), `verdicts`. Run `bin/verdict-check.py
-  --verdict <file> --hash <built.hash>` on the last verdict of each unit before acting on it.
-- A unit that came back `not delivered`, `failed` or `unverified`: one more workflow call
-  with those units alone; the same result again → `parked` with the reason.
+- `tier` is the number 1, 2 or 3; anything else is refused before any agent starts.
+- The result has one entry per unit: `state`, `built` (worktree, branch, hash), `verdicts`.
+  Run `bin/verdict-check.py --verdict <file> --hash <built.hash>` on the last verdict of
+  each unit before acting on it. By `state`:
+  - `verified` → §4; `second KO` → the diagnostician, parked; `blocked` → give it the means
+    and check again (single call below), or park;
+  - `unverified` (the check returned nothing) → one verifier call on `built.hash`;
+  - `correction missing` (KO, then no usable correction) → one builder call in
+    `built.worktree` with the findings, then a verifier call; a KO there is the second KO;
+  - `not delivered`, `failed` → one more workflow call with those units alone; the same
+    result again → `parked` with the reason.
 - A session that ends mid-workflow loses the batch in flight, not the run: on resume the
   worktrees and branches that exist are checked (the single calls below), the rest is rebuilt.
 

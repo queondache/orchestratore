@@ -3,7 +3,7 @@
 
 [engines]
 max_parallel = 0         # 0 = no cap: every ready unit goes out, within the runtime's slots
-mode = "ask"             # "ask" = the director asks at start | "claude" | "codex" | "mixed" (Claude builds, Codex checks)
+engine = "ask"           # "ask" = the director asks at start | "claude" | "codex" | "mixed" (Claude builds, Codex checks)
 
 [models]
 # Use the names your runtime exposes. Builder and verifier must differ.
