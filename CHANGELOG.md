@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.0.0 — 2026-11-13
+
+Renamed **direttore** and rebuilt around one idea: the runtime's own orchestration builds,
+the plugin only adds what it lacks.
+
+Why: on an identical batch of five small units, the runtime's own orchestration and
+orchestratore 0.12.1 both scored 5/5 on a hidden exam, in 3.5 and 9 minutes. The dispatch
+half of the plugin duplicated the runtime and cost time; the check by a different model, the
+merge gate and the run page are what the runtime does not have.
+
+### Changed
+- Plugin, skill and marketplace are named `direttore`; the command is `/direttore:dirigi`
+  (was `/orchestratore:orchestra`); agents are `direttore:builder`, `direttore:verifier`,
+  `direttore:diagnostician`. The run folder stays `.orchestratore/`, so open runs resume.
+- **Meant for unattended runs** that merge on their own. The skill no longer triggers on
+  "fix all of these" or "orchestrate": a small batch with the user present goes to the
+  runtime's own orchestration.
+- **The engine is asked at start**, once: `claude` (Claude builds, Claude checks), `codex`
+  (Codex builds, Codex checks) or `mixed` (Claude builds, Codex checks). Named in the request
+  or in `config.toml` (`mode`) → no question. `mode = "single"` is gone; default `"ask"`.
+  The old mixed (Codex builds for a Claude Code director) is now engine `codex`.
+- **Claude Code builds and checks through one workflow**, `workflows/build-verify.js`: one
+  builder per unit in its own worktree, the check on arrival by a different model, one
+  correction after a KO. The director waits for the batch instead of dispatching unit by unit.
+- **No new verdict when the base moves without a conflict.** Verified PRs merge one after the
+  other (their files are disjoint); the director then runs the gate once on the base head. A
+  conflict still means: merge the base in, new verdict.
+- `run-check.py` accepts a Claude model as tier 1-2 verifier when `RUN.md` says
+  `engine: claude`. `RUN.md` has an `engine:` line.
+- An engine that fails mid-run parks the run and asks; it never switches engine on its own.
+
+### Removed
+- The per-unit dispatch rules of 0.12 (all ready units in one message, slot arithmetic) for
+  Claude Code: the workflow does it.
+
 ## 0.12.1 — 2026-10-12
 
 Fixes from the first 0.12.0 trial run.

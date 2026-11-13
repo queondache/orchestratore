@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Run one Orchestratore brief through Codex inside an isolated git worktree.
+# Run one Direttore brief through Codex inside an isolated git worktree.
 #
 # Usage:
 #   bash codex-task.sh [--dry-run] [--resume] [--model M] [--effort E] [--sandbox S] <build|verify> <worktree> <brief.md>
 #   (options may appear anywhere)
 #
 #   build   Codex edits the worktree; the script then commits every change on the
-#           worktree's branch and prints `hash=<sha>`. The coordinator verifies that hash.
+#           worktree's branch and prints `hash=<sha>`. The director has that hash checked.
 #   verify  Codex reviews and runs checks; it must not change tracked files or HEAD.
 #           A change is reported as a violation (exit 3).
 #
@@ -99,7 +99,7 @@ fi
 if [ -z "$CHANGES" ]; then
   echo "$ID no changes to commit"
 else
-  git -C "$WORKTREE" add -A && git -C "$WORKTREE" commit -q -m "orchestratore: $ID" || { echo "commit failed in $WORKTREE" >&2; exit 1; }
+  git -C "$WORKTREE" add -A && git -C "$WORKTREE" commit -q -m "direttore: $ID" || { echo "commit failed in $WORKTREE" >&2; exit 1; }
   HEAD_AFTER="$(git -C "$WORKTREE" rev-parse HEAD)" || { echo "cannot read HEAD in $WORKTREE" >&2; exit 1; }
 fi
 echo "$ID hash=$HEAD_AFTER"

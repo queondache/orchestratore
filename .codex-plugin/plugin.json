@@ -1,7 +1,7 @@
 {
-  "name": "orchestratore",
-  "version": "0.12.1",
-  "description": "Multi-agent coordinator for Claude Code and Codex: plan once, dispatch independent units in parallel, verify each delivery with a different model, merge only through a deterministic gate.",
+  "name": "direttore",
+  "version": "1.0.0",
+  "description": "Director for unattended runs in Claude Code and Codex: the runtime's own orchestration builds, a different model checks every delivery, and only what passes a deterministic gate merges without you.",
   "author": {
     "name": "Andrea Pesce",
     "url": "https://github.com/queondache"
@@ -10,28 +10,28 @@
   "repository": "https://github.com/queondache/orchestratore",
   "license": "MIT",
   "keywords": [
-    "orchestrator",
+    "director",
+    "unattended",
     "multi-agent",
-    "parallel",
-    "swarm",
     "verification",
+    "merge-gate",
     "codex"
   ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "Orchestratore",
-    "shortDescription": "Parallel agents with independent verification",
-    "longDescription": "Splits a batch of bugs, fixes or milestones into independent briefs, runs them on parallel sub-agents or Codex processes in isolated worktrees, verifies each delivery with a different model, and merges only through a deterministic gate (tier, allowlist, required checks).",
+    "displayName": "Direttore",
+    "shortDescription": "Unattended runs with an independent check and a merge gate",
+    "longDescription": "For runs nobody watches. Asks once which engine to use (all Claude, all Codex, or mixed), lets the runtime's own sub-agents build each unit in an isolated worktree, has a different model check every delivery, and merges only through a deterministic gate (tier, allowlist, required checks). The run page survives the session.",
     "developerName": "Andrea Pesce",
     "category": "Development",
     "capabilities": [
       "Instructions"
     ],
     "defaultPrompt": [
-      "Use orchestratore to fix these bugs in parallel: ...",
-      "Use orchestratore on the open milestones in ROADMAP.md.",
-      "orchestratore status",
-      "orchestratore resume"
+      "Use direttore for an unattended run on the open milestones in ROADMAP.md.",
+      "Use direttore, engine codex, to fix these bugs overnight: ...",
+      "direttore status",
+      "direttore resume"
     ]
   }
 }

@@ -1,4 +1,4 @@
-# SPEC — orchestratore 0.7
+# SPEC — direttore 1.0 (formerly orchestratore)
 
 ## Problem
 
@@ -36,3 +36,19 @@ review, rework rounds, interruptions of the user.
 - A custom scheduler or persistent database: the runtimes' agent tools dispatch; `RUN.md`
   and git hold the state.
 - A security sandbox against hostile agents.
+
+## 1.0: direttore
+
+The runtimes now orchestrate on their own (parallel sub-agents, worktrees, workflow scripts).
+A measured run (5 small units: 3.5 minutes native, 9 minutes with 0.12.1, same score) showed
+the dispatch half of this plugin had become a slower duplicate. What the runtimes still lack
+is the reason to keep it: I1, I2, I3 (the check), I5 (the gate) and the run page.
+
+- The plugin is for unattended runs that merge on their own; with the user present on a
+  small batch, the runtime alone is the right tool.
+- Dispatch belongs to the runtime: one workflow in Claude Code, native sub-agents in Codex.
+- The user chooses the engine at start: all Claude, all Codex, or mixed (Claude builds,
+  Codex checks). The director never chooses or switches it alone.
+- I4 still holds, and is what lets verified PRs merge one after the other with a single
+  final gate on the base head instead of a new verdict per merge.
+

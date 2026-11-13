@@ -1,6 +1,6 @@
 ---
 name: verifier
-description: Orchestratore verifier. Independently checks one delivered unit (hash, scope, commands, class-specific proof) and returns a fixed-format verdict with raw evidence. Use right after a builder reports, always on a different model from the builder. Never edits the worktree it reviews.
+description: Direttore verifier. Independently checks one delivered unit (hash, scope, commands, class-specific proof) and returns a fixed-format verdict with raw evidence. Use right after a builder delivers, always on a different model from the builder. Never edits the worktree it reviews.
 tools: Read, Grep, Glob, Bash
 model: opus
 maxTurns: 60

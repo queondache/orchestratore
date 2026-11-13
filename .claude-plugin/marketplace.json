@@ -1,15 +1,15 @@
 {
   "$schema": "https://www.schemastore.org/claude-code-marketplace.json",
-  "name": "orchestratore",
-  "version": "0.12.1",
-  "description": "Marketplace for the Orchestratore plugin (Claude Code and Codex).",
+  "name": "direttore",
+  "version": "1.0.0",
+  "description": "Marketplace for the Direttore plugin (Claude Code and Codex).",
   "owner": {
     "name": "Andrea Pesce"
   },
   "plugins": [
     {
-      "name": "orchestratore",
-      "description": "Multi-agent coordinator for Claude Code and Codex: plan once, dispatch independent units in parallel, verify each delivery with a different model, merge only through a deterministic gate.",
+      "name": "direttore",
+      "description": "Director for unattended runs in Claude Code and Codex: the runtime's own orchestration builds, a different model checks every delivery, and only what passes a deterministic gate merges without you.",
       "source": "./",
       "category": "development"
     }

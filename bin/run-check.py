@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Deterministic check that an Orchestratore RUN.md is still one page on one goal.
+"""Deterministic check that a Direttore RUN.md is still one page on one goal.
 
-Answers one question with evidence: can the next coordinator trust the top of
+Answers one question with evidence: can the next director trust the top of
 RUN.md? The answer is "yes" only when every condition holds:
 
   * one title and exactly one `goal:`, `status:`, `updated:` and `next:` line
@@ -14,7 +14,8 @@ RUN.md? The answer is "yes" only when every condition holds:
   * `## Log` is the last section and holds at most 100 entries;
   * every unit is a row of the one Units table (no unit rows in other sections);
   * `verifier:` names the tier 1-2 and the tier 3 verifier, as
-    `<model> (tier 1-2), <model> (tier 3)`; opus checks tier 1-2 only as `(tier 1-2, no codex)`;
+    `<model> (tier 1-2), <model> (tier 3)`; a Claude model checks tier 1-2 only with
+    `engine: claude`, or as `(tier 1-2, no codex)`;
   * `updated:` is ISO 8601 and not hours older than the file's last write.
 
 With --record-goal a valid goal is written to goal.lock next to RUN.md (at
@@ -44,7 +45,7 @@ MAX_KO = 2
 FINAL_STATES = ("merged", "in production")
 # A page written later than this after its `updated:` time means `updated:` was not refreshed.
 STALE_UPDATED_SECONDS = 3 * 3600
-# Claude models that must not verify tier 1-2 units while a Codex verifier is available.
+# Claude models that verify tier 1-2 units only when the user chose the all-Claude engine.
 CLAUDE_UNIT_VERIFIERS = ("opus", "sonnet", "claude")
 UNIT_CLASSES = ("FIX", "BUILD", "CHECK", "RELEASE")
 
@@ -156,9 +157,16 @@ def check_verifier(lines: List[str], problems: List[str]) -> None:
         problems.append(f"verifier {value!r}: write `<model> (tier 1-2), <model> (tier 3)`")
         return
     model, label = unit.group(1).strip().lower(), unit.group(2).lower()
-    if any(word in model for word in CLAUDE_UNIT_VERIFIERS) and "no codex" not in label:
-        problems.append(f"tier 1-2 verifier {model!r} is a Claude model: tier 1-2 units go to an "
-                        "economical Codex model; write `(tier 1-2, no codex)` only when Codex is missing")
+    # The user may pick the all-Claude engine: then a Claude model checks every tier.
+    engines = [line.split("engine:", 1)[1].split()[:1] for line in header_lines(lines)
+               if line.startswith("engine:")]
+    all_claude = bool(engines) and engines[0] == ["claude"]
+    if (any(word in model for word in CLAUDE_UNIT_VERIFIERS) and "no codex" not in label
+            and not all_claude):
+        problems.append(f"tier 1-2 verifier {model!r} is a Claude model: with engine mixed or "
+                        "codex, tier 1-2 units go to an economical Codex model; write "
+                        "`engine: claude` if the user chose it, `(tier 1-2, no codex)` only "
+                        "when Codex is missing")
 
 
 def check_updated(lines: List[str], run_path: Path, problems: List[str]) -> None:

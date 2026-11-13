@@ -87,7 +87,7 @@ earlier result. OK rests only on `ran` and `ci`; reused evidence may support a K
 OK. **BLOCKED** = the proof cannot run here (missing database, service, memory, credentials):
 say what is missing in `blocked:`; it is not a KO and does not count against the unit.
 
-The coordinator acts only on a verdict that `python3 <plugin>/bin/verdict-check.py --hash
+The director acts only on a verdict that `python3 <plugin>/bin/verdict-check.py --hash
 <delivered hash>` accepts (exit 0). A rejected verdict is not a verdict and not a KO: rerun
 it once with the rejection reasons appended to the verifier's prompt, on the same verifier
 model (never the builder's model); rejected again → the unit is `parked` "unverifiable".
@@ -97,8 +97,8 @@ model (never the builder's model); rejected again → the unit is `parked` "unve
 
 - Always a different model from the builder. The proof is the commands the verifier ran and
   `verdict-check.py`, not the model's opinion, so a unit's verifier may be a cheaper model.
-- **Unit verifier** (tier 1-2): an economical Codex model via `codex-task.sh verify`
-  ([engines](engines.md)); Codex unavailable → `orchestratore:verifier` on opus.
+- **Unit verifier** (tier 1-2): by engine ([engines](engines.md)). `mixed` and `codex`: an
+  economical Codex model via `codex-task.sh verify`; `claude`: `direttore:verifier` on opus.
 - **Strong verifier** (opus in Claude Code, the strongest listed model in Codex): every
   tier 3 unit, and the diagnostician.
 - Record builder and verifier model per unit in `RUN.md`; report only models the runtime

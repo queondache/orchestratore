@@ -1,4 +1,4 @@
-# Orchestratore run — <project>
+# Direttore run — <project>
 
 <!-- The header and the Units table are the current state: overwrite them in place.
      Never add a second header or a new block on top. History goes only under ## Log. -->
@@ -9,8 +9,9 @@ updated: <ISO 8601>
 run: <run id, e.g. 20260926-1030>
 base: <branch>@<sha>
 prs: one per verified unit, against the base
-runtime: claude | codex | mixed (Claude Code coordinator, Codex builders)
-builder: <model>        verifier: <economical model> (tier 1-2), <strong model> (tier 3)   [opus for tier 1-2 only as `(tier 1-2, no codex)`]
+runtime: claude | codex   (where the director runs)
+engine: claude | codex | mixed   (chosen by the user at start: who builds, who checks)
+builder: <model>        verifier: <economical model> (tier 1-2), <strong model> (tier 3)   [a Claude model for tier 1-2 only with `engine: claude`]
 gate: build=<cmd|none> test=<cmd|none> lint=<cmd|none>
 pipeline: <post-merge deploy found at start | none>   check: <read-only command, e.g. gh run list --commit <sha> --workflow <deploy>>
 exclusive: <commands that need a shared resource, run one at a time | none>

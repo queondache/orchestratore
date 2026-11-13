@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic merge gate for an Orchestratore pull request.
+"""Deterministic merge gate for a Direttore pull request.
 
 Answers one question with evidence: may this exact commit be merged without a
 human? The answer is "yes" only when every condition holds:
