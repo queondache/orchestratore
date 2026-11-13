@@ -1,12 +1,12 @@
 {
-  "name": "orchestratore",
-  "version": "0.12.1",
+  "name": "direttore",
+  "version": "1.0.0",
   "interface": {
-    "displayName": "Orchestratore"
+    "displayName": "Direttore"
   },
   "plugins": [
     {
-      "name": "orchestratore",
+      "name": "direttore",
       "source": {
         "source": "url",
         "url": "https://github.com/queondache/orchestratore.git",

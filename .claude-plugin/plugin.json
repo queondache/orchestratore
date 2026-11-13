@@ -1,7 +1,7 @@
 {
-  "name": "orchestratore",
-  "version": "0.12.1",
-  "description": "Multi-agent coordinator for Claude Code and Codex: plan once, dispatch independent units in parallel, verify each delivery with a different model, merge only through a deterministic gate.",
+  "name": "direttore",
+  "version": "1.0.0",
+  "description": "Director for unattended runs in Claude Code and Codex: the runtime's own orchestration builds, a different model checks every delivery, and only what passes a deterministic gate merges without you.",
   "author": {
     "name": "Andrea Pesce",
     "url": "https://github.com/queondache"
@@ -10,11 +10,11 @@
   "repository": "https://github.com/queondache/orchestratore",
   "license": "MIT",
   "keywords": [
-    "orchestrator",
+    "director",
+    "unattended",
     "multi-agent",
-    "parallel",
-    "swarm",
     "verification",
+    "merge-gate",
     "codex",
     "claude-code"
   ]

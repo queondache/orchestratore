@@ -1,19 +1,19 @@
-# Orchestratore project configuration: copy to .orchestratore/config.toml.
+# Direttore project configuration: copy to .orchestratore/config.toml.
 # Every key is optional; missing keys use the runtime defaults.
 
 [engines]
-max_parallel = 0         # 0 = no cap: the coordinator sends every ready unit, within the runtime's slots
-mode = "single"          # "mixed": a Claude Code coordinator has Codex build; checks as in [models]
+max_parallel = 0         # 0 = no cap: every ready unit goes out, within the runtime's slots
+engine = "ask"           # "ask" = the director asks at start | "claude" | "codex" | "mixed" (Claude builds, Codex checks)
 
 [models]
 # Use the names your runtime exposes. Builder and verifier must differ.
 # Claude: opus for the complex work (coordinator, tier 3 and final verification, diagnostician),
-# sonnet builds. Tier 1-2 units are verified by an economical Codex model (falls back to opus).
+# sonnet builds. Engine mixed: tier 1-2 units are checked by an economical Codex model.
 claude_builder = "sonnet"
 claude_verifier = "opus"
-codex_builder = ""       # "" = the coordinator picks an economical model the session lists
+codex_builder = ""       # "" = the director picks an economical model the session lists
 codex_verifier = ""      # strongest model: tier 3 and diagnosis; must differ from codex_builder
-codex_unit_verifier = "" # economical model for tier 1-2 unit checks; "" = the coordinator picks one
+codex_unit_verifier = "" # economical model for tier 1-2 unit checks; "" = the director picks one
 codex_effort = "medium"
 codex_sandbox = "workspace-write"   # codex-task.sh: read-only | workspace-write | danger-full-access
 

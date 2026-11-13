@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "bin" / "run-check.py"
 
 VALID = textwrap.dedent("""\
-    # Orchestratore run — demo
+    # Direttore run — demo
 
     goal: fix the three login bugs
     status: active
@@ -81,7 +81,7 @@ class RunCheckTest(unittest.TestCase):
         self.assertIn("next:", problems(out))
 
     def test_second_title_fails(self):
-        code, out = run(VALID + "\n# Orchestratore run — demo\n")
+        code, out = run(VALID + "\n# Direttore run — demo\n")
         self.assertEqual(code, 1)
         self.assertIn("title", problems(out))
 
@@ -232,6 +232,40 @@ class RunCheckTest(unittest.TestCase):
         self.assertIn("Codex", problems(out))
         code, out = run(VALID.replace("gpt-6-luna (tier 1-2)", "opus (tier 1-2, no codex)"))
         self.assertEqual(code, 0, problems(out))
+
+    def test_claude_engine_allows_opus_unit_verifier(self):
+        opus_units = VALID.replace("gpt-6-luna (tier 1-2)", "opus (tier 1-2)")
+        # The user chose the all-Claude engine: opus checks every tier.
+        code, out = run(opus_units.replace("run: 20260930-1800", "run: 20260930-1800\nengine: claude"))
+        self.assertEqual(code, 0, problems(out))
+        # Any other engine keeps the rule: tier 1-2 goes to an economical Codex model.
+        for engine in ("mixed", "codex"):
+            code, out = run(opus_units.replace("run: 20260930-1800",
+                                               "run: 20260930-1800\nengine: " + engine))
+            self.assertEqual(code, 1, engine)
+            self.assertIn("user's choice", problems(out))
+
+    def test_engine_placeholder_is_not_a_choice(self):
+        opus_units = VALID.replace("gpt-6-luna (tier 1-2)", "opus (tier 1-2)")
+        line = "run: 20260930-1800\nengine: claude | codex | mixed   (chosen by the user at start)"
+        code, out = run(opus_units.replace("run: 20260930-1800", line))
+        self.assertEqual(code, 1)
+        self.assertIn("exactly one of", problems(out))
+        code, out = run(VALID.replace("run: 20260930-1800", "run: 20260930-1800\nengine: both"))
+        self.assertEqual(code, 1)
+        self.assertIn("exactly one of", problems(out))
+        code, out = run(VALID.replace("run: 20260930-1800", "run: 20260930-1800\nengine: mixed"))
+        self.assertEqual(code, 0, problems(out))
+
+    def test_verifier_equal_to_builder_fails_on_every_engine(self):
+        same = VALID.replace("gpt-6-luna (tier 1-2)", "sonnet (tier 1-2)")
+        for engine in ("claude", "mixed", "codex"):
+            code, out = run(same.replace("run: 20260930-1800", "run: 20260930-1800\nengine: " + engine))
+            self.assertEqual(code, 1, engine)
+            self.assertIn("builder's own model", problems(out))
+        code, out = run(same.replace("sonnet (tier 1-2)", "sonnet (tier 1-2, no codex)"))
+        self.assertEqual(code, 1)
+        self.assertIn("builder's own model", problems(out))
 
     def test_stale_updated_fails(self):
         code, out = run(VALID, written=VALID_WRITTEN + 4 * 3600)

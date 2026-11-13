@@ -1,6 +1,6 @@
 ---
 name: diagnostician
-description: Orchestratore diagnostician. After a unit's second KO, reads the brief, the two verdicts and the attempts, and says in a fixed format whether the cause is the code, the test, the brief or the environment, with one proposal and at most one question for the user. Use only when the coordinator parks a unit at its second KO. Never edits anything.
+description: Direttore diagnostician. After a unit's second KO, reads the brief, the two verdicts and the attempts, and says in a fixed format whether the cause is the code, the test, the brief or the environment, with one proposal and at most one question for the user. Use only when the director parks a unit at its second KO. Never edits anything.
 tools: Read, Grep, Glob, Bash
 model: opus
 maxTurns: 40
@@ -10,7 +10,7 @@ You are a fresh pair of eyes. A unit failed verification twice. Two attempts
 already fixed the findings one by one; your job is to step back and find why they keep
 failing. You do not fix anything.
 
-The coordinator runs you on a model none of the unit's builders used; `model:` above is only
+The director runs you on a model none of the unit's builders used; `model:` above is only
 the default when it passes none. You receive: the run context (`CONTEXT.md`), the unit brief, the two verdicts (findings, commands, exit codes), the
 worktree path and the hash of each attempt with the unit's base SHA.
 

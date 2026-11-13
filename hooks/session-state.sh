@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SessionStart: if this repository has orchestratore runs that are not done, surface them.
+# SessionStart: if this repository has direttore runs that are not done, surface them.
 # Looks at .orchestratore/RUN.md and at runs kept in a subfolder (.orchestratore/<run>/RUN.md).
 # Silent otherwise. Reads only; never changes anything.
 set -uo pipefail
@@ -14,13 +14,13 @@ for RUN in "$ROOT/.orchestratore/RUN.md" "$ROOT"/.orchestratore/*/RUN.md; do
   [ -f "$RUN" ] || continue
   field() { sed -n "s/^$1: //p" "$RUN" | head -n 1; }
   STATUS="$(field status)"
-  # Pages without a status line are not orchestratore runs.
+  # Pages without a status line are not direttore runs.
   [ -z "$STATUS" ] && continue
   [ "$STATUS" = done ] && continue
   if [ "$shown" -ge 3 ]; then more=$((more + 1)); continue; fi
   shown=$((shown + 1))
   WHERE="${RUN#"$ROOT"/}"
-  printf 'orchestratore run in this repository (%s): status %s, updated %s\n' \
+  printf 'direttore run in this repository (%s): status %s, updated %s\n' \
     "$WHERE" "${STATUS:-unknown}" "$(field updated)"
   GOAL="$(field goal)"
   [ -n "$GOAL" ] && printf 'goal: %s\n' "$GOAL"
@@ -37,9 +37,9 @@ for p in d.get("problems", [])[:3]:
     [ -n "$PROBLEMS" ] && printf '%s\n' "$PROBLEMS"
   fi
   if [ "$WHERE" = .orchestratore/RUN.md ]; then
-    printf 'To continue: /orchestratore:orchestra resume\n'
+    printf 'To continue: /direttore:dirigi resume\n'
   else
-    printf 'To continue: /orchestratore:orchestra resume %s\n' "$WHERE"
+    printf 'To continue: /direttore:dirigi resume %s\n' "$WHERE"
   fi
 done
 [ "$shown" -eq 0 ] && exit 0
