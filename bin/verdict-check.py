@@ -26,6 +26,11 @@ proof that the tests catch wrong code, so a green suite alone never passes:
     criterion's test turned red by wrong code), with at least m `[ran expect-fail]` runs;
   * CHECK: `proof:` says `checklist: m/m`.
 
+A merged unit with several classes passes them all, comma-separated (`--class FIX,BUILD`).
+Limits: the script does not read the brief, so m is the number of criteria the verifier
+declares; the director compares it with the brief. Expect-fail runs are counted once per
+distinct command, and a proof that states one label twice with different values is refused.
+
 Input: the verdict on stdin, or --verdict <file>. The header may sit inside prose
 or a fenced block. Exit codes: 0 verdict valid, 1 invalid (treat as malformed),
 2 error. Output: one JSON object on stdout.
@@ -72,15 +77,17 @@ def is_none(value: Optional[str]) -> bool:
 
 
 def fraction(proof: str, label: str) -> Optional[tuple]:
-    m = re.search(rf"{label}\s*:\s*(\d+)\s*/\s*(\d+)", proof, re.IGNORECASE)
-    return (int(m.group(1)), int(m.group(2))) if m else None
+    found = {(int(a), int(b)) for a, b in
+             re.findall(rf"{label}\s*:\s*(\d+)\s*/\s*(\d+)", proof, re.IGNORECASE)}
+    # Two different values for one label: the verdict contradicts itself, never a pass.
+    return found.pop() if len(found) == 1 else None
 
 
 def check_class_proof(unit_class: str, proof: str, expect_fails: int,
                       problems: List[str]) -> None:
     """An OK must show that the unit's tests catch wrong code, not only that they pass."""
     if unit_class == "FIX":
-        if not re.search(r"oracle red\s*:\s*yes", proof, re.IGNORECASE):
+        if not re.search(r"oracle red\s*:\s*yes\b(?!')", proof, re.IGNORECASE):
             problems.append("FIX OK needs `proof: oracle red: yes` (the new test fails without the fix)")
         if expect_fails < 1:
             problems.append("FIX OK needs the oracle run tagged [ran expect-fail]")
@@ -202,8 +209,11 @@ def evaluate(text: str, delivered: Optional[str], unit_class: Optional[str] = No
         if not is_none(blocked):
             problems.append(f"OK while blocked: {blocked}")
         if unit_class:
-            expect_fails = sum(1 for _, code, kind, ef in evidence if ef and code != 0)
-            check_class_proof(unit_class, field(lines, "proof") or "", expect_fails, problems)
+            # Distinct commands only: the same run written twice proves one criterion, not two.
+            expect_fails = len({re.sub(r"\s+", " ", cmd[:EXIT_RE.search(cmd).start()]).strip().lower()
+                                for cmd, code, kind, ef in evidence if ef and code != 0})
+            for one in unit_class.split(","):
+                check_class_proof(one.strip(), field(lines, "proof") or "", expect_fails, problems)
     elif result == "KO":
         if is_none(findings) and is_none(scope):
             problems.append("KO must name its findings (file:line and what is wrong)")
@@ -219,9 +229,13 @@ def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--verdict", help="file holding the verdict (default: stdin)")
     parser.add_argument("--hash", help="the delivered hash the verdict must be about")
-    parser.add_argument("--class", dest="unit_class", choices=("FIX", "BUILD", "CHECK"),
-                        help="the unit's class: an OK must carry that class's proof")
+    parser.add_argument("--class", dest="unit_class",
+                        help="the unit's class, FIX, BUILD or CHECK (comma-separated for a "
+                             "merged unit): an OK must carry that class's proof")
     args = parser.parse_args(argv)
+    if args.unit_class and any(c.strip() not in {"FIX", "BUILD", "CHECK"}
+                               for c in args.unit_class.split(",")):
+        parser.error("--class takes FIX, BUILD, CHECK or a comma-separated list of them")
     if args.verdict:
         path = Path(args.verdict)
         if not path.is_file():

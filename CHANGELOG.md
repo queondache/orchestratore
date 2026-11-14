@@ -14,6 +14,9 @@ The check now proves what the runtime alone cannot: that new code's tests catch 
   `criteria covered: m/m, wrong code red: m/m` plus one expect-fail run per criterion;
   CHECK `checklist: m/m`. The director always passes the class. Without `--class` the
   script behaves as before.
+  Expect-fail runs count once per distinct command; a label stated twice with different
+  values is refused; a merged unit passes every class (`--class FIX,BUILD`). The script does
+  not read the brief: m is what the verifier declares, the director compares it with the brief.
 - Brief: a BUILD criterion names its wrong code as an edit the verifier can make.
 
 ## 1.0.2 — 2026-11-14

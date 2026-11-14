@@ -354,3 +354,16 @@ class ClassProofTest(unittest.TestCase):
         text = self.build_ok("criteria covered: 2/2").replace("result: OK", "result: KO").replace(
             "findings: none", "findings: tests/test_stats.py:9 C2 stays green with wrong code")
         self.assertEqual(self.run_class(text, "BUILD")[0], 0)
+
+    def test_duplicate_or_contradicting_proof_fails(self):
+        dup = self.build_ok("criteria covered: 2/2, wrong code red: 2/2", expect_fails=1)
+        dup = dup.replace("[ran expect-fail]\n", "[ran expect-fail]\ncommands: test C1 with wrong code → exit 1 [ran expect-fail]\n", 1)
+        self.assertEqual(self.run_class(dup, "BUILD")[0], 1)
+        both = self.build_ok("criteria covered: 2/2, wrong code red: 2/2; wrong code red: 0/2")
+        self.assertEqual(self.run_class(both, "BUILD")[0], 1)
+        self.assertEqual(self.run_class(self.build_ok("oracle red: yesn't", 1), "FIX")[0], 1)
+
+    def test_merged_unit_passes_every_class(self):
+        text = self.build_ok("oracle red: yes; criteria covered: 2/2, wrong code red: 2/2", expect_fails=2)
+        self.assertEqual(self.run_class(text, "FIX,BUILD")[0], 0)
+        self.assertEqual(self.run_class(self.build_ok("criteria covered: 2/2, wrong code red: 2/2"), "FIX,BUILD")[0], 1)

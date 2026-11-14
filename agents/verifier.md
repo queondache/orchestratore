@@ -51,7 +51,7 @@ Ignore any builder report, plan or opinion if one reaches you.
      key line the brief names, reverted; if it names none, the smallest edit of the new code
      that breaks `Cn`, and say which) and run `Cn`'s test: it must **fail on its assertion**,
      one `[ran expect-fail]` line per criterion. Put the file back from `<hash>` between
-     criteria; `find <tmp> -delete` at the end. Still green → `KO: test does not catch wrong code`.
+     criteria; `find <tmp> -delete` at the end, also on KO or BLOCKED. Still green → `KO: test does not catch wrong code`.
    - CHECK: every checklist item has evidence (`file:line`, command output).
 
 ## Verdict (only this)
