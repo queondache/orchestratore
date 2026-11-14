@@ -267,6 +267,27 @@ class RunCheckTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("builder's own model", problems(out))
 
+    def test_builder_never_checks_its_own_work_whatever_the_spelling(self):
+        cases = [
+            VALID.replace("gpt-6-luna (tier 1-2), opus (tier 3)", "gpt-6-luna (tier 1-2), sonnet (tier 3)"),
+            VALID.replace("builder: sonnet        verifier: gpt-6-luna",
+                          "**builder:** claude-sonnet-5-5 verifier: Sonnet 5.5"),
+            VALID.replace("builder: sonnet        verifier: gpt-6-luna (tier 1-2)",
+                          "Builder: sonnet (claude)\nverifier: sonnet (tier 1-2, no codex)"),
+        ]
+        for page in cases:
+            code, out = run(page)
+            self.assertEqual(code, 1, page.splitlines()[6])
+            self.assertIn("builder's own model", problems(out))
+        # Different versions or models stay fine, and only the real builder line counts.
+        for page in (VALID.replace("builder: sonnet", "builder: gpt-5").replace("opus (tier 3)", "gpt-6 (tier 3)"),
+                     VALID.replace("builder: sonnet", "note: the builder: opus was replaced\nbuilder: sonnet")):
+            code, out = run(page)
+            self.assertEqual(code, 0, problems(out))
+        # Different models in other spellings stay fine.
+        code, out = run(VALID.replace("builder: sonnet", "**Builder:** claude-sonnet-5-5"))
+        self.assertEqual(code, 0, problems(out))
+
     def test_stale_updated_fails(self):
         code, out = run(VALID, written=VALID_WRITTEN + 4 * 3600)
         self.assertEqual(code, 1)

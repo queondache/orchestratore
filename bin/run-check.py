@@ -161,9 +161,36 @@ def check_engine(lines: List[str], problems: List[str]) -> str:
     return match.group(1)
 
 
+# Model names come in many spellings (opus, Opus 5.5, claude-opus-5-5): compare their words
+# and numbers, leaving out "claude" and markdown. A bare family name ("opus") matches any of
+# its versions; two different versions (gpt-5, gpt-6) stay different.
+def model_key(name: str) -> tuple:
+    words = re.findall(r"[a-z]+|\d+", re.sub(r"[*_`]", " ", name).lower())
+    return tuple(w for w in words if w != "claude")
+
+
+def same_model(a: str, b: str) -> bool:
+    ka, kb = model_key(a), model_key(b)
+    if not ka or not kb:
+        return False
+    if ka == kb:
+        return True
+    short, long = sorted((ka, kb), key=len)
+    return len(short) == 1 and long[0] == short[0]
+
+
+def builder_model(lines: List[str]) -> str:
+    """The builder model from the header, whatever the spacing, case or markdown around it."""
+    for line in header_lines(lines):
+        match = re.match(r"(?i)^\W*builder\W*:\W*\s*([^\s|]+(?:\s+\d[\w.]*)?)", line)
+        if match:
+            return match.group(1).strip()
+    return ""
+
+
 def check_verifier(lines: List[str], problems: List[str]) -> None:
-    found = [line.split("verifier:", 1)[1].strip() for line in header_lines(lines)
-             if "verifier:" in line]
+    found = [re.split(r"(?i)\bverifier\W*:", line, 1)[1].strip(" *") for line in header_lines(lines)
+             if re.search(r"(?i)\bverifier\W*:", line)]
     if not found:
         problems.append("no `verifier:` line in the header: record "
                         "`verifier: <model> (tier 1-2), <model> (tier 3)`")
@@ -176,12 +203,13 @@ def check_verifier(lines: List[str], problems: List[str]) -> None:
         check_engine(lines, problems)
         return
     model, label = unit.group(1).strip().lower(), unit.group(2).lower()
-    # Whatever the engine, the model that built never checks its own work.
-    builders = [re.split(r"\s{2,}|\s+verifier:", line.split("builder:", 1)[1].strip())[0].strip().lower()
-                for line in header_lines(lines) if line.startswith("builder:")]
-    if builders and builders[0] and builders[0] == model:
-        problems.append(f"tier 1-2 verifier {model!r} is the builder's own model: builder and "
-                        "verifier must differ")
+    # Whatever the engine and the tier, the model that built never checks its own work.
+    builder = builder_model(lines)
+    strong = re.search(r",\s*([^,(]*?)\s*\(tier 3", value)
+    for tier, checker in (("tier 1-2", model), ("tier 3", strong.group(1) if strong else "")):
+        if builder and checker and same_model(builder, checker):
+            problems.append(f"{tier} verifier {checker.strip()!r} is the builder's own model "
+                            f"({builder!r}): builder and verifier must differ")
     # The user may pick the all-Claude engine: then a Claude model checks every tier.
     all_claude = check_engine(lines, problems) == "claude"
     if (any(word in model for word in CLAUDE_UNIT_VERIFIERS) and "no codex" not in label

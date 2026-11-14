@@ -1,6 +1,6 @@
 {
   "name": "direttore",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Director for unattended runs in Claude Code and Codex: the runtime's own orchestration builds, a different model checks every delivery, and only what passes a deterministic gate merges without you.",
   "author": {
     "name": "Andrea Pesce",

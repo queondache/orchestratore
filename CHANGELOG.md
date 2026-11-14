@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.1 — 2026-11-14
+
+Lighter and tighter, from the second independent review of 1.0.0.
+
+- The workflow moved to `bin/build-verify.workflow.js`: in `workflows/` the runtime listed it
+  as a skill in every session (always-on tokens, and it could be started by hand).
+- `run-check.py`: the builder's model may check neither tier, and models are compared by
+  their words (`opus`, `Opus 5.5`, `claude-opus-5-5` are one model); `builder:` and
+  `verifier:` are read whatever the case, spacing or markdown around them.
+- Workflow: paths with accented letters are accepted; only the models the engine uses are
+  checked, so an empty `codex_unit_verifier` no longer stops an all-Claude run.
+- `engines.md`: a KO in the check that follows an `unverified` result after a first KO is the
+  second KO.
+
 ## 1.0.0 — 2026-11-13
 
 Renamed **direttore** and rebuilt around one idea: the runtime's own orchestration builds,
@@ -22,7 +36,7 @@ merge gate and the run page are what the runtime does not have.
   or in `config.toml` (`engine`) → no question. The old `mode` key is ignored, so a 0.12
   config or a resumed run without an `engine:` line always gets the question. The old mixed
   (Codex builds for a Claude Code director) is now engine `codex`.
-- **Claude Code builds and checks through one workflow**, `workflows/build-verify.js`: one
+- **Claude Code builds and checks through one workflow**, `bin/build-verify.workflow.js`: one
   builder per unit in its own worktree, the check on arrival by a different model, one
   correction after a KO. The director waits for the batch instead of dispatching unit by unit.
 - **No new verdict when the base moves without a conflict.** Verified PRs merge one after the

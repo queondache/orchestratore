@@ -55,7 +55,7 @@ const VERDICT = {
 
 // Values that end up inside a shell command or a file name are checked first: a builder's
 // report is model output, never trusted text.
-const SAFE_PATH = /^\/[A-Za-z0-9._\/@+ -]+$/
+const SAFE_PATH = /^\/[\p{L}\p{N}._\/@+ -]+$/u
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
 const SHA = /^[0-9a-f]{40,64}$/
 
@@ -75,7 +75,10 @@ for (const unit of units) {
     throw new Error(`unit ${unit.id}: tier must be 1, 2 or 3`)
   }
 }
-for (const model of Object.values(models)) {
+// Only the models this engine uses: an empty key the engine never reads is not an error.
+const usedModels = [models.builder, models.verifier]
+if (engine === 'mixed') usedModels.push(models.codex_unit_verifier)
+for (const model of usedModels) {
   if (typeof model !== 'string' || !/^[A-Za-z0-9._:\/-]+$/.test(model)) {
     throw new Error('model names may hold only letters, digits and . _ : / -')
   }
