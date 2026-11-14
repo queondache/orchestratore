@@ -24,7 +24,7 @@ re-implement dispatch. `<plugin>` = two directories up. See [engines](references
    `coordinator.lock/owner` (`token: <random> runtime: <claude|codex> updated: <ISO>`). Lock
    exists → stop and ask the user, showing `owner`; only the user removes it, however old.
    Before every dispatch, merge or write, `owner` must hold your token; if not, stop at once
-   without writing. **Unlock**, only with your token there: `rm .orchestratore/coordinator.lock/owner && rmdir .orchestratore/coordinator.lock`.
+   without writing. **Unlock**, only with your token there: `python3 -c "import os; os.remove('.orchestratore/coordinator.lock/owner'); os.rmdir('.orchestratore/coordinator.lock')"`.
 4. `RUN.md` active or parked → resume (§5). `git status`, `git fetch`; others' work stays
    untouched. Base = the named branch, else the default; your checkout sits on the base head.
    Add `.orchestratore/` to `$(git rev-parse --git-path info/exclude)`.

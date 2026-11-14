@@ -15,7 +15,9 @@ export const meta = {
 //   base     base SHA every unit starts from
 //   engine   "claude" | "mixed"
 //   context  text of .orchestratore/CONTEXT.md
-//   units    [{ id, tier, brief }]   tier = 1, 2 or 3; brief = text of .orchestratore/briefs/<ID>.md
+//   units    [{ id, tier, workdir, brief }]   tier = 1, 2 or 3; workdir = the unit's worktree,
+//            created by the director at <repo>/.orchestratore/worktrees/<ID> from base;
+//            brief = text of .orchestratore/briefs/<ID>.md
 //   models   { builder, verifier, codex_unit_verifier }
 const { plugin, repo, base, engine, context, units, models } = args
 
@@ -70,6 +72,12 @@ for (const unit of units) {
   if (!unit || typeof unit.id !== 'string' || !SAFE_ID.test(unit.id) || typeof unit.brief !== 'string') {
     throw new Error('every unit needs an id (letters, digits, . _ -) and its brief text')
   }
+  // The director creates each worktree from the base before the call: the runtime's own
+  // worktree isolation copies the session's folder, which may be another repository.
+  const expected = `${repo}/.orchestratore/worktrees/${unit.id}`
+  if (unit.workdir !== expected) {
+    throw new Error(`unit ${unit.id}: workdir must be ${expected}, created from base before the call`)
+  }
   // A tier that is not plainly 1, 2 or 3 must never fall to the economical check.
   if (![1, 2, 3].includes(unit.tier) && !['1', '2', '3'].includes(unit.tier)) {
     throw new Error(`unit ${unit.id}: tier must be 1, 2 or 3`)
@@ -84,10 +92,11 @@ for (const model of usedModels) {
   }
 }
 
-// A delivery counts only with a committed hash and a worktree path that are safe to use.
-function delivered(built) {
+// A delivery counts only with a committed hash, in the unit's own worktree.
+function delivered(built, unit) {
   return Boolean(
     built &&
+      built.worktree === unit.workdir &&
       built.status === 'done' &&
       typeof built.hash === 'string' &&
       SHA.test(built.hash) &&
@@ -136,21 +145,24 @@ function verify(unit, built, round) {
 
 const results = await pipeline(
   units,
-  // Build: one builder per unit, in its own worktree cut from the checkout (the base head).
+  // Build: one builder per unit, in the worktree the director created from the base.
   async unit => {
-    const built = await agent(`${context}\n\n${unit.brief}`, {
-      label: `build:${unit.id}`,
-      phase: 'Build',
-      agentType: 'direttore:builder',
-      model: models.builder,
-      isolation: 'worktree',
-      schema: BUILT,
-    })
+    const built = await agent(
+      `workdir: ${unit.workdir}\n\nWork only inside the workdir above (cd there first; every ` +
+        `edit and command stays in it, on its branch).\n\n${context}\n\n${unit.brief}`,
+      {
+        label: `build:${unit.id}`,
+        phase: 'Build',
+        agentType: 'direttore:builder',
+        model: models.builder,
+        schema: BUILT,
+      },
+    )
     return { id: unit.id, built, verdicts: [] }
   },
   // Verify on arrival: no barrier, a fast unit is checked while the others still build.
   async (state, unit) => {
-    if (!delivered(state.built)) return state
+    if (!delivered(state.built, unit)) return state
     const verdict = await verify(unit, state.built, 1)
     return { ...state, verdicts: [verdict] }
   },
@@ -173,7 +185,7 @@ const results = await pipeline(
     )
     // A correction that is missing, or that landed anywhere but the unit's worktree, is
     // not a delivery.
-    if (!delivered(fixed) || fixed.worktree !== state.built.worktree) {
+    if (!delivered(fixed, unit)) {
       return { ...state, correction: fixed || null, correction_missing: true }
     }
     const second = await verify(unit, fixed, 2)
@@ -186,7 +198,7 @@ const results = await pipeline(
 return units.map((unit, i) => {
   const r = results[i]
   if (!r) return { id: unit.id, state: 'failed', reason: 'a stage threw; see the workflow log' }
-  if (!delivered(r.built)) {
+  if (!delivered(r.built, unit)) {
     return { id: unit.id, state: 'not delivered', built: r.built || null }
   }
   const last = r.verdicts[r.verdicts.length - 1]

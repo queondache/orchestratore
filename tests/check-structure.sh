@@ -132,7 +132,7 @@ check "brief: ready check section" grep -q '^## 5. Ready check' "$ROOT/skills/br
 check "brief: run context section" grep -q '^## 3. Run context' "$ROOT/skills/brief/SKILL.md"
 check "brief: template carries spec, code, pattern, pitfalls" bash -c "for f in spec code pattern pitfalls; do grep -q \"^\$f: \" '$ROOT/skills/brief/SKILL.md' || exit 1; done"
 check "engines: unit verify brief carries CONTEXT.md" engines_says 'base: <unit base sha>` + `.orchestratore/CONTEXT.md` + the unit brief'
-check "engines: workflow call carries CONTEXT.md and the briefs" engines_says 'context: <CONTEXT.md text>, units: [{ id, tier, brief: <brief text> }, ...]'
+check "engines: workflow call carries CONTEXT.md and the briefs" engines_says 'context: <CONTEXT.md text>, units: [{ id, tier, workdir: "<repo>/.orchestratore/worktrees/<ID>", brief: <brief text> }, ...]'
 check "engines: Claude Code verifier prompt carries CONTEXT.md" engines_says 'base: <unit base sha>\n" + <CONTEXT.md> + <brief content>)'
 check "engines: Codex spawn_agent message carries CONTEXT.md" engines_says '+ <CONTEXT.md> + <brief content>)'
 check "engines: mixed verify brief carries CONTEXT.md" engines_says '`.orchestratore/CONTEXT.md` + the unit brief. The workflow adds `worktree: hash: base:`'
@@ -176,7 +176,7 @@ check "skill: every agent shares the run context" skill_says '`.orchestratore/CO
 check "engines: sonnet builds, opus checks, two Claude models only" engines_says 'Builders run on sonnet. No other Claude model.'
 check "skill: questions never stop independent work" skill_says 'keep building what does not depend on it.'
 check "skill: token not yours → stop without writing" skill_says 'if not, stop at once without writing.'
-check "skill: unlock only with your token" skill_says '**Unlock**, only with your token there: `rm .orchestratore/coordinator.lock/owner && rmdir .orchestratore/coordinator.lock`'
+check "skill: unlock only with your token, no rm the guard blocks" skill_says "**Unlock**, only with your token there: \`python3 -c \"import os; os.remove('.orchestratore/coordinator.lock/owner'); os.rmdir('.orchestratore/coordinator.lock')\"\`"
 check "skill: final gate on the base head, red becomes a FIX unit" skill_says '**Final gate**: once the batch is merged, run the gate commands yourself on the base head. Red → one FIX unit for it; a flaky test gets one rerun, billing/quota/infra none.'
 check "skill: no new verdict unless a conflict" skill_says 'Verified PRs merge one after the other without a new verdict: their files are disjoint. A conflict → the same builder merges the base in (never rebase), new verdict on the new SHA.'
 check "skill: exclusive resources recorded at start" skill_says 'shared-resource commands (database, port, browser) in `exclusive:`'
@@ -207,7 +207,7 @@ check "engines: workflow script is the one shipped" bash -c "grep -qF 'Workflow(
 check "engines: mixed verdict is checked from the file, not the relayed text" engines_says 'Check that file, not the text relayed to you.'
 check "workflow: meta is first and names its phases" bash -c "head -n 1 '$ROOT/bin/build-verify.workflow.js' | grep -q '^export const meta = {' && for ph in Build Verify Correct; do grep -q \"title: '\$ph'\" '$ROOT/bin/build-verify.workflow.js' || exit 1; done"
 check "workflow: uses the plugin agents" bash -c "grep -q \"agentType: 'direttore:builder'\" '$ROOT/bin/build-verify.workflow.js' && grep -q \"agentType: 'direttore:verifier'\" '$ROOT/bin/build-verify.workflow.js'"
-check "workflow: builders are isolated in worktrees" grep -q "isolation: 'worktree'" "$ROOT/bin/build-verify.workflow.js"
+check "workflow: builders work in the worktree the director made, never runtime isolation" bash -c "grep -q 'workdir must be' '$ROOT/bin/build-verify.workflow.js' && grep -q 'built.worktree === unit.workdir' '$ROOT/bin/build-verify.workflow.js' && ! grep -q \"isolation: 'worktree'\" '$ROOT/bin/build-verify.workflow.js'"
 check "workflow: refuses equal builder and verifier models" grep -q 'models.builder === models.verifier' "$ROOT/bin/build-verify.workflow.js"
 check "workflow: no clock or randomness (they break resume)" bash -c "! grep -qE 'Date\.now|Math\.random|new Date\(' '$ROOT/bin/build-verify.workflow.js'"
 check "workflow: parses as JavaScript" bash -c "command -v node >/dev/null 2>&1 || exit 0; sed 's/^export const meta/const meta/' '$ROOT/bin/build-verify.workflow.js' | { printf 'async function __w(args, agent, pipeline, parallel, phase, log){\n'; cat; printf '\n}\n'; } | node --check -"
@@ -219,12 +219,18 @@ check "engines: an old mode key or a missing engine line is a question" bash -c 
 check "engines: every workflow state has an action" bash -c "for st in verified 'second KO' blocked unverified 'correction missing' 'not delivered'; do grep -qF \"\\\`\$st\\\`\" '$ROOT/skills/direttore/references/engines.md' || exit 1; done"
 check "workflow: checks hash, paths and ids before using them in a command" bash -c "grep -q 'const SAFE_PATH = ' '$ROOT/bin/build-verify.workflow.js' && grep -q 'SHA.test(built.hash)' '$ROOT/bin/build-verify.workflow.js' && grep -q 'SAFE_ID.test(unit.id)' '$ROOT/bin/build-verify.workflow.js'"
 check "workflow: a tier that is not 1, 2 or 3 is refused" grep -q 'tier must be 1, 2 or 3' "$ROOT/bin/build-verify.workflow.js"
-check "workflow: a correction outside the unit worktree is not a delivery" grep -q 'fixed.worktree !== state.built.worktree' "$ROOT/bin/build-verify.workflow.js"
+check "workflow: a correction outside the unit worktree is not a delivery" grep -q 'if (!delivered(fixed, unit))' "$ROOT/bin/build-verify.workflow.js"
 
 # 1.0.1: lighter. The workflow is not a plugin component (no slash command, no listing).
 check "workflow lives in bin, not in workflows/ (kept out of the skill listing)" bash -c "! test -e '$ROOT/workflows' && test -f '$ROOT/bin/build-verify.workflow.js'"
 check "workflow: accepts accented paths (unicode letters)" grep -qF 'const SAFE_PATH = /^\/[\p{L}\p{N}._\/@+ -]+$/u' "$ROOT/bin/build-verify.workflow.js"
 check "workflow: checks only the models the engine uses" grep -q "if (engine === 'mixed') usedModels.push(models.codex_unit_verifier)" "$ROOT/bin/build-verify.workflow.js"
+
+# 1.0.2: from the first real run.
+check "no recursive rm in shipped instructions (the user's guard blocks it)" shipped_grep 'rm -r[f ]|rm -fr'
+check "verifier: OK needs findings none" bash -c "grep -q '\`OK\` needs \`scope: none\` and \`findings: none\`' '$ROOT/agents/verifier.md' && grep -q '\`OK\` needs \`scope: none\` and \`findings: none\`' '$ROOT/skills/direttore/references/verify.md'"
+check "verifier: no experiments beyond the proof" grep -q 'no extra experiments' "$ROOT/agents/verifier.md"
+check "merge: --repo when not in the checkout" grep -qF 'add `--repo <owner>/<repo>`' "$ROOT/skills/direttore/references/merge.md"
 
 echo
 if [ "$FAIL" -eq 0 ]; then echo "GREEN: all checks pass"; exit 0; fi
