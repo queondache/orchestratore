@@ -166,7 +166,7 @@ check "skill: all ready units go to the runtime at once" skill_says 'Hand **all 
 check "skill: the director does not dispatch unit by unit" skill_says 'You do not dispatch unit by unit and you do not watch'
 check "skill: second KO parks after a diagnosis" skill_says '**Second KO** → `direttore:diagnostician`'
 check "skill: the check is class proof plus full gate, by a different model" skill_says 'checked on arrival by a different model (class proof plus full gate on that hash'
-check "skill: only a verdict accepted by verdict-check counts" skill_says 'Only a verdict `bin/verdict-check.py --hash <hash>` accepts counts'
+check "skill: only a verdict accepted by verdict-check --class counts" skill_says 'Only a verdict `bin/verdict-check.py --class <class> --hash <hash>` accepts counts'
 check "skill: BLOCKED is not a KO" skill_says '**BLOCKED** is not a KO'
 check "skill: run-check after each RUN.md step" skill_says 'never add a second header, one sentence under `## Log`; then `python3 <plugin>/bin/run-check.py`'
 check "skill: only the user removes a lock" skill_says 'only the user removes it, however old.'
@@ -231,6 +231,12 @@ check "no recursive rm in shipped instructions (the user's guard blocks it)" shi
 check "verifier: OK needs findings none" bash -c "grep -q '\`OK\` needs \`scope: none\` and \`findings: none\`' '$ROOT/agents/verifier.md' && grep -q '\`OK\` needs \`scope: none\` and \`findings: none\`' '$ROOT/skills/direttore/references/verify.md'"
 check "verifier: no experiments beyond the proof" grep -q 'no extra experiments' "$ROOT/agents/verifier.md"
 check "merge: --repo when not in the checkout" grep -qF 'add `--repo <owner>/<repo>`' "$ROOT/skills/direttore/references/merge.md"
+
+# 1.1.0: a BUILD test must fail with wrong code, and verdict-check enforces it by class.
+check "verify: BUILD proof includes wrong code red" bash -c "grep -q 'BUILD wrong-code steps' '$ROOT/skills/direttore/references/verify.md' && grep -q 'test does not catch wrong code' '$ROOT/agents/verifier.md'"
+check "verify and verifier share the proof line with wrong code red" bash -c "for f in '$ROOT/agents/verifier.md' '$ROOT/skills/direttore/references/verify.md'; do grep -qF 'criteria covered: n/m, wrong code red: n/m' \"\$f\" || exit 1; done"
+check "engines: verdict-check runs with --class" grep -qF 'verdict-check.py --class <class> --verdict <file>' "$ROOT/skills/direttore/references/engines.md"
+check "brief: BUILD proof names the wrong code as an edit" grep -qF 'wrong code: <the key line reverted, as an edit the verifier can make>' "$ROOT/skills/brief/SKILL.md"
 
 echo
 if [ "$FAIL" -eq 0 ]; then echo "GREEN: all checks pass"; exit 0; fi

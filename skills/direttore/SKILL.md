@@ -52,7 +52,8 @@ built in its own worktree from the base head and checked on arrival by a differe
 to the same builder once. You do not dispatch unit by unit and you do not watch: you wait for
 the batch, then act on what came back.
 
-- Only a verdict `bin/verdict-check.py --hash <hash>` accepts counts (rejected: one rerun on
+- Only a verdict `bin/verdict-check.py --class <class> --hash <hash>` accepts counts: an OK
+  must prove the tests catch wrong code, not only that they pass (rejected: one rerun on
   the same verifier model, then `parked` "unverifiable"). **BLOCKED** is not a KO: give it
   the means, or park.
 - **Second KO** → `direttore:diagnostician` writes why (`cause: brief` → its question to the

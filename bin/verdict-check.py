@@ -18,6 +18,14 @@ turn a failing command or a reused proof into an OK.
   * KO: `findings:` names what is wrong;
   * BLOCKED: `blocked:` says what is missing to run the proof. It is not a KO.
 
+With --class (the unit's class, which the director knows), an OK must also carry the
+proof that the tests catch wrong code, so a green suite alone never passes:
+
+  * FIX: `proof:` says `oracle red: yes` and at least one `[ran expect-fail]` run;
+  * BUILD: `proof:` says `criteria covered: m/m` and `wrong code red: m/m` (every
+    criterion's test turned red by wrong code), with at least m `[ran expect-fail]` runs;
+  * CHECK: `proof:` says `checklist: m/m`.
+
 Input: the verdict on stdin, or --verdict <file>. The header may sit inside prose
 or a fenced block. Exit codes: 0 verdict valid, 1 invalid (treat as malformed),
 2 error. Output: one JSON object on stdout.
@@ -63,7 +71,36 @@ def is_none(value: Optional[str]) -> bool:
     return value is None or value.strip().lower() in {"none", "-", ""}
 
 
-def evaluate(text: str, delivered: Optional[str]) -> Dict[str, object]:
+def fraction(proof: str, label: str) -> Optional[tuple]:
+    m = re.search(rf"{label}\s*:\s*(\d+)\s*/\s*(\d+)", proof, re.IGNORECASE)
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+def check_class_proof(unit_class: str, proof: str, expect_fails: int,
+                      problems: List[str]) -> None:
+    """An OK must show that the unit's tests catch wrong code, not only that they pass."""
+    if unit_class == "FIX":
+        if not re.search(r"oracle red\s*:\s*yes", proof, re.IGNORECASE):
+            problems.append("FIX OK needs `proof: oracle red: yes` (the new test fails without the fix)")
+        if expect_fails < 1:
+            problems.append("FIX OK needs the oracle run tagged [ran expect-fail]")
+    elif unit_class == "BUILD":
+        covered, red = fraction(proof, "criteria covered"), fraction(proof, "wrong code red")
+        if not covered or covered[1] < 1 or covered[0] != covered[1]:
+            problems.append("BUILD OK needs `criteria covered: m/m` (one passing test per criterion)")
+        if not red or not covered or red[1] != covered[1] or red[0] != red[1]:
+            problems.append("BUILD OK needs `wrong code red: m/m`: each criterion's test must fail "
+                            "with wrong code in a throwaway copy")
+        elif expect_fails < red[1]:
+            problems.append(f"BUILD OK claims wrong code red {red[0]}/{red[1]} but has "
+                            f"{expect_fails} [ran expect-fail] runs: one per criterion")
+    elif unit_class == "CHECK":
+        done = fraction(proof, "checklist")
+        if not done or done[1] < 1 or done[0] != done[1]:
+            problems.append("CHECK OK needs `checklist: m/m` with evidence for every item")
+
+
+def evaluate(text: str, delivered: Optional[str], unit_class: Optional[str] = None) -> Dict[str, object]:
     raw = [line.strip() for line in text.splitlines()]
     start = next((i for i, line in enumerate(raw) if line.startswith("VERDICT ")), None)
     problems: List[str] = []
@@ -164,6 +201,9 @@ def evaluate(text: str, delivered: Optional[str]) -> Dict[str, object]:
             problems.append(f"OK with open findings: {findings}")
         if not is_none(blocked):
             problems.append(f"OK while blocked: {blocked}")
+        if unit_class:
+            expect_fails = sum(1 for _, code, kind, ef in evidence if ef and code != 0)
+            check_class_proof(unit_class, field(lines, "proof") or "", expect_fails, problems)
     elif result == "KO":
         if is_none(findings) and is_none(scope):
             problems.append("KO must name its findings (file:line and what is wrong)")
@@ -179,6 +219,8 @@ def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--verdict", help="file holding the verdict (default: stdin)")
     parser.add_argument("--hash", help="the delivered hash the verdict must be about")
+    parser.add_argument("--class", dest="unit_class", choices=("FIX", "BUILD", "CHECK"),
+                        help="the unit's class: an OK must carry that class's proof")
     args = parser.parse_args(argv)
     if args.verdict:
         path = Path(args.verdict)
@@ -188,7 +230,7 @@ def main(argv: List[str] | None = None) -> int:
         text = path.read_text(encoding="utf-8")
     else:
         text = sys.stdin.read()
-    result = evaluate(text, args.hash)
+    result = evaluate(text, args.hash, args.unit_class)
     print(json.dumps(result, indent=2, ensure_ascii=False))
     return 0 if result["valid"] else 1
 

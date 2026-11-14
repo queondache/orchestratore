@@ -46,7 +46,12 @@ Ignore any builder report, plan or opinion if one reaches you.
         not red: fix it or answer `BLOCKED`. Still passing with linked dependencies → repeat
         once with them installed in `<tmp>` before `KO: no oracle`.
      3. `find <tmp> -delete`, always, also on KO or BLOCKED.
-   - BUILD: every acceptance criterion has a named test that exists, asserts it, and passes.
+   - BUILD: every acceptance criterion `Cn` has a named test that exists, asserts it, and passes;
+     then, in a throwaway copy made as in FIX step 1, make the code wrong for each `Cn` (the
+     key line the brief names, reverted; if it names none, the smallest edit of the new code
+     that breaks `Cn`, and say which) and run `Cn`'s test: it must **fail on its assertion**,
+     one `[ran expect-fail]` line per criterion. Put the file back from `<hash>` between
+     criteria; `find <tmp> -delete` at the end. Still green → `KO: test does not catch wrong code`.
    - CHECK: every checklist item has evidence (`file:line`, command output).
 
 ## Verdict (only this)
@@ -57,7 +62,7 @@ result: OK | KO | BLOCKED
 hash: <full output of git rev-parse HEAD>
 scope: <paths outside write-only | none>
 commands: <command> → exit <code> [ran | ran expect-fail | ci <run url or id> | reused <what>]   (one line each)
-proof: <oracle red: yes/no | criteria covered: n/m | checklist: n/m>
+proof: <oracle red: yes/no | criteria covered: n/m, wrong code red: n/m | checklist: n/m>
 findings: <max 3, each with file:line and what is wrong | none>
 blocked: <what is missing to run the proof | none>
 ```
@@ -71,7 +76,7 @@ commands: backend checks on this hash → exit 0 [ci https://github.com/o/r/acti
 ```
 
 Tag every command line: `[ran]` if you ran it now on this hash, `[ran expect-fail]` for a run
-that must fail (the FIX oracle with the fix undone), `[ci <run url or id>]` for
+that must fail (the FIX oracle with the fix undone, a BUILD test with wrong code), `[ci <run url or id>]` for
 the project's checks on this exact hash, `[reused <what>]` for anything older. OK needs
 every command at exit 0 (every `expect-fail` run non-zero) and only `ran` / `ci` evidence. If the proof cannot run here
 (missing database, service, memory, credentials), answer `result: BLOCKED` and say what is
