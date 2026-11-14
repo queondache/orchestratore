@@ -11,7 +11,7 @@ check() {
 }
 
 VERSION="$(jq -r .version "$ROOT/.claude-plugin/plugin.json")"
-SHIPPED=("$ROOT/skills" "$ROOT/agents" "$ROOT/commands" "$ROOT/hooks" "$ROOT/bin" "$ROOT/templates" "$ROOT/workflows")
+SHIPPED=("$ROOT/skills" "$ROOT/agents" "$ROOT/commands" "$ROOT/hooks" "$ROOT/bin" "$ROOT/templates")
 
 # Manifests
 check "Claude plugin.json valid" jq -e '.name=="direttore" and (.version|test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) and .license=="MIT"' "$ROOT/.claude-plugin/plugin.json"
@@ -113,7 +113,7 @@ tomllib.load(open('$ROOT/templates/config.toml','rb'))"
 # Hygiene: shipped files are portable and in English. Perl, not grep: \b must mean the
 # same on macOS and Linux. Only git-tracked text files count, never build artefacts.
 shipped_grep() { # shipped_grep <perl-regex>: prints matches, succeeds if there are none
-  (cd "$ROOT" && git ls-files -z skills agents commands hooks bin templates workflows | xargs -0 perl -ne "print \"\$ARGV:\$.: \$_\" if m{$1}; close ARGV if eof" | grep . && return 1 || return 0)
+  (cd "$ROOT" && git ls-files -z skills agents commands hooks bin templates | xargs -0 perl -ne "print \"\$ARGV:\$.: \$_\" if m{$1}; close ARGV if eof" | grep . && return 1 || return 0)
 }
 check "no absolute user paths or personal names in shipped files" shipped_grep '/Users/|/home/[a-z]|andreapesce|~/Dev|\bAndrea\b'
 check "no Italian leftovers in shipped files" shipped_grep '(?i)\b(della|degli|perché|quando|milestone meno|cervello|verificatore)\b'
@@ -203,23 +203,28 @@ check "skill: the director never re-implements dispatch" skill_says 'you never r
 check "engines: table has the three engines" bash -c "for e in claude mixed codex; do grep -q \"^| \\\`\$e\\\` |\" '$ROOT/skills/direttore/references/engines.md' || exit 1; done"
 check "engines: question offers only available engines, recommended first" engines_says 'Offer only the engines available here; recommended first'
 check "engines: in Codex only the codex engine runs" engines_says 'only `codex` runs here'
-check "engines: workflow script is the one shipped" bash -c "grep -qF 'Workflow(scriptPath=\"<plugin>/workflows/build-verify.js\"' '$ROOT/skills/direttore/references/engines.md' && test -f '$ROOT/workflows/build-verify.js'"
+check "engines: workflow script is the one shipped" bash -c "grep -qF 'Workflow(scriptPath=\"<plugin>/bin/build-verify.workflow.js\"' '$ROOT/skills/direttore/references/engines.md' && test -f '$ROOT/bin/build-verify.workflow.js'"
 check "engines: mixed verdict is checked from the file, not the relayed text" engines_says 'Check that file, not the text relayed to you.'
-check "workflow: meta is first and names its phases" bash -c "head -n 1 '$ROOT/workflows/build-verify.js' | grep -q '^export const meta = {' && for ph in Build Verify Correct; do grep -q \"title: '\$ph'\" '$ROOT/workflows/build-verify.js' || exit 1; done"
-check "workflow: uses the plugin agents" bash -c "grep -q \"agentType: 'direttore:builder'\" '$ROOT/workflows/build-verify.js' && grep -q \"agentType: 'direttore:verifier'\" '$ROOT/workflows/build-verify.js'"
-check "workflow: builders are isolated in worktrees" grep -q "isolation: 'worktree'" "$ROOT/workflows/build-verify.js"
-check "workflow: refuses equal builder and verifier models" grep -q 'models.builder === models.verifier' "$ROOT/workflows/build-verify.js"
-check "workflow: no clock or randomness (they break resume)" bash -c "! grep -qE 'Date\.now|Math\.random|new Date\(' '$ROOT/workflows/build-verify.js'"
-check "workflow: parses as JavaScript" bash -c "command -v node >/dev/null 2>&1 || exit 0; sed 's/^export const meta/const meta/' '$ROOT/workflows/build-verify.js' | { printf 'async function __w(args, agent, pipeline, parallel, phase, log){\n'; cat; printf '\n}\n'; } | node --check -"
+check "workflow: meta is first and names its phases" bash -c "head -n 1 '$ROOT/bin/build-verify.workflow.js' | grep -q '^export const meta = {' && for ph in Build Verify Correct; do grep -q \"title: '\$ph'\" '$ROOT/bin/build-verify.workflow.js' || exit 1; done"
+check "workflow: uses the plugin agents" bash -c "grep -q \"agentType: 'direttore:builder'\" '$ROOT/bin/build-verify.workflow.js' && grep -q \"agentType: 'direttore:verifier'\" '$ROOT/bin/build-verify.workflow.js'"
+check "workflow: builders are isolated in worktrees" grep -q "isolation: 'worktree'" "$ROOT/bin/build-verify.workflow.js"
+check "workflow: refuses equal builder and verifier models" grep -q 'models.builder === models.verifier' "$ROOT/bin/build-verify.workflow.js"
+check "workflow: no clock or randomness (they break resume)" bash -c "! grep -qE 'Date\.now|Math\.random|new Date\(' '$ROOT/bin/build-verify.workflow.js'"
+check "workflow: parses as JavaScript" bash -c "command -v node >/dev/null 2>&1 || exit 0; sed 's/^export const meta/const meta/' '$ROOT/bin/build-verify.workflow.js' | { printf 'async function __w(args, agent, pipeline, parallel, phase, log){\n'; cat; printf '\n}\n'; } | node --check -"
 check "template: RUN.md records the engine" grep -q '^engine: claude | codex | mixed' "$ROOT/templates/RUN.md"
 check "hook: resume command is the new one" bash -c "grep -q '/direttore:dirigi resume' '$ROOT/hooks/session-state.sh' && ! grep -q 'orchestratore:orchestra' '$ROOT/hooks/session-state.sh'"
 check "no old plugin namespace left in shipped files" shipped_grep 'orchestratore:(orchestra|builder|verifier|diagnostician|orchestratore)'
 check "config template has no 0.12 mode key" bash -c "! grep -q '^mode = ' '$ROOT/templates/config.toml'"
 check "engines: an old mode key or a missing engine line is a question" bash -c "grep -q 'an old \`mode\` key' '$ROOT/skills/direttore/references/engines.md' && grep -q 'without an \`engine:\` line: ask' '$ROOT/skills/direttore/references/engines.md'"
 check "engines: every workflow state has an action" bash -c "for st in verified 'second KO' blocked unverified 'correction missing' 'not delivered'; do grep -qF \"\\\`\$st\\\`\" '$ROOT/skills/direttore/references/engines.md' || exit 1; done"
-check "workflow: checks hash, paths and ids before using them in a command" bash -c "grep -q 'const SAFE_PATH = ' '$ROOT/workflows/build-verify.js' && grep -q 'SHA.test(built.hash)' '$ROOT/workflows/build-verify.js' && grep -q 'SAFE_ID.test(unit.id)' '$ROOT/workflows/build-verify.js'"
-check "workflow: a tier that is not 1, 2 or 3 is refused" grep -q 'tier must be 1, 2 or 3' "$ROOT/workflows/build-verify.js"
-check "workflow: a correction outside the unit worktree is not a delivery" grep -q 'fixed.worktree !== state.built.worktree' "$ROOT/workflows/build-verify.js"
+check "workflow: checks hash, paths and ids before using them in a command" bash -c "grep -q 'const SAFE_PATH = ' '$ROOT/bin/build-verify.workflow.js' && grep -q 'SHA.test(built.hash)' '$ROOT/bin/build-verify.workflow.js' && grep -q 'SAFE_ID.test(unit.id)' '$ROOT/bin/build-verify.workflow.js'"
+check "workflow: a tier that is not 1, 2 or 3 is refused" grep -q 'tier must be 1, 2 or 3' "$ROOT/bin/build-verify.workflow.js"
+check "workflow: a correction outside the unit worktree is not a delivery" grep -q 'fixed.worktree !== state.built.worktree' "$ROOT/bin/build-verify.workflow.js"
+
+# 1.0.1: lighter. The workflow is not a plugin component (no slash command, no listing).
+check "workflow lives in bin, not in workflows/ (kept out of the skill listing)" bash -c "! test -e '$ROOT/workflows' && test -f '$ROOT/bin/build-verify.workflow.js'"
+check "workflow: accepts accented paths (unicode letters)" grep -qF 'const SAFE_PATH = /^\/[\p{L}\p{N}._\/@+ -]+$/u' "$ROOT/bin/build-verify.workflow.js"
+check "workflow: checks only the models the engine uses" grep -q "if (engine === 'mixed') usedModels.push(models.codex_unit_verifier)" "$ROOT/bin/build-verify.workflow.js"
 
 echo
 if [ "$FAIL" -eq 0 ]; then echo "GREEN: all checks pass"; exit 0; fi

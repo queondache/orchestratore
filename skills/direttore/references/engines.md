@@ -68,7 +68,7 @@ own model.
 Build and check are the runtime's job. One call for all ready units:
 
 ```text
-Workflow(scriptPath="<plugin>/workflows/build-verify.js", args={
+Workflow(scriptPath="<plugin>/bin/build-verify.workflow.js", args={
   plugin: "<plugin>", repo: "<abs path of this checkout>", base: "<base sha>",
   engine: "claude" | "mixed", context: <CONTEXT.md text>,
   units: [{ id, tier, brief: <brief text> }, ...],
@@ -92,7 +92,8 @@ Workflow(scriptPath="<plugin>/workflows/build-verify.js", args={
   each unit before acting on it. By `state`:
   - `verified` → §4; `second KO` → the diagnostician, parked; `blocked` → give it the means
     and check again (single call below), or park;
-  - `unverified` (the check returned nothing) → one verifier call on `built.hash`;
+  - `unverified` (the check returned nothing) → one verifier call on `built.hash`; after a
+    first KO (`ko: 1`) a KO there is the second KO;
   - `correction missing` (KO, then no usable correction) → one builder call in
     `built.worktree` with the findings, then a verifier call; a KO there is the second KO;
   - `not delivered`, `failed` → one more workflow call with those units alone; the same
