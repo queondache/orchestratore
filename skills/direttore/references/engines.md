@@ -65,19 +65,22 @@ own model.
 
 ## Claude Code, engine `claude` or `mixed`: one workflow
 
-Build and check are the runtime's job. One call for all ready units:
+Build and check are the runtime's job. First create each ready unit's worktree from the
+base (section Worktrees, below), then one call for all of them:
 
 ```text
 Workflow(scriptPath="<plugin>/bin/build-verify.workflow.js", args={
   plugin: "<plugin>", repo: "<abs path of this checkout>", base: "<base sha>",
   engine: "claude" | "mixed", context: <CONTEXT.md text>,
-  units: [{ id, tier, brief: <brief text> }, ...],
+  units: [{ id, tier, workdir: "<repo>/.orchestratore/worktrees/<ID>", brief: <brief text> }, ...],
   models: { builder: <claude_builder>, verifier: <claude_verifier>,
             codex_unit_verifier: <model, mixed only> } })
 ```
 
-- This skill is the instruction that authorises the `Workflow` call. Your checkout must sit
-  on the base head: each builder's worktree is cut from it.
+- This skill is the instruction that authorises the `Workflow` call. Never use the runtime's
+  own worktree isolation: it copies the folder the session was opened in, which may be
+  another repository or another commit. The workflow refuses a `workdir` that is not
+  `<repo>/.orchestratore/worktrees/<ID>`, and a delivery from any other folder.
 - `mixed`: before the call, write one verify brief per tier 1-2 unit,
   `.orchestratore/briefs/verify/<ID>.md` = body of `<plugin>/agents/verifier.md` +
   `.orchestratore/CONTEXT.md` + the unit brief. The workflow adds `worktree: hash: base:`
@@ -117,9 +120,9 @@ The diagnostician gets `CONTEXT.md`, the brief, the two verdicts and each attemp
 every runtime. If the plugin agents are not available, use `general-purpose` and paste the
 body of `<plugin>/agents/builder.md` or `verifier.md` at the top of the prompt.
 
-## Worktrees you create
+## Worktrees
 
-The workflow makes its own. Create one yourself only for the `codex` engine:
+You create every unit's worktree, whatever the engine, from the base SHA:
 
 ```bash
 git worktree add -b orch-unit/<run>/<ID> .orchestratore/worktrees/<ID> <base-sha>

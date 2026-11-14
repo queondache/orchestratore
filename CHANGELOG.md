@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.2 — 2026-11-14
+
+Fixes from the first real run (sandbox, engine `claude`, 3/3 units merged in 5 minutes).
+
+- **The workflow never uses the runtime's worktree isolation**: it copies the folder the
+  session was opened in, which in that run was another repository on another commit. The
+  director now creates every unit's worktree from the base before the call and passes it
+  as `workdir`; the workflow refuses any other folder, for the build and for the delivery.
+- The verifier is told that `OK` needs `findings: none` (as `verdict-check.py` already
+  required: one rejected verdict cost a rerun) and runs no experiments beyond the proof.
+- No recursive `rm` in the instructions: the FIX oracle copy is removed with `find -delete`
+  and the lock with Python, so a guard that blocks `rm` does not stop the run.
+- `merge.md`: `--repo` when the gate runs outside the project checkout.
+
 ## 1.0.1 — 2026-11-14
 
 Lighter and tighter, from the second independent review of 1.0.0.

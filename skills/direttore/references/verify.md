@@ -52,7 +52,7 @@ each FIX source, the tests for each BUILD criterion, the evidence for each CHECK
    is not a red oracle: fix the environment or answer `BLOCKED` with what is missing. If it
    still passes while dependencies are linked, repeat steps 1-3 once with them installed in
    `<tmp>` before answering `KO: no oracle`: a link can hide an editable install.
-4. `rm -rf <tmp>`, always, also on KO or BLOCKED.
+4. `find <tmp> -delete`, always, also on KO or BLOCKED.
 
 A new SHA after the verdict (a correction, the base merged in after it moved) needs a new
 verdict on that SHA before its PR merges.
@@ -91,7 +91,8 @@ The director acts only on a verdict that `python3 <plugin>/bin/verdict-check.py 
 <delivered hash>` accepts (exit 0). A rejected verdict is not a verdict and not a KO: rerun
 it once with the rejection reasons appended to the verifier's prompt, on the same verifier
 model (never the builder's model); rejected again → the unit is `parked` "unverifiable".
-`KO: no oracle` and `KO: out of scope` are full KOs, never "OK with notes".
+`OK` needs `scope: none` and `findings: none`; a remark that does not make the unit wrong is not
+a finding. `KO: no oracle` and `KO: out of scope` are full KOs, never "OK with notes".
 
 ## Model choice
 

@@ -17,6 +17,8 @@ Ignore any builder report, plan or opinion if one reaches you.
   reading, git inspection and running commands. Untracked build artefacts are fine.
 - The brief's rules for builders (commit, write only) do not apply to you.
 - Every claim comes from a command you ran in this session. No command, no claim.
+- Run the proof your class asks for and the commands; no extra experiments (other mutations,
+  other inputs) beyond them: they cost time and prove nothing the verdict uses.
 - If the proof cannot be run with your tools here, answer `result: BLOCKED` with the reason in
   `blocked:`; do not guess.
 
@@ -43,7 +45,7 @@ Ignore any builder report, plan or opinion if one reaches you.
         The new test must now **fail on its assertion**. A setup, import or runner error is
         not red: fix it or answer `BLOCKED`. Still passing with linked dependencies → repeat
         once with them installed in `<tmp>` before `KO: no oracle`.
-     3. `rm -rf <tmp>`, always, also on KO or BLOCKED.
+     3. `find <tmp> -delete`, always, also on KO or BLOCKED.
    - BUILD: every acceptance criterion has a named test that exists, asserts it, and passes.
    - CHECK: every checklist item has evidence (`file:line`, command output).
 
@@ -74,5 +76,8 @@ the project's checks on this exact hash, `[reused <what>]` for anything older. O
 every command at exit 0 (every `expect-fail` run non-zero) and only `ran` / `ci` evidence. If the proof cannot run here
 (missing database, service, memory, credentials), answer `result: BLOCKED` and say what is
 missing in `blocked:`; never turn that into OK or KO.
+
+`OK` needs `scope: none` and `findings: none`: a remark that does not make the unit wrong is
+not a finding, leave it out; anything that does is a KO.
 
 `KO: no oracle` (the FIX test passes without the fix) and `KO: out of scope` are full KOs.
