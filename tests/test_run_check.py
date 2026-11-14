@@ -279,6 +279,11 @@ class RunCheckTest(unittest.TestCase):
             code, out = run(page)
             self.assertEqual(code, 1, page.splitlines()[6])
             self.assertIn("builder's own model", problems(out))
+        # Different versions or models stay fine, and only the real builder line counts.
+        for page in (VALID.replace("builder: sonnet", "builder: gpt-5").replace("opus (tier 3)", "gpt-6 (tier 3)"),
+                     VALID.replace("builder: sonnet", "note: the builder: opus was replaced\nbuilder: sonnet")):
+            code, out = run(page)
+            self.assertEqual(code, 0, problems(out))
         # Different models in other spellings stay fine.
         code, out = run(VALID.replace("builder: sonnet", "**Builder:** claude-sonnet-5-5"))
         self.assertEqual(code, 0, problems(out))

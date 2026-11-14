@@ -161,28 +161,35 @@ def check_engine(lines: List[str], problems: List[str]) -> str:
     return match.group(1)
 
 
-# Model names come in many spellings (opus, Opus 5.5, claude-opus-5-5): compare their words,
-# leaving out "claude", version numbers and markdown.
+# Model names come in many spellings (opus, Opus 5.5, claude-opus-5-5): compare their words
+# and numbers, leaving out "claude" and markdown. A bare family name ("opus") matches any of
+# its versions; two different versions (gpt-5, gpt-6) stay different.
 def model_key(name: str) -> tuple:
-    words = re.findall(r"[a-z]+", re.sub(r"[*_`]", " ", name).lower())
+    words = re.findall(r"[a-z]+|\d+", re.sub(r"[*_`]", " ", name).lower())
     return tuple(w for w in words if w != "claude")
 
 
 def same_model(a: str, b: str) -> bool:
-    return bool(model_key(a)) and model_key(a) == model_key(b)
+    ka, kb = model_key(a), model_key(b)
+    if not ka or not kb:
+        return False
+    if ka == kb:
+        return True
+    short, long = sorted((ka, kb), key=len)
+    return len(short) == 1 and long[0] == short[0]
 
 
 def builder_model(lines: List[str]) -> str:
     """The builder model from the header, whatever the spacing, case or markdown around it."""
     for line in header_lines(lines):
-        match = re.search(r"(?i)\bbuilder\W*:\W*\s*([^\s|]+(?:\s+\d[\w.]*)?)", line)
+        match = re.match(r"(?i)^\W*builder\W*:\W*\s*([^\s|]+(?:\s+\d[\w.]*)?)", line)
         if match:
             return match.group(1).strip()
     return ""
 
 
 def check_verifier(lines: List[str], problems: List[str]) -> None:
-    found = [re.split(r"(?i)verifier\W*:", line, 1)[1].strip(" *") for line in header_lines(lines)
+    found = [re.split(r"(?i)\bverifier\W*:", line, 1)[1].strip(" *") for line in header_lines(lines)
              if re.search(r"(?i)\bverifier\W*:", line)]
     if not found:
         problems.append("no `verifier:` line in the header: record "
