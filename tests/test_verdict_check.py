@@ -303,3 +303,67 @@ class TolerantFormatTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ClassProofTest(unittest.TestCase):
+    """With --class, an OK must prove its tests catch wrong code (1.1.0)."""
+
+    def build_ok(self, proof, expect_fails=2):
+        lines = [f"VERDICT B1 {H}", "result: OK", f"hash: {H}", "scope: none",
+                 "commands: python3 -m unittest tests.test_stats → exit 0 [ran]"]
+        lines += [f"commands: test C{i + 1} with wrong code → exit 1 [ran expect-fail]"
+                  for i in range(expect_fails)]
+        lines += [f"proof: {proof}", "findings: none", "blocked: none"]
+        return "\n".join(lines) + "\n"
+
+    def run_class(self, text, unit_class):
+        proc = subprocess.run([sys.executable, str(SCRIPT), "--class", unit_class, "--hash", H],
+                              input=text, capture_output=True, text=True)
+        return proc.returncode, json.loads(proc.stdout)
+
+    def test_build_ok_with_wrong_code_red_passes(self):
+        code, out = self.run_class(self.build_ok("criteria covered: 2/2, wrong code red: 2/2"), "BUILD")
+        self.assertEqual(code, 0, out["problems"])
+
+    def test_build_ok_without_wrong_code_proof_fails(self):
+        for proof in ("criteria covered: 2/2", "criteria covered: 2/2, wrong code red: 1/2",
+                      "criteria covered: 1/2, wrong code red: 2/2"):
+            code, out = self.run_class(self.build_ok(proof), "BUILD")
+            self.assertEqual(code, 1, proof)
+        code, out = self.run_class(self.build_ok("criteria covered: 2/2, wrong code red: 2/2",
+                                                 expect_fails=1), "BUILD")
+        self.assertEqual(code, 1)
+        self.assertIn("one per criterion", " ".join(out["problems"]))
+
+    def test_fix_ok_needs_red_oracle(self):
+        text = self.build_ok("oracle red: yes", expect_fails=1)
+        self.assertEqual(self.run_class(text, "FIX")[0], 0)
+        self.assertEqual(self.run_class(self.build_ok("oracle red: no", expect_fails=1), "FIX")[0], 1)
+        self.assertEqual(self.run_class(self.build_ok("oracle red: yes", expect_fails=0), "FIX")[0], 1)
+
+    def test_check_ok_needs_full_checklist(self):
+        self.assertEqual(self.run_class(self.build_ok("checklist: 3/3", 0), "CHECK")[0], 0)
+        self.assertEqual(self.run_class(self.build_ok("checklist: 2/3", 0), "CHECK")[0], 1)
+
+    def test_without_class_nothing_changes(self):
+        proc = subprocess.run([sys.executable, str(SCRIPT), "--hash", H],
+                              input=self.build_ok("criteria covered: 2/2"), capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 0)
+
+    def test_ko_and_blocked_are_not_affected(self):
+        text = self.build_ok("criteria covered: 2/2").replace("result: OK", "result: KO").replace(
+            "findings: none", "findings: tests/test_stats.py:9 C2 stays green with wrong code")
+        self.assertEqual(self.run_class(text, "BUILD")[0], 0)
+
+    def test_duplicate_or_contradicting_proof_fails(self):
+        dup = self.build_ok("criteria covered: 2/2, wrong code red: 2/2", expect_fails=1)
+        dup = dup.replace("[ran expect-fail]\n", "[ran expect-fail]\ncommands: test C1 with wrong code → exit 1 [ran expect-fail]\n", 1)
+        self.assertEqual(self.run_class(dup, "BUILD")[0], 1)
+        both = self.build_ok("criteria covered: 2/2, wrong code red: 2/2; wrong code red: 0/2")
+        self.assertEqual(self.run_class(both, "BUILD")[0], 1)
+        self.assertEqual(self.run_class(self.build_ok("oracle red: yesn't", 1), "FIX")[0], 1)
+
+    def test_merged_unit_passes_every_class(self):
+        text = self.build_ok("oracle red: yes; criteria covered: 2/2, wrong code red: 2/2", expect_fails=2)
+        self.assertEqual(self.run_class(text, "FIX,BUILD")[0], 0)
+        self.assertEqual(self.run_class(self.build_ok("criteria covered: 2/2, wrong code red: 2/2"), "FIX,BUILD")[0], 1)

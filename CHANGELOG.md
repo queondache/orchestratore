@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.1.0 — 2026-11-14
+
+The check now proves what the runtime alone cannot: that new code's tests catch wrong code.
+
+- **BUILD units:** the verifier makes the code wrong for each acceptance criterion in a
+  throwaway copy (the key line the brief names, reverted; else the smallest breaking edit)
+  and runs that criterion's test: it must fail on its assertion. A test that stays green is
+  `KO: test does not catch wrong code`. Before, a BUILD passed with tests that only had to
+  pass; the second real run showed no verifier checked the brief's "fails if reverted".
+- **`verdict-check.py --class FIX|BUILD|CHECK`:** with the class, an OK is rejected unless it
+  carries that class's proof: FIX `oracle red: yes` plus an expect-fail run; BUILD
+  `criteria covered: m/m, wrong code red: m/m` plus one expect-fail run per criterion;
+  CHECK `checklist: m/m`. The director always passes the class. Without `--class` the
+  script behaves as before.
+  Expect-fail runs count once per distinct command; a label stated twice with different
+  values is refused; a merged unit passes every class (`--class FIX,BUILD`). The script does
+  not read the brief: m is what the verifier declares, the director compares it with the brief.
+- Brief: a BUILD criterion names its wrong code as an edit the verifier can make.
+
 ## 1.0.2 — 2026-11-14
 
 Fixes from the first real run (sandbox, engine `claude`, 3/3 units merged in 5 minutes).

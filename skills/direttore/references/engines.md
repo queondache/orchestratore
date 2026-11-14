@@ -91,8 +91,9 @@ Workflow(scriptPath="<plugin>/bin/build-verify.workflow.js", args={
   `.orchestratore/briefs/verify/<ID>.r<n>.verdict.md`, then check it.
 - `tier` is the number 1, 2 or 3; anything else is refused before any agent starts.
 - The result has one entry per unit: `state`, `built` (worktree, branch, hash), `verdicts`.
-  Run `bin/verdict-check.py --verdict <file> --hash <built.hash>` on the last verdict of
-  each unit before acting on it. By `state`:
+  Run `bin/verdict-check.py --class <class> --verdict <file> --hash <built.hash>` on the last
+  verdict of each unit before acting on it (a merged unit: every class, `--class FIX,BUILD`).
+  Check that the verdict's `criteria covered: m/m` has the brief's number of criteria. By `state`:
   - `verified` → §4; `second KO` → the diagnostician, parked; `blocked` → give it the means
     and check again (single call below), or park;
   - `unverified` (the check returned nothing) → one verifier call on `built.hash`; after a

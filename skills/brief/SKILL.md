@@ -71,7 +71,7 @@ read first: <path:lines — why>   (at most 8 entries)
 write only: <paths or globs this unit owns>
 do not touch: <neighbouring areas, public interfaces, dependencies>
 pitfalls: <traps already known: other callers, env vars a test needs, flaky fixtures | none>
-proof: <numbered: C1: <criterion> → <test name>, fails on base (FIX) | fails if <key line> is reverted (BUILD); CHECK: numbered checklist items>
+proof: <numbered: C1: <criterion> → <test name>, fails on base (FIX) | wrong code: <the key line reverted, as an edit the verifier can make> (BUILD); CHECK: numbered checklist items>
 commands: <targeted test command, no shared database/port/browser>; full gate runs later
 done when: <proof passes + commands exit 0 + diff confined to write-only paths>
 report: status | worktree + branch | hash | files | command → exit code | blockers

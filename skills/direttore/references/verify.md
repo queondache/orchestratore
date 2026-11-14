@@ -21,11 +21,20 @@ Then by class:
 | Class | Proof | KO when |
 |---|---|---|
 | **FIX** | Regression oracle in a throwaway copy, never in the reviewed worktree (steps below) | the new test still passes without the fix → `KO: no oracle` |
-| **BUILD** | Each acceptance criterion in `proof` maps to a named test that exists and passes | a criterion has no test, or a test does not assert it |
+| **BUILD** | Each acceptance criterion in `proof` maps to a named test that exists, passes, and fails with wrong code in a throwaway copy (steps below) | a criterion has no test, a test does not assert it, or it stays green with wrong code → `KO: test does not catch wrong code` |
 | **CHECK** | Each checklist item in `proof` has evidence: `file:line`, command output, or a rendered result | an item is unverified or contradicted |
 
 A merged unit (several sources in one brief) runs the proof of every source: the oracle for
 each FIX source, the tests for each BUILD criterion, the evidence for each CHECK item.
+
+**BUILD wrong-code steps** (same throwaway copy as the FIX oracle, step 1 below): for each
+criterion `Cn`, make the code wrong in `<tmp>` the way the brief's `proof` names for `Cn`
+(the key line reverted); if the brief names none, the smallest edit of the new production
+code that breaks `Cn` (a constant return, a dropped branch, an off-by-one) and say which.
+Run `Cn`'s test: it must **fail on its assertion** (`[ran expect-fail]`, one line per
+criterion, naming the edit). An import or setup error is not red: change the edit. Put the
+file back from `<hash>` before the next criterion. A test that stays green → `KO: test does
+not catch wrong code` naming `Cn`. Then remove `<tmp>` (FIX step 4).
 
 **FIX oracle steps** (a plain copy: no new worktree, no git writes, no reinstall):
 
@@ -67,7 +76,7 @@ result: OK | KO | BLOCKED
 hash: <full output of git rev-parse HEAD>
 scope: <paths outside write-only | none>
 commands: <command> → exit <code> [ran | ran expect-fail | ci <run url or id> | reused <what>]   (one line each)
-proof: <oracle red: yes/no | criteria covered: n/m | checklist: n/m>
+proof: <oracle red: yes/no | criteria covered: n/m, wrong code red: n/m | checklist: n/m>
 findings: <max 3, each with file:line and what is wrong | none>
 blocked: <what is missing to run the proof | none>
 ```
@@ -87,8 +96,9 @@ earlier result. OK rests only on `ran` and `ci`; reused evidence may support a K
 OK. **BLOCKED** = the proof cannot run here (missing database, service, memory, credentials):
 say what is missing in `blocked:`; it is not a KO and does not count against the unit.
 
-The director acts only on a verdict that `python3 <plugin>/bin/verdict-check.py --hash
-<delivered hash>` accepts (exit 0). A rejected verdict is not a verdict and not a KO: rerun
+The director acts only on a verdict that `python3 <plugin>/bin/verdict-check.py --class
+<FIX|BUILD|CHECK> --hash <delivered hash>` accepts (exit 0): with `--class`, an OK without its
+class's wrong-code proof is rejected. A rejected verdict is not a verdict and not a KO: rerun
 it once with the rejection reasons appended to the verifier's prompt, on the same verifier
 model (never the builder's model); rejected again → the unit is `parked` "unverifiable".
 `OK` needs `scope: none` and `findings: none`; a remark that does not make the unit wrong is not
